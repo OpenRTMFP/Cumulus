@@ -22,7 +22,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-PacketReader::PacketReader(Poco::UInt8* packet,int size) : _memory((char*)packet,size),BinaryReader(_memory,BinaryReader::NETWORK_BYTE_ORDER) {
+PacketReader::PacketReader(Poco::UInt8* buffer,int size) : _memory((char*)buffer,size),BinaryReader(_memory,BinaryReader::NETWORK_BYTE_ORDER) {
 }
 
 

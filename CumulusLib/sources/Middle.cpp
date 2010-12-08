@@ -20,6 +20,7 @@
 #include "Util.h"
 #include "RTMFP.h"
 #include "Poco/RandomStream.h"
+#include <openssl/evp.h>
 
 using namespace std;
 using namespace Poco;
@@ -29,28 +30,35 @@ namespace Cumulus {
 
 Middle::Middle(UInt32 id,
 				UInt32 farId,
+				const UInt8* peerId,
+				const SocketAddress& peerAddress,
 				const string& url,
-				const Poco::UInt8* decryptKey,
-				const Poco::UInt8* encryptKey,
+				const UInt8* decryptKey,
+				const UInt8* encryptKey,
 				DatagramSocket& socket,
-				const string& listenCirrusUrl) : Session(id,farId,url,decryptKey,encryptKey,socket),_middleCertificat("\x02\x1D\x02\x41\x0E",5),_cirrusUri(listenCirrusUrl),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),
-					_handshakeDecrypt((UInt8*)RTMFP_SYMETRIC_KEY,AESEngine::DECRYPT),_handshakeEncrypt((UInt8*)RTMFP_SYMETRIC_KEY,AESEngine::ENCRYPT),_cirrusId(0) {
+				Database& database,
+				const Sessions& sessions,
+				const string& listenCirrusUrl) : Session(id,farId,peerId,peerAddress,url,decryptKey,encryptKey,socket,database),_middleCertificat("\x02\x1D\x02\x41\x0E",5),_cirrusUri(listenCirrusUrl),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),
+					_cirrusId(0),_sessions(sessions) {
 
-	INFO("Handshake Cirrus");;
+	INFO("Handshake Cirrus");
+
+	AESEngine decrypt((UInt8*)RTMFP_SYMETRIC_KEY,AESEngine::DECRYPT);
+	AESEngine encrypt((UInt8*)RTMFP_SYMETRIC_KEY,AESEngine::ENCRYPT);
 
 	char rand[64];
 	RandomInputStream().read(rand,sizeof(rand));
 	_middleCertificat.append(rand,sizeof(rand));
-	_middleCertificat.append("\x02\x15\x02\x02\x15\x05\x02\x15\x0E",9);
+	_middleCertificat.append("\x03\x1A\x02\x0A\x02\x1E\x02",7);
 
 	// connection to cirrus
-	_socketClient.connect(SocketAddress(_cirrusUri.getHost(),_cirrusUri.getPort()));
+	_socketCirrus.connect(SocketAddress(_cirrusUri.getHost(),_cirrusUri.getPort()));
 
 	////  HANDSHAKE CIRRUS  /////
 
 	UInt8 type=0;
 
-	PacketReader* pResponse = new PacketReader(_handshakeBuff,MAX_SIZE_MSG);
+	PacketReader* pResponse = new PacketReader(_buffer,MAX_SIZE_MSG);
 	do {
 		PacketWriter request(6); // 6 for future crc 2 bytes and id session 4 bytes
 		request.write8(0x0B);
@@ -65,8 +73,10 @@ Middle::Middle(UInt32 id,
 		request.write8(type);
 		request.write16(request.size()-request.position()-2);
 
+		sendToCirrus(_cirrusId,encrypt,request);
+
 		delete pResponse;
-		pResponse = new PacketReader(requestCirrusHandshake(request));
+		pResponse = new PacketReader(receiveFromCirrus(decrypt));
 		if(pResponse->available()==0)
 			continue;
 
@@ -78,29 +88,6 @@ Middle::Middle(UInt32 id,
 
 	delete pResponse;
 }
-
-PacketReader Middle::requestCirrusHandshake(PacketWriter request) {
-	Util::Dump(request,6,"dump.txt",true);
-	RTMFP::Encode(_handshakeEncrypt,request);
-	RTMFP::Pack(request,0);
-
-	_socketClient.sendBytes(request.begin(),request.size());			// SEND
-	int len = _socketClient.receiveBytes(_handshakeBuff,MAX_SIZE_MSG);	// RECEIVE
-	
-	PacketReader response(_handshakeBuff,len);
-
-	if(RTMFP::IsValidPacket(response)) {
-		RTMFP::Unpack(response);
-		if(RTMFP::Decode(_handshakeDecrypt,response)) {
-			Util::Dump(response,"dump.txt",true);
-			return response;
-		}
-	}
-	
-	response.reset(0,0);
-	return response;
-}
-
 
 Middle::~Middle() {
 	if(_pMiddleAesDecrypt)
@@ -132,9 +119,15 @@ UInt8 Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& response,PacketWri
 			response.readRaw(response.available(),cirrusCertificat);
 
 			// request reply
+			string middleSignature("\x81\x02\x1D\x02",4);
 			UInt8 middlePubKey[128];
 			_pMiddleDH = RTMFP::BeginDiffieHellman(middlePubKey);
-			string middleSignature("\x81\x02\x1D\x02",4);
+
+			UInt8 middleId[32];
+			string temp(middleSignature);
+			temp.append((char*)middlePubKey,sizeof(middlePubKey));
+			EVP_Digest(temp.c_str(),temp.size(),middleId,NULL,EVP_sha256(),NULL);
+			_middleId.assignRaw(middleId,32);
 			
 			request << id(); // id session, we use the same that Cumulus id session for Flash client
 			request.writeString8(cookie); // cookie
@@ -174,7 +167,7 @@ UInt8 Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& response,PacketWri
 	
 }
 
-void Middle::packetHandler(PacketReader& packet,SocketAddress& sender) {
+void Middle::packetHandler(PacketReader& packet) {
 	// Middle to cirrus
 	PacketWriter request;
 	request.skip(6);
@@ -205,34 +198,81 @@ void Middle::packetHandler(PacketReader& packet,SocketAddress& sender) {
 	request << idFlow;
 	request << stage;
 	
-	if(answer) {
-		// Dump Flash to Cirrus
-		Util::Dump(request,6,"dump.txt",true);
-
-		RTMFP::Encode(*_pMiddleAesEncrypt,request);
-		RTMFP::Pack(request,_cirrusId);
-		_socketClient.sendBytes(request.begin(),request.size());
-	}
+	if(answer)
+		sendToCirrus(_cirrusId,*_pMiddleAesEncrypt,request);
 
 	// Not anwser!
 	if(marker == 0x0d && (type == 0x51 || type == 0x4c))
 		return;
 
 	// Cirrus to Middle
-	UInt8 buff[MAX_SIZE_MSG];
-	int len = _socketClient.receiveBytes(buff,MAX_SIZE_MSG);
-	PacketReader response(buff,len);
-	RTMFP::Unpack(response);
-	if(!RTMFP::Decode(*_pMiddleAesDecrypt,response))
-		ERROR("Decrypt error on cirrus to middle");
+	PacketReader response(receiveFromCirrus(*_pMiddleAesDecrypt));
 
 	PacketWriter packetOut(6);
+	packetOut.writeRaw(response.current(),11);response.skip(11);
+	type = response.next8();packetOut.write8(type);
+	if(type==0x10) {
+		packetOut.writeRaw(response.current(),3);response.skip(3);
+		idFlow = response.next8();packetOut.write8(idFlow);
+		stage = response.next8();packetOut.write8(stage);
+		if(idFlow==0x03 && stage==0x01) {
+			// replace "middleId" by "peerId"
+			packetOut.writeRaw(response.current(),10);response.skip(10);
+			UInt8 temp[32];
+			response.readRaw(temp,sizeof(temp));
+			BLOB middleId(temp,sizeof(temp));
+			Sessions::Iterator it;
+			Middle* pMiddle = NULL;
+			for(it=_sessions.begin();it!=_sessions.end();++it) {
+				pMiddle = (Middle*)it->second;
+				if(pMiddle->middleId()==middleId)
+					break;
+			}
+			if(it!=_sessions.end())
+				packetOut.writeRaw(pMiddle->peerId().begin(),pMiddle->peerId().size());
+			else
+				packetOut.writeRaw(temp,sizeof(temp));
+		}
+	}
 	packetOut.writeRaw(response.current(),response.available());
+	
+	response.reset(6);
+	send(*response.current(),packetOut);
+}
 
-	// Dump Cirrus to Flash
-	Util::Dump(response,"dump.txt",true);
+void Middle::p2pHandshake(const SocketAddress& peerAddress) {
+	// consume message
+	receiveFromCirrus(*_pMiddleAesDecrypt);
+	Session::p2pHandshake(peerAddress);
+}
 
-	send(*response.current(),packetOut,sender);
+
+void Middle::sendToCirrus(UInt32 id,AESEngine& aesEncrypt,PacketWriter& request) {
+	
+	//printf("Middle to Cirrus\n");
+	//Util::Dump(request,6,"dump.txt");
+
+	RTMFP::Encode(aesEncrypt,request);
+	RTMFP::Pack(request,id);
+	_socketCirrus.sendBytes(request.begin(),request.size());
+}
+
+
+PacketReader Middle::receiveFromCirrus(AESEngine& aesDecrypt) {
+	PacketReader response(_buffer,_socketCirrus.receiveBytes(_buffer,MAX_SIZE_MSG));
+
+	if(RTMFP::IsValidPacket(response)) {
+		RTMFP::Unpack(response);
+		if(RTMFP::Decode(aesDecrypt,response)) {
+
+		//	printf("Cirrus to Middle\n");
+		//	Util::Dump(response,"dump.txt");
+			return response;
+		}
+	}
+	ERROR("Decrypt error on cirrus to middle");
+	response.reset(0,0);
+	return response;
 }
 
 

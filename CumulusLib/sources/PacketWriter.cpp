@@ -18,9 +18,11 @@
 #include "PacketWriter.h"
 #include "Logs.h"
 #include "Poco/RandomStream.h"
+#include "Poco/StringTokenizer.h"
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Net;
 
 namespace Cumulus {
 
@@ -71,6 +73,13 @@ void PacketWriter::writeRandom(UInt16 size) {
 	delete [] value;
 }
 
+void PacketWriter::writeAddress(const SocketAddress& address) {
+	StringTokenizer ips(address.host().toString(),".");
+	StringTokenizer::Iterator it;
+	for(it=ips.begin();it!=ips.end();++it)
+		write8(atoi(it->c_str()));
+	write16(address.port());
+}
 
 
 } // namespace Cumulus

@@ -349,6 +349,14 @@
 				Name="Streams"
 				>
 				<File
+					RelativePath=".\sources\AMFReader.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\AMFReader.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\AMFWriter.cpp"
 					>
 				</File>
@@ -402,14 +410,6 @@
 				</File>
 				<File
 					RelativePath=".\include\AESEngine.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\Peer.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Peer.h"
 					>
 				</File>
 				<File
@@ -487,6 +487,14 @@
 					RelativePath=".\include\Session.h"
 					>
 				</File>
+				<File
+					RelativePath=".\sources\Sessions.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Sessions.h"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="Flows"
@@ -500,11 +508,19 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\FlowConnection.cpp"
+					RelativePath=".\sources\FlowNetConnection.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\include\FlowConnection.h"
+					RelativePath=".\include\FlowNetConnection.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\FlowNetStream.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\FlowNetStream.h"
 					>
 				</File>
 				<File
@@ -515,12 +531,24 @@
 					RelativePath=".\include\FlowNull.h"
 					>
 				</File>
+			</Filter>
+			<Filter
+				Name="Database"
+				>
 				<File
-					RelativePath=".\sources\FlowStream.cpp"
+					RelativePath=".\sources\BLOB.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\include\FlowStream.h"
+					RelativePath=".\include\BLOB.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Database.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Database.h"
 					>
 				</File>
 			</Filter>

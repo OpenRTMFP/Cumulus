@@ -18,7 +18,6 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Peer.h"
 #include "PacketReader.h"
 #include "PacketWriter.h"
 #include "AESEngine.h"
@@ -34,23 +33,40 @@ namespace Cumulus {
 class Session
 {
 public:
-	Session(Poco::UInt32 id,Poco::UInt32 farId,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Poco::Net::DatagramSocket& socket);
+
+	Session(Poco::UInt32 id,
+			Poco::UInt32 farId,
+			const Poco::UInt8* peerId,
+			const Poco::Net::SocketAddress& peerAddress,
+			const std::string& url,
+			const Poco::UInt8* decryptKey,
+			const Poco::UInt8* encryptKey,
+			Poco::Net::DatagramSocket& socket,
+			Database& database);
+
 	virtual ~Session();
 
-	virtual void	packetHandler(PacketReader& packet,Poco::Net::SocketAddress& sender);
+	virtual void	packetHandler(PacketReader& packet);
 	bool			decode(PacketReader& packet);
 
 	Poco::UInt32	id() const;
 	Poco::UInt32	farId() const;
 
+	const BLOB&						peerId();
+	const Poco::Net::SocketAddress&	peerAddress();
+
+	virtual void	p2pHandshake(const Poco::Net::SocketAddress& peerAddress);
+
 protected:
-	
 
-	void				send(Poco::UInt8 marker,PacketWriter packet,Poco::Net::SocketAddress& address);
+	void				send(Poco::UInt8 marker,PacketWriter packet);
 
-	Poco::Net::DatagramSocket	_socket; // For Handshake session
-	Poco::UInt32				_farId; // For Handshake session
-	
+	Poco::UInt32				_farId; // Protected for Handshake session
+	Poco::Net::DatagramSocket&	_socket; // Protected for Handshake session
+	Poco::Net::SocketAddress	_peerAddress; // Protected for Handshake session
+	Database&					_database; // Protected for Handshake session
+	AESEngine					_aesDecrypt; // Protected for Handshake session
+	AESEngine					_aesEncrypt; // Protected for Handshake session
 private:
 	
 	Flow*				createFlow(Poco::UInt8 id);
@@ -59,14 +75,20 @@ private:
 
 	void				keepaliveHandler();
 
-	AESEngine			_aesDecrypt;
-	AESEngine			_aesEncrypt;
+	std::map<Poco::UInt8,Flow*> _flows;	
 
-	std::map<Poco::UInt8,Flow*> _flows;
-
-	std::string			_url;
-	Poco::UInt32		_id;
+	std::string					_url;
+	Poco::UInt32				_id;
+	BLOB						_peerId;
 };
+
+inline const BLOB& Session::peerId() {
+	return _peerId;
+}
+
+inline const Poco::Net::SocketAddress& Session::peerAddress() {
+	return _peerAddress;
+}
 
 inline bool Session::decode(PacketReader& packet) {
 	return RTMFP::Decode(_aesDecrypt,packet);

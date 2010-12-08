@@ -15,19 +15,32 @@
 	This file is a part of Cumulus.
 */
 
-#include "FlowNull.h"
+#pragma once
 
-using namespace std;
-using namespace Poco;
-using namespace Poco::Net;
+#include "Cumulus.h"
+#include "Poco/Data/BLOB.h"
 
 namespace Cumulus {
 
+class CUMULUS_API BLOB : public Poco::Data::BLOB {
+public:
+	BLOB();
+		/// Creates an empty BLOB.
+	BLOB(const Poco::UInt8* content, std::size_t size);
+	BLOB(const std::string& content);
+	virtual ~BLOB();
 
-FlowNull::FlowNull(UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,Database& database) : Flow(id,peerId,peerAddress,database) {
+	const Poco::UInt8* begin() const;
+	void assignRaw(const Poco::UInt8* content, std::size_t count);
+
+};
+
+inline const Poco::UInt8* BLOB::begin() const {
+	return (const Poco::UInt8*)Poco::Data::BLOB::rawContent();
 }
 
-FlowNull::~FlowNull() {
+inline void BLOB::assignRaw(const Poco::UInt8* content, std::size_t count) {
+	Poco::Data::BLOB::assignRaw((const char*)content,count);
 }
 
 } // namespace Cumulus

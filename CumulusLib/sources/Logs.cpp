@@ -16,17 +16,36 @@
 */
 
 #include "Logs.h"
+#include "Poco/File.h"
 
+using namespace std;
 using namespace Poco;
 
 namespace Cumulus {
 
 Logger* Logs::s_pLogger(NULL);
+string	Logs::s_file;
+bool	Logs::s_dump(false);
+UInt8	Logs::s_level(Logger::PRIO_INFO); // default log level
 
 Logs::Logs() {
 }
 
 Logs::~Logs() {
+}
+
+void Logs::Dump(bool activate,const string& file) {
+	s_file = file;
+	s_dump=activate;
+	if(s_dump) {
+		File dumpFile(s_file);
+		if(dumpFile.exists())
+			dumpFile.remove();
+	}
+}
+
+void Logs::SetLevel(UInt8 level) {
+	s_level = level;
 }
 
 

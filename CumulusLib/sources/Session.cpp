@@ -18,8 +18,8 @@
 #include "Session.h"
 #include "Util.h"
 #include "Logs.h"
-#include "FlowConnection.h"
-#include "FlowStream.h"
+#include "FlowNetConnection.h"
+#include "FlowNetStream.h"
 #include "FlowNull.h"
 
 using namespace std;
@@ -28,9 +28,18 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Session::Session(UInt32 id,UInt32 farId,const string& url,const UInt8* decryptKey,const UInt8* encryptKey,DatagramSocket& socket) : _id(id),_farId(farId),_socket(socket),
-	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_url(url) {
-	
+Session::Session(UInt32 id,
+				 UInt32 farId,
+				 const UInt8* peerId,
+				 const SocketAddress& peerAddress,
+				 const string& url,
+				 const UInt8* decryptKey,
+				 const UInt8* encryptKey,
+				 DatagramSocket& socket,
+				 Database& database) : 
+	_id(id),_farId(farId),_socket(socket),
+	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_url(url),_database(database),_peerId(peerId,peerId?32:0),_peerAddress(peerAddress) {
+
 		
 }
 
@@ -49,14 +58,40 @@ Flow& Session::flow(Poco::UInt8 id) {
 	return *_flows[id];
 }
 
+void Session::p2pHandshake(const SocketAddress& peerAddress) {
+	DEBUG("Peer newcomer address send to peer '%u' connected",id());
+	PacketWriter packet(9);
+	packet << RTMFP::Timestamp();
+	packet.write8(0x0F);
+	{
+		PacketWriter content = packet;
+		content.skip(2);
+		content.write8(_peerId.size()+2);
+		content.write8(_peerId.size()+1);
 
-void Session::send(UInt8 marker,PacketWriter packet,SocketAddress& address) {
+		content.write8(0x0F);
+		content.writeRaw(_peerId.begin(),_peerId.size());
+
+		content.write8(0x02);
+		content.writeAddress(peerAddress);
+
+		content.writeRandom(16); // tag
+	}
+
+	packet.write16(packet.size()-packet.position()-2);
+	send(0x4e,packet);
+}
+
+
+void Session::send(UInt8 marker,PacketWriter packet) {
 	packet.reset(6);
 	packet << marker;
 	packet << RTMFP::Timestamp();
 
-	printf("Response:\n");
-	Util::Dump(packet,6);
+	if(Logs::Dump()) {
+		printf("Response:\n");
+		Util::Dump(packet,6,Logs::DumpFile());
+	}
 
 	RTMFP::Encode(_aesEncrypt,packet);
 
@@ -65,7 +100,7 @@ void Session::send(UInt8 marker,PacketWriter packet,SocketAddress& address) {
 	try {
 		// TODO remake? without retry (but flow)
 		bool retry=false;
-		while(_socket.sendTo(packet.begin(),packet.size(),address)!=packet.size()) {
+		while(_socket.sendTo(packet.begin(),packet.size(),_peerAddress)!=packet.size()) {
 			if(retry) {
 				ERROR("Socket send error on session '%u' : all data were not sent",_id);
 				break;
@@ -77,7 +112,7 @@ void Session::send(UInt8 marker,PacketWriter packet,SocketAddress& address) {
 	}
 }
 
-void Session::packetHandler(PacketReader& packet,SocketAddress& sender) {
+void Session::packetHandler(PacketReader& packet) {
 
 	// Read packet
 	UInt8 marker = packet.next8();
@@ -102,7 +137,7 @@ void Session::packetHandler(PacketReader& packet,SocketAddress& sender) {
 		int idResponse = 0;
 
 		{
-			PacketReader request = packet;
+			PacketReader request(packet.current(),size);
 
 			PacketWriter response = packetOut;
 			response.skip(3); // skip the futur possible id and length response
@@ -140,9 +175,10 @@ void Session::packetHandler(PacketReader& packet,SocketAddress& sender) {
 				case 0x10 : {
 					/// Request
 					
-					request.next8(); // Unknown, is 0x80 or 0x00
+					UInt8 firstFlag = request.next8(); // Unknown, is 0x80 or 0x00
 					UInt8 idFlow= request.next8();
 					UInt8 stage = request.next8();
+					UInt8 secondFlag = request.next8(); // Unknown, is 0x01 in general
 
 					// Write Acknowledgment (nested in response)
 					packetOut.write8(0x51);
@@ -150,6 +186,12 @@ void Session::packetHandler(PacketReader& packet,SocketAddress& sender) {
 					packetOut.write8(idFlow);
 					response.skip(6);
 					answer = true;
+
+					// Prepare response
+					response.write8(firstFlag);
+					response.write8(idFlow);
+					response.write8(stage);
+					response.write8(secondFlag);
 					
 					// Process request
 					idResponse = flow(idFlow).request(stage,request,response);
@@ -183,7 +225,7 @@ void Session::packetHandler(PacketReader& packet,SocketAddress& sender) {
 	}
 
 	if(answer)
-		send(0x4e,packetOut,sender);
+		send(0x4e,packetOut);
 }
 
 
@@ -197,14 +239,14 @@ Flow* Session::createFlow(UInt8 id) {
 	switch(id) {
 		case 0x02 :
 			// NetConnection
-			return new FlowConnection(id);
+			return new FlowNetConnection(id,_peerId,_peerAddress,_database);
 		case 0x03 :
 			// NetStream on NetGroup 
-			return new FlowStream(id);
+			return new FlowNetStream(id,_peerId,_peerAddress,_database);
 		default :
 			ERROR("Flow id '%02x' unknown",id);	
 	}
-	return new FlowNull(id);
+	return new FlowNull(id,_peerId,_peerAddress,_database);
 }
 
 

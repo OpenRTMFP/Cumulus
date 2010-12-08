@@ -15,21 +15,49 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "AMFReader.h"
+#include "Logs.h"
 
-#include "Cumulus.h"
+using namespace std;
+using namespace Poco;
 
 namespace Cumulus {
 
-class Peer
-{
-public:
-	Peer();
-	virtual ~Peer();
+AMFReader::AMFReader(PacketReader& reader) : _reader(reader) {
 
-	Poco::UInt8 farId[32];
-private:
-	
-};
+}
+
+
+AMFReader::~AMFReader() {
+
+}
+
+void AMFReader::read(string& value) {
+	UInt8 c = _reader.next8();
+	if(c!=0x02) {
+		ERROR("byte '%02x' is not a AMF String marker",c);
+		return;
+	}
+	_reader.readString16(value);
+}
+
+double AMFReader::readNumber() {
+	UInt8 c = _reader.next8();
+	if(c!=0x00) {
+		ERROR("byte '%02x' is not a AMF number marker",c);
+		return 0;
+	}
+	double result;
+	_reader >> result;
+	return result;
+}
+
+
+void AMFReader::readNull() {
+	UInt8 c = _reader.next8();
+	if(c!=0x05)
+		ERROR("byte '%02x' is not a AMF Null marker",c);
+}
+
 
 } // namespace Cumulus

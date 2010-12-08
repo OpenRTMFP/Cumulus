@@ -22,17 +22,14 @@
 
 namespace Cumulus {
 
-class FlowStream : public Flow {
+class FlowNetConnection : public Flow {
 public:
-	FlowStream(Poco::UInt8 id);
-	virtual ~FlowStream();
+	FlowNetConnection(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,Database& database);
+	virtual ~FlowNetConnection();
 
 private:
 	int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 };
 
-inline int FlowStream::requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response) {
-	return 0;
-}
 
 } // namespace Cumulus

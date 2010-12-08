@@ -26,10 +26,15 @@ class CUMULUS_API Logs
 {
 public:
 	static void			SetLogger(Logger& logger);
+	static void			SetLevel(Poco::UInt8 level);
+	static void			Dump(bool activate,const std::string& file="");
 
 
 #if defined(CUMULUS_EXPORTS)
-	static Logger*		GetLogger();
+	static Logger*				GetLogger();
+	static bool					Dump();
+	static const std::string&	DumpFile();
+	static Poco::UInt8			Level();
 #endif
 	
 	
@@ -37,7 +42,11 @@ private:
 	Logs();
 	~Logs();
 	
-	static Logger* s_pLogger;
+	static Logger*	s_pLogger;
+
+	static bool			s_dump;
+	static std::string	s_file;
+	static Poco::UInt8  s_level;
 };
 
 
@@ -48,13 +57,26 @@ inline void Logs::SetLogger(Logger& logger) {
 
 #if defined(CUMULUS_EXPORTS)
 
+	inline bool Logs::Dump() {
+		return s_dump;
+	}
+
+	inline Poco::UInt8 Logs::Level() {
+		return s_level;
+	}
+
+	inline const std::string& Logs::DumpFile() {
+		return s_file;
+	}
+
 	inline Logger* Logs::GetLogger() {
 		return s_pLogger;
 	}
 
-	// Empecher le traitement des chaines si de toute façon le log n'a aucun CLogReceiver!!
+	// Empecher le traitement des chaines si de toute façon le log n'a aucun CLogReceiver!
+	// Ou si le level est plus détaillé que le loglevel
 	#define LOG(PRIO,FILE,LINE,FMT, ...) { \
-		if(Logs::GetLogger()) {\
+		if(Logs::GetLogger() && Logs::Level()>=PRIO) {\
 			char szzs[700];\
 			snprintf(szzs,sizeof(szzs),FMT,## __VA_ARGS__);\
 			szzs[sizeof(szzs)-1] = '\0'; \

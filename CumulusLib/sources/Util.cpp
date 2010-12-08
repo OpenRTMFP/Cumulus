@@ -40,14 +40,14 @@ void Util::Dump(PacketWriter& packet,UInt16 offset,const string& fileName,bool j
 }
 
 
-void Util::Dump(const UInt8* sz,int size,const string& fileName,bool justFile) {
+void Util::Dump(const UInt8* data,int size,const string& fileName,bool justFile) {
 	int i = 0;
 	int c = 0;
 	unsigned char b;
 	while (i<size) {
 		c = 0;
 		while ( (c < 16) && (i+c < size) ) {
-			b = sz[i+c];
+			b = data[i+c];
 			if(!justFile)
 				printf("%X%X ", b/16, b & 0x0f );
 			c++;
@@ -58,7 +58,7 @@ void Util::Dump(const UInt8* sz,int size,const string& fileName,bool justFile) {
 		}
 		c = 0;
 		while ( (c < 16) && (i+c < size) ) {
-			b = sz[i+c];
+			b = data[i+c];
 			if(!justFile) {
 				if (b > 31)
 					printf("%c", (char)b );
@@ -75,7 +75,7 @@ void Util::Dump(const UInt8* sz,int size,const string& fileName,bool justFile) {
 		printf("\n");
 	if(!fileName.empty()) {
 		FileOutputStream fos(fileName,std::ios::app | std::ios::out);
-		fos.write((char*)sz,size);
+		fos.write((char*)data,size);
 		c -= 16;
 		// add 0xFF end-padding
 		while(c<16) {

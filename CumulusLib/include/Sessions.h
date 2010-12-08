@@ -15,18 +15,47 @@
 	This file is a part of Cumulus.
 */
 
-#include "Peer.h"
+#pragma once
 
-using namespace Poco;
+#include "Cumulus.h"
+#include "Session.h"
 
 namespace Cumulus {
 
 
+class Sessions
+{
+public:
 
-Peer::Peer() {
+	typedef std::map<Poco::UInt32,Session*>::const_iterator Iterator;
+
+	Sessions();
+	virtual ~Sessions();
+
+	Session* find(Poco::UInt32 id);
+	Session* find(const BLOB& peerId);
+	
+	Session* add(Session* pSession);
+
+	Iterator begin() const;
+	Iterator end() const;
+	
+protected:
+	
+
+private:
+	std::map<Poco::UInt32,Session*>	_sessions;
+};
+
+inline Sessions::Iterator Sessions::begin() const {
+	return _sessions.begin();
 }
 
-Peer::~Peer() {
+
+inline Sessions::Iterator Sessions::end() const {
+	return _sessions.end();
 }
+
+
 
 } // namespace Cumulus

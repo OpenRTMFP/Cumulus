@@ -4,7 +4,8 @@ BUILD CUMULUS
 DEPENDENCIES
 
 Source code is crossplatform, and has just two dependencies:
-- POCO in its Basic Edition format (http://pocoproject.org/download/)
+- POCO in its Complete Edition format (http://pocoproject.org/download/)
+	Only following poco compoments are required : Foundation,XML,Util,Net,Data,Data/SQLite
 - Openssl (http://www.openssl.org/)
 
 WINDOWS BUILD

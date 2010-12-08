@@ -15,21 +15,28 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "BLOB.h"
 
-#include "Cumulus.h"
-#include "Flow.h"
+using namespace Poco;
+using namespace Poco::Data;
 
 namespace Cumulus {
 
-class FlowConnection : public Flow {
-public:
-	FlowConnection(Poco::UInt8 id);
-	virtual ~FlowConnection();
+BLOB::BLOB() {
 
-private:
-	int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
-};
+}
+
+BLOB::BLOB(const Poco::UInt8* content, std::size_t size) : Poco::Data::BLOB((char*)content,size) {
+
+}
+
+BLOB::BLOB(const std::string& content) : Poco::Data::BLOB(content) {
+	
+}
+
+BLOB::~BLOB() {
+
+}
 
 
 } // namespace Cumulus

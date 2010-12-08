@@ -53,5 +53,4 @@ private:
 	~RTMFP();
 };
 
-
 }  // namespace Cumulus

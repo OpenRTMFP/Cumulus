@@ -26,12 +26,16 @@ namespace Cumulus {
 
 class PacketReader: public Poco::BinaryReader {
 public:
-	PacketReader(Poco::UInt8* packet,int size);
+	PacketReader(Poco::UInt8* buffer,int size);
 	PacketReader(PacketReader&);
 	PacketReader(PacketWriter&);
 	virtual ~PacketReader();
 
+	void readRaw(Poco::UInt8* value,int size);
+	void readRaw(char* value,int size);
+	void readRaw(int size,std::string& value);
 	void readString8(std::string& value);
+	void readString16(std::string& value);
 	Poco::UInt8		next8();
 	Poco::UInt16	next16();
 	Poco::UInt32	next32();
@@ -47,8 +51,22 @@ private:
 	
 };
 
+inline void PacketReader::readRaw(Poco::UInt8* value,int size) {
+	Poco::BinaryReader::readRaw((char*)value,size);
+}
+inline void PacketReader::readRaw(char* value,int size) {
+	Poco::BinaryReader::readRaw(value,size);
+}
+inline void PacketReader::readRaw(int size,std::string& value) {
+	Poco::BinaryReader::readRaw(size,value);
+}
+
+
 inline void PacketReader::readString8(std::string& value) {
 	readRaw(next8(),value);
+}
+inline void PacketReader::readString16(std::string& value) {
+	readRaw(next16(),value);
 }
 
 inline int PacketReader::available() {

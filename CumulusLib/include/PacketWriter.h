@@ -20,6 +20,7 @@
 #include "Cumulus.h"
 #include "MemoryStream.h"
 #include "Poco/BinaryWriter.h"
+#include "Poco/Net/SocketAddress.h"
 
 namespace Cumulus {
 
@@ -41,6 +42,7 @@ public:
 	void writeString8(const char* value,Poco::UInt8 size);
 	void writeString16(const char* value,Poco::UInt16 size);
 	void writeRandom(Poco::UInt16 size);
+	void writeAddress(const Poco::Net::SocketAddress& address);
 
 	Poco::UInt8*	begin();
 	int				size();

@@ -29,11 +29,11 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(DatagramSocket& socket,const string& listenCirrusUrl) : Session(0,0,"",RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket),
-	_pNewSession(NULL),nextSessionId(0),_listenCirrusUrl(listenCirrusUrl),_signature("\x03\x1a\x00\x00\x02\x1e\x00\x81\x02\x0d\x02",11),_pOneMiddle(NULL) {
+Handshake::Handshake(Sessions& sessions,DatagramSocket& socket,Database& database,const string& cirrusUrl) : Session(0,0,NULL,SocketAddress(),"",RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket,database),
+	_sessions(sessions),_cirrusUrl(cirrusUrl),_signature("\x03\x1a\x00\x00\x02\x1e\x00\x81\x02\x0d\x02",11) {
 	
 	memcpy(_certificat,"\x01\x0A\x41\x0E",4);
-	RandomInputStream().read(&_certificat[4],64);
+	RandomInputStream().read((char*)&_certificat[4],64);
 	memcpy(&_certificat[68],"\x02\x15\x02\x02\x15\x05\x02\x15\x0E",9);
 
 	// Display far id flash side
@@ -57,13 +57,7 @@ Handshake::~Handshake() {
 	
 }
 
-Session* Handshake::getNewSession() {
-	Session* pSession = _pNewSession;
-	_pNewSession = NULL;
-	return pSession;
-}
-
-void Handshake::packetHandler(PacketReader& packet,SocketAddress& sender) {
+void Handshake::packetHandler(PacketReader& packet) {
 	
 	UInt8 marker = packet.next8();
 	if(marker!=0x0b) {
@@ -89,7 +83,7 @@ void Handshake::packetHandler(PacketReader& packet,SocketAddress& sender) {
 	packetOut << (UInt8)idResponse;
 	packetOut << (UInt16)(packetOut.size()-packetOut.position()-2);
 
-	send(marker,packetOut,sender);
+	send(marker,packetOut);
 	// reset farid to 0!
 	_farId=0;
 }
@@ -102,16 +96,24 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 		case 0x30: {
 			
 			request.next8(); // passer un caractere (boite dans boite)
-			UInt8 uriLen = request.next8()-1;
-			if(request.next8() == 0x0a){ // TODO vérifier ça!
-				string uri;
-				request.readRaw(uriLen,uri);
-				char tag[16];
-				request.readRaw(tag,sizeof(tag));
+			UInt8 epdLen = request.next8()-1;
+
+			
+			UInt8 type = request.next8();
+
+			string epd;
+			request.readRaw(epdLen,epd);
+
+			char tag[16];
+			request.readRaw(tag,sizeof(tag));
+
+			response << (UInt8)sizeof(tag);
+			response.writeRaw(tag,sizeof(tag));
+
+			if(type == 0x0a){ // TODO vérifier ça!
+				/// Handshake
 	
 				// RESPONSE 38
-				response << (UInt8)sizeof(tag);
-				response.writeRaw(tag,sizeof(tag));
 
 				// New Cookie
 				char cookie[65];
@@ -120,29 +122,77 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				cookie[64]='\0';
 				response.write8(64);
 				response.writeRaw(cookie,64);
-				_cookies[cookie] = new Cookie(uri);
+				_cookies[cookie] = new Cookie(epd);
 				 
 				// instance id (certificat in the middle)
 				response.writeRaw(_certificat,sizeof(_certificat));
 				
 				return 0x70; 
-			} else {
-				if(_pOneMiddle) {
-					// Just to make working the man in the middle mode
+			} else if(type == 0x0f) {
+				UInt8	idResponse=0;
+	
+				Session* pSessionConnected = _sessions.find(BLOB(epd));
+				if(!pSessionConnected) {
+					CRITIC("UDP Hole punching error!");
+					return 0;
+				}
+
+				/// Udp hole punching
+
+				if(_cirrusUrl.empty()) {
+					// Normal mode
+					idResponse = 0x71;
+					
+					 vector<string> routes;
+					 _database.getRoutes(pSessionConnected->peerId(),routes);
+				
+					for(int i=0;i<routes.size();++i) {
+						response.write8(0x01);
+						response.writeAddress(SocketAddress(routes[i]));
+					}
+				} else {
+					// Just to make working the man in the middle mode !
+					Middle* pMiddle = NULL;
+					Sessions::Iterator it;
+					for(it=_sessions.begin();it!=_sessions.end();++it) {
+						pMiddle = (Middle*)it->second;
+						if(memcmp(pMiddle->peerAddress().addr(),_peerAddress.addr(),sizeof(struct sockaddr))==0)
+							break;
+					}
+					if(it==_sessions.end()) {
+						CRITIC("UDP Hole punching error!");
+						return 0;
+					}
+					
 					PacketWriter req(6);
 					request.reset(6);
+					req.writeRaw(request.current(),9); request.skip(9);
+					
+					// replace "peerId" by "middleId"
+					Middle* pMiddleConnected = (Middle*)pSessionConnected;
+					req.writeRaw(pMiddleConnected->middleId().begin(),pMiddleConnected->middleId().size());
+					request.skip(pMiddleConnected->middleId().size());
+
 					req.writeRaw(request.current(),request.available());
-					PacketReader res = _pOneMiddle->requestCirrusHandshake(req);
+					
+					pMiddle->sendToCirrus(0,_aesEncrypt,req);
+					PacketReader res = pMiddle->receiveFromCirrus(_aesDecrypt);
 					res.skip(3);
-					UInt8 idResponse = res.next8();
-					res.skip(2);
-					response.writeRaw(res.current(),res.available());
-					return idResponse;
-				} else {
-					// Normal mode
-					// TODO
+					idResponse = res.next8();
+					UInt16 size = res.next16();
+					res.skip(sizeof(tag)+8);
+					response.write8(0x01);
+					// replace public ip
+					response.writeAddress(pSessionConnected->peerAddress());
+					response.writeRaw(res.current(),size-sizeof(tag)-8);
 				}
-				//Util::Dump(request.current(),request.available());
+
+				pSessionConnected->p2pHandshake(_peerAddress);
+
+				return idResponse;
+
+			} else {
+				ERROR("Unkown handshake first way with '%02x' type",type);
 			}
 			break;
 		}
@@ -170,6 +220,12 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			string farCertificat;
 			request.readString8(farCertificat);
 			
+			// peerId = SHA256(farSignature+farPubKey)
+			UInt8 peerId[32];
+			string temp(farSignature);
+			temp.append((char*)farPubKeyPart,sizeof(farPubKeyPart));
+			EVP_Digest(temp.c_str(),temp.size(),peerId,NULL,EVP_sha256(),NULL);
+			
 			// Compute Diffie-Hellman secret
 			UInt8 pubKey[128];
 			UInt8 sharedSecret[128];
@@ -181,9 +237,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			RTMFP::ComputeAsymetricKeys(sharedSecret,requestKey,responseKey,pubKey,_signature,farCertificat);
 
 			// RESPONSE
-			
-			_pNewSession = createSession(nextSessionId,_farId,itCookie->second->url,requestKey,responseKey);
-			response << nextSessionId;
+			response << createSession(_farId,peerId,itCookie->second->url,requestKey,responseKey);
 			response.write8(0x81);
 			response.writeString8(_signature);
 			response.writeRaw((char*)pubKey,sizeof(pubKey));
@@ -204,12 +258,18 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 }
 
 
-Session* Handshake::createSession(UInt32 id,UInt32 farId,const string& url,const UInt8* decryptKey,const UInt8* encryptKey) {
-	if(!_listenCirrusUrl.empty()) {
-		_pOneMiddle = new Middle(id,farId,url,decryptKey,encryptKey,_socket,_listenCirrusUrl);
-		return _pOneMiddle;
-	}
-	return new Session(id,farId,url,decryptKey,encryptKey,_socket);
+UInt32 Handshake::createSession(UInt32 farId,const UInt8* peerId,const string& url,const UInt8* decryptKey,const UInt8* encryptKey) {
+	UInt32 id = 0;
+	RandomInputStream ris;
+	while(id==0 || _sessions.find(id))
+		ris.read((char*)(&id),4);
+
+	if(!_cirrusUrl.empty())
+		_sessions.add(new Middle(id,farId,peerId,_peerAddress,url,decryptKey,encryptKey,_socket,_database,_sessions,_cirrusUrl));
+	else
+		_sessions.add(new Session(id,farId,peerId,_peerAddress,url,decryptKey,encryptKey,_socket,_database));
+
+	return id;
 }
 
 

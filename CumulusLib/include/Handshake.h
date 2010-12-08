@@ -21,39 +21,37 @@
 #include "Session.h"
 #include "Cookie.h"
 #include "Middle.h"
-#include "Poco/Net/DatagramSocket.h"
+#include "Sessions.h"
 
 namespace Cumulus {
 
 
 class Handshake : public Session {
 public:
-	Handshake(Poco::Net::DatagramSocket& socket,const std::string& listenCirrusUrl="");
+	Handshake(Sessions& sessions,Poco::Net::DatagramSocket& socket,Database& database,const std::string& cirrusUrl="");
 	~Handshake();
 
-	Poco::UInt32	nextSessionId;
-	Session*		getNewSession();
+	void			setPeerAddress(const Poco::Net::SocketAddress& peerAddress);
 private:
-	void		packetHandler(PacketReader& packet,Poco::Net::SocketAddress& sender);
+	void		packetHandler(PacketReader& packet);
 	Poco::UInt8	handshakeHandler(Poco::UInt8 id,PacketReader& request,PacketWriter& response);
 
-	Session* createSession(Poco::UInt32 id,Poco::UInt32 farId,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey);
-
-
-	// For the man in the middle mode
-	Middle*	_pOneMiddle;
+	Poco::UInt32 createSession(Poco::UInt32 farId,const Poco::UInt8* peerId,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey);
 
 	// Cookie, in waiting of creation session
 	std::map<std::string,Cookie*> _cookies;
 
-	// New Session (session acceptation)
-	Session*		_pNewSession;
-	std::string		_listenCirrusUrl;
+	std::string		_cirrusUrl;
 
-	char		_certificat[77];
-	std::string _signature;
+	Poco::UInt8		_certificat[77];
+	std::string		_signature;
 
+	Sessions&		_sessions;
 };
+
+inline void	Handshake::setPeerAddress(const Poco::Net::SocketAddress& peerAddress) {
+	_peerAddress = peerAddress;
+}
 
 
 } // namespace Cumulus

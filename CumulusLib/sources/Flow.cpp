@@ -20,6 +20,7 @@
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Net;
 
 namespace Cumulus {
 
@@ -44,7 +45,7 @@ private:
 };
 
 
-Flow::Flow(UInt8 id) : id(id),_stage(0) {
+Flow::Flow(UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,Database& database) : id(id),_stage(0),peerId(peerId),database(database),peerAddress(peerAddress) {
 }
 
 Flow::~Flow() {

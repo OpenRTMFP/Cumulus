@@ -19,39 +19,48 @@
 
 #include "Cumulus.h"
 #include "Session.h"
-#include "Handshake.h"
 #include "PacketReader.h"
+#include "Handshake.h"
+#include "Database.h"
 #include "Poco/Runnable.h"
 #include "Poco/Mutex.h"
 #include "Poco/Thread.h"
 #include "Poco/Net/DatagramSocket.h"
 #include "Poco/Net/SocketAddress.h"
 
+#define CUMULUS_DEFAULT_PORT 1935
 
 namespace Cumulus {
 
-	class CUMULUS_API RTMFPServer : public Poco::Runnable {
+class CUMULUS_API RTMFPServer : public Poco::Runnable {
 public:
 	RTMFPServer();
 	virtual ~RTMFPServer();
 
-	void start(Poco::UInt16 port,const std::string& listenCirrusUrl="");
+	void start();
+	void start(Poco::UInt16 port,const std::string& cirrusUrl="");
 	void stop();
 	bool running();
 
 private:
-	Session* findSession(PacketReader& reader);
-	void run();
+	Session* findSession(PacketReader& reader,const Poco::Net::SocketAddress& sender);
+	void	 run();
 
-	Handshake*							_pHandshake;
-	std::map<Poco::UInt32,Session*>	_sessions;
+	Handshake*						_pHandshake;
 
 	volatile bool				_terminate;
 	Poco::FastMutex				_mutex;
 	Poco::UInt16				_port;
 	Poco::Thread				_mainThread;
 	Poco::Net::DatagramSocket	_socket;
+
+	Sessions					_sessions;
+	Database					_database;
 };
+
+inline void RTMFPServer::start() {
+	start(CUMULUS_DEFAULT_PORT);
+}
 
 inline bool RTMFPServer::running() {
 	return _mainThread.isRunning();

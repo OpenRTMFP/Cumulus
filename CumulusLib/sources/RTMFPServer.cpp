@@ -17,17 +17,16 @@
 
 #include "RTMFPServer.h"
 #include "RTMFP.h"
+#include "Handshake.h"
 #include "PacketWriter.h"
 #include "Util.h"
 #include "Logs.h"
-#include "Poco/File.h"
 #include "Poco/RandomStream.h"
 
 
 using namespace std;
 using namespace Poco;
 using namespace Poco::Net;
-
 
 
 namespace Cumulus {
@@ -41,50 +40,37 @@ RTMFPServer::RTMFPServer() : _terminate(false),_pHandshake(NULL) {
 
 RTMFPServer::~RTMFPServer() {
 	stop();
-	// delete sessions
-	map<UInt32,Session*>::const_iterator it;
-	for(it=_sessions.begin();it!=_sessions.end();++it)
-		delete it->second;
-	_sessions.clear();
 }
 
-//assume packet is bigger than 12 bytes since it is static buf anyways...
-Session* RTMFPServer::findSession(PacketReader& reader) {
+Session* RTMFPServer::findSession(PacketReader& reader,const SocketAddress& sender) {
 	UInt32 id = RTMFP::Unpack(reader);
  
 	// Id session can't be egal to 0 (it's reserved to Handshake)
 	if(id==0) {
 		DEBUG("Handshaking");
-		RandomInputStream ris;
-		while(_pHandshake->nextSessionId==0 || _sessions.find(_pHandshake->nextSessionId)!=_sessions.end())
-			ris.read((char*)(&_pHandshake->nextSessionId),4);
-		
+		_pHandshake->setPeerAddress(sender);
 		return _pHandshake;
 	}
-	if(_sessions.find(id)==_sessions.end()) {
-		WARN("Unknown session '%u'",id);
-		return NULL;
+	Session* pSession = _sessions.find(id);
+	if(pSession) {
+		DEBUG("Session d'identification '%u'",id);
+		return pSession;
 	}
-
-	DEBUG("Session d'identification '%u'",id);
-	return _sessions[id];
+	WARN("Unknown session '%u'",id);
+	return NULL;
 }
 
 
-void RTMFPServer::start(UInt16 port,const string& listenCirrusUrl) {
+void RTMFPServer::start(UInt16 port,const string& cirrusUrl) {
 	ScopedLock<FastMutex> lock(_mutex);
 	if(_mainThread.isRunning()) {
 		ERROR("RTMFPServer server is yet running, call stop method before");
 		return;
 	}
 	_port = port;
-	if(!listenCirrusUrl.empty()) {
-		File dumpFile("dump.txt");
-		if(dumpFile.exists())
-			dumpFile.remove();
-		INFO("Mode 'man in the middle' : cirrus/flash exchange are dumped in 'dump.txt'")
-	}
-	_pHandshake = new Handshake(_socket,listenCirrusUrl);
+	if(!cirrusUrl.empty())
+		INFO("Mode 'man in the middle' activated : the exchange bypass to '%s'",cirrusUrl.c_str())
+	_pHandshake = new Handshake(_sessions,_socket,_database,cirrusUrl);
 	_terminate = false;
 	_mainThread.start(*this);
 	
@@ -110,7 +96,7 @@ void RTMFPServer::run() {
 	int size = 0;
 	Timespan span(250000);
 
-	NOTE("RTMFP server starts");
+	NOTE("RTMFP server starts on %hu port",_port);
 
 	while(!_terminate) {
 		try {
@@ -129,7 +115,7 @@ void RTMFPServer::run() {
 			continue;
 		}
 
-		Session* pSession = this->findSession(packet);
+		Session* pSession = this->findSession(packet,sender);
 		if(!pSession)
 			continue;
 		
@@ -138,18 +124,13 @@ void RTMFPServer::run() {
 			continue;
 		}
 
-		printf("Request:\n");
-		Util::Dump(packet);
-
-		pSession->packetHandler(packet,sender);
-
-
-		// New Session?
-		Session* pNewSession = _pHandshake->getNewSession();
-		if(pNewSession) {
-			_sessions[pNewSession->id()] = pNewSession;
-			pSession = pNewSession;
+		if(Logs::Dump()) {
+			printf("Request:\n");
+			Util::Dump(packet,Logs::DumpFile());
 		}
+
+		pSession->packetHandler(packet);
+
 
 	}
 

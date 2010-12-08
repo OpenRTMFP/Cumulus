@@ -15,19 +15,21 @@
 	This file is a part of Cumulus.
 */
 
-#include "FlowNull.h"
+#pragma once
 
-using namespace std;
-using namespace Poco;
-using namespace Poco::Net;
+#include "Cumulus.h"
+#include "Flow.h"
 
 namespace Cumulus {
 
+class FlowNetStream : public Flow {
+public:
+	FlowNetStream(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,Database& database);
+	virtual ~FlowNetStream();
 
-FlowNull::FlowNull(UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,Database& database) : Flow(id,peerId,peerAddress,database) {
-}
+private:
+	int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+};
 
-FlowNull::~FlowNull() {
-}
 
 } // namespace Cumulus

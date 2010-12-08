@@ -15,17 +15,31 @@
 	This file is a part of Cumulus.
 */
 
-#include "FlowStream.h"
+#pragma once
 
-using namespace Poco;
+#include "Cumulus.h"
+#include "PacketReader.h"
 
 namespace Cumulus {
 
 
-FlowStream::FlowStream(Poco::UInt8 id) : Flow(id) {
-}
+class AMFReader {
+public:
+	AMFReader(PacketReader& reader);
+	~AMFReader();
 
-FlowStream::~FlowStream() {
+	void	read(std::string& value);
+	double	readNumber();
+	void readNull();
+
+	bool available();
+	
+private:
+	PacketReader& _reader;
+};
+
+inline bool AMFReader::available() {
+	return _reader.available()>0;
 }
 
 } // namespace Cumulus

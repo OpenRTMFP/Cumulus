@@ -17,13 +17,16 @@
 
 #include "RTMFPServer.h"
 #include "Logs.h"
+#include "Database.h"
 
+#include "Poco/Data/SQLite/Connector.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
 #include <iostream>
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Data;
 using namespace Poco::Util;
 using namespace Cumulus;
 
@@ -55,6 +58,23 @@ protected:
 			Option("help", "h", "display help information on command line arguments")
 				.required(false)
 				.repeatable(false));
+
+		options.addOption(
+			Option("cirrus", "c", "cirrus url to activate 'man-in-the-middle' mode in bypassing flash packets to an official cirrus server")
+				.required(false)
+				.repeatable(false));
+
+		options.addOption(
+			Option("dump", "d", "activate packets trace in the console. Optionnal file argument allows a file dumping")
+				.required(false)
+				.argument("file")
+				.repeatable(false));
+
+		options.addOption(
+			Option("log", "l", "log level argument, must be beetween 0 and 8 : nothing, fatal, critic, error, warn, note, info, debug, trace")
+				.required(false)
+				.argument("level")
+				.repeatable(false));
 	}
 
 	void handleOption(const std::string& name, const std::string& value) {
@@ -62,6 +82,12 @@ protected:
 
 		if (name == "help")
 			_helpRequested = true;
+		else if (name == "cirrus")
+			_cirrusUrl = value;
+		else if (name == "dump")
+			Logs::Dump(true,value);
+		else if (name == "log")
+			Logs::SetLevel(atoi(value.c_str()));
 	}
 
 	void displayHelp() {
@@ -81,19 +107,25 @@ protected:
 			displayHelp();
 		}
 		else {
+			Database::Load(
+				config().getString("database.connector",SQLite::Connector::KEY),
+				config().getString("database.connectionString","data.db"));
+				
 			RTMFPServer server;
-			server.start(config().getInt("port", 1935),"rtmfp://216.104.221.7:10007/9292ca89f91b35a5425c44f0-8a269df2193f");
-			//cumulus.start(config().getInt("port", 1935));
+			server.start(config().getInt("port", CUMULUS_DEFAULT_PORT),_cirrusUrl);
 			// wait for CTRL-C or kill
 			waitForTerminationRequest();
 			// Stop the HTTPServer
 			server.stop();
+
+			Database::Unload();
 		}
 		return Application::EXIT_OK;
 	}
 	
 private:
-	bool _helpRequested;
+	bool	_helpRequested;
+	string	_cirrusUrl;
 };
 
 
