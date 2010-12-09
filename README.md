@@ -9,14 +9,7 @@ We remind you that Cumulus is licensed under the [GNU General Public License] an
 
 Status
 ------------------------------------
-Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment just a few scenarios work. If you're a developer, help us to evolve and enhance Cumulus, else, you can make **[donate]** for so we spent more time on it, in fact it's not the technical skills that hinder us but lack of time.
-
-<form action="https://www.paypal.com/cgi-bin/webscr" method="post">
-<input type="hidden" name="cmd" value="_s-xclick">
-<input type="hidden" name="hosted_button_id" value="M24B32EH2GV3A">
-<input type="image" src="https://www.paypal.com/en_US/i/btn/btn_donateCC_LG_global.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online.">
-<img alt="" border="0" src="https://www.paypal.com/fr_FR/i/scr/pixel.gif" width="1" height="1">
-</form>
+Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment just a few scenarios work. If you're a developer, help us to evolve and enhance Cumulus, else, you can make a **[donation]** for so we spent more time on it, in fact it's not the technical skills that hinder us but lack of time.
 
 [worketable]
 
@@ -135,13 +128,8 @@ Cumulus has not makefile for this time, Cumulus code is thought to be crossplafo
 [license]: https://github.com/OpenRTMFP/Cumulus/raw/master/LICENSE "LICENSE"
 [OpenSSL]: http://www.openssl.org/ "www.openssl.org"
 [Poco]: http://pocoproject.org/ "pocoproject.org" 
-<<<<<<< HEAD
-[worketable]: http://openrtmfp.github.com/Cumulus/
-[donate]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A
-=======
-[working board]: http://openrtmfp.github.com/Cumulus/
-[donate]: 
->>>>>>> a702fad44b67d161a3ae0642fab1944bb81631b4
+[worketable]: http://openrtmfp.github.com/Cumulus/ "Cumulus Worketable"
+[donate]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A "Donation"
         
 
 
