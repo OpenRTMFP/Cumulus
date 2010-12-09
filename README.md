@@ -67,7 +67,19 @@ If this configuration file doesn't exist, default values will be used.
 
 ### CumulusLib
 
+CumulusService is almost a empty project, it includes just a main.cpp file which uses all CumulusLib API. Looks its file content is still the best way to learn to play with ;-)
 
+A brief overview:
+
+    #include "RTMFPServer.h"
+
+    using namespace Cumulus;
+    ...
+    RTMFPServer server;
+    server.start();
+    ...
+    server.stop();
+        
 
 
 
