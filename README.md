@@ -10,7 +10,11 @@ We remind you that Cumulus is licensed under the [GNU General Public License] an
 Status
 ------------------------------------
 Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment only few scenarios work. If you are a developer, **help us** to evolve and enhance Cumulus, else, you can always make a **donation** ([us]|[eu]) for that we spent more time on it, in fact it's not technical skills that hinder us but lack of time.
+<<<<<<< HEAD
 Also with the intention to understand better the exchange between a official RTMFP server and a Flash client, we have created a [worketable] to facilitate sharing of information exchanged and its presentation.
+=======
+Also with the intention to understand better the exchange between a official RTMFP server and a Flash client, we have create a '[worketable]' to facilitate sharing of information exchanged and its presentation.
+>>>>>>> a503775f13a9785b5b7cf2243098b4823e3637fb
 
 Usage
 ------------------------------------
