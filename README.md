@@ -122,7 +122,12 @@ Visual Studio 2008 file solutions and projects are included.
 
 Cumulus has not makefile for this time, Cumulus code is thought to be crossplaform, and it should be easy to create the necessary makefiles.
 
+Thanks
+------------------------------------
+Special thanks to Key2 and Andrei of [C++ RMTP Server] who by their preliminary work has made this project possible.
 
+
+[C++ RMTP Server][http://www.rtmpd.com] "www.rtmpd.com"
 [GNU General Public License]: http://www.gnu.org/licenses/ "www.gnu.org/licenses"
 [license]: https://github.com/OpenRTMFP/Cumulus/raw/master/LICENSE "LICENSE"
 [OpenSSL]: http://www.openssl.org/ "www.openssl.org"
