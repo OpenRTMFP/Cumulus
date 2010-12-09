@@ -93,20 +93,18 @@ Cumulus has the following dependencies:
 - [OpenSSL] is required.
 
 - [Poco] in its Complete edition but just with 'Foundation','XML','Util','Net' (Basic edition), 'Data' and 'Data/SQLite' (parts of Complete edition) components. So contrary to what is said on their website, there is no other dependencies (doesn't require OpenSSL, MySQL and ODBC).
-To build [Poco] Complete edition just with these six compoments you must edit the components file on windows, or uses "omit" argument with configure  command line on Linux/Unix.
+To build [Poco] Complete edition just with these six compoments you must edit the components file on Windows to have this
 
-**Windows**
+        Foundation
+        XML
+        Util
+        Net
+        Data
+        Data/SQLite
 
-    Foundation
-    XML
-    Util
-    Net
-    Data
-    Data/SQLite
+    On Linux/Unix you can uses "omit" argument with configure command-line.
 
-**Linux/Unix**
-
-    ./configure --omit=CppUnit,NetSSL_OpenSSL,Crypto,Data/MySQL,Data/ODBC,PageCompiler,Zip
+        ./configure --omit=CppUnit,NetSSL_OpenSSL,Crypto,Data/MySQL,Data/ODBC,PageCompiler,Zip
 
 ### Building
 **Windows**
