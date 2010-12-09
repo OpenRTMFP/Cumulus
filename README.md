@@ -129,7 +129,7 @@ Cumulus has not makefile for this time, Cumulus code is thought to be crossplafo
 [OpenSSL]: http://www.openssl.org/ "www.openssl.org"
 [Poco]: http://pocoproject.org/ "pocoproject.org" 
 [worketable]: http://openrtmfp.github.com/Cumulus/ "Cumulus Worketable"
-[donate]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A "Donation"
+[donation]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A "Donation"
         
 
 
