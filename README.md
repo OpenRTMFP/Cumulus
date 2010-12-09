@@ -79,6 +79,47 @@ A brief overview:
     server.start();
     ...
     server.stop();
+
+
+Build
+-----
+
+Cumulus source code is crossplatform.
+
+### Dependencies
+
+Cumulus has the following dependencies:
+
+- [OpenSSL] is required.
+
+- [Poco] in its Complete edition but just with 'Foundation','XML','Util','Net' (Basic edition), 'Data' and 'Data/SQLite' (parts of Complete edition) components. So contrary to what is said on their website, there is no other dependencies (doesn't require OpenSSL, MySQL and ODBC).
+To build [Poco] Complete edition just with these six compoments you must edit the components file on windows, or uses "omit" argument with configure  command line on Linux/Unix.
+
+**Windows**
+
+    Foundation
+    XML
+    Util
+    Net
+    Data
+    Data/SQLite
+
+**Linux/Unix**
+
+    ./configure --omit=CppUnit,NetSSL_OpenSSL,Crypto,Data/MySQL,Data/ODBC,PageCompiler,Zip
+
+### Building
+**Windows**
+
+Visual Studio 2008 file solutions and projects are included.
+
+**Linux/Unix**
+
+Cumulus has not makefile for this time, Cumulus code is thought to be crossplaform, and it should be easy to create the necessary makefiles.
+
+
+[OpenSSL]:http://www.openssl.org/ "www.openssl.org"
+[Poco]:http://pocoproject.org/ "pocoproject.org" 
         
 
 
