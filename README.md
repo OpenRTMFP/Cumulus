@@ -135,8 +135,13 @@ Cumulus has not makefile for this time, Cumulus code is thought to be crossplafo
 [license]: https://github.com/OpenRTMFP/Cumulus/raw/master/LICENSE "LICENSE"
 [OpenSSL]: http://www.openssl.org/ "www.openssl.org"
 [Poco]: http://pocoproject.org/ "pocoproject.org" 
+<<<<<<< HEAD
 [worketable]: http://openrtmfp.github.com/Cumulus/
 [donate]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A
+=======
+[working board]: http://openrtmfp.github.com/Cumulus/
+[donate]: 
+>>>>>>> a702fad44b67d161a3ae0642fab1944bb81631b4
         
 
 
