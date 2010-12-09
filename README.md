@@ -1,11 +1,25 @@
 Cumulus
-========
+=======================================
 
 Cumulus is a crossplatform "rendezvous" service to assist P2P connection in RTMFP peer's communication. In RTMFP protocol, Cumulus plays the server role.
 Cumulus can be used as a library to include in your "publisher" software, or be installed as a service on your server computer.
 
+We remind you that Cumulus is licensed under the [GNU General Public License] and **can't be used in any commercial project** (see [license]).
+
+Status
+------------------------------------
+Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment just a few scenarios work. If you're a developer, help us to evolve and enhance Cumulus, else, you can make **[donate]** for so we spent more time on it, in fact it's not the technical skills that hinder us but lack of time.
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post">
+<input type="hidden" name="cmd" value="_s-xclick">
+<input type="hidden" name="hosted_button_id" value="M24B32EH2GV3A">
+<input type="image" src="https://www.paypal.com/en_US/i/btn/btn_donateCC_LG_global.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online.">
+<img alt="" border="0" src="https://www.paypal.com/fr_FR/i/scr/pixel.gif" width="1" height="1">
+</form>
+
+[working board]
+
 Usage
------
+------------------------------------
 
 ### CumulusService
 
@@ -80,9 +94,8 @@ A brief overview:
     ...
     server.stop();
 
-
 Build
------
+------------------------------------
 
 Cumulus source code is crossplatform.
 
@@ -115,9 +128,12 @@ Visual Studio 2008 file solutions and projects are included.
 
 Cumulus has not makefile for this time, Cumulus code is thought to be crossplaform, and it should be easy to create the necessary makefiles.
 
-
-[OpenSSL]:http://www.openssl.org/ "www.openssl.org"
-[Poco]:http://pocoproject.org/ "pocoproject.org" 
+[GNU General Public License] : http://www.gnu.org/licenses/ "www.gnu.org/licenses"
+[license] : https://github.com/OpenRTMFP/Cumulus/raw/master/LICENSE "LICENSE"
+[OpenSSL] : http://www.openssl.org/ "www.openssl.org"
+[Poco] : http://pocoproject.org/ "pocoproject.org" 
+[working board] : http://openrtmfp.github.com/Cumulus/
+[donate] : https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A
         
 
 
