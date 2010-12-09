@@ -9,9 +9,8 @@ We remind you that Cumulus is licensed under the [GNU General Public License] an
 
 Status
 ------------------------------------
-Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment just a few scenarios work. If you're a developer, help us to evolve and enhance Cumulus, else, you can make a **[donation]** for so we spent more time on it, in fact it's not the technical skills that hinder us but lack of time.
-
-[worketable]
+Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment only few scenarios work. If you are a developer, **help us** to evolve and enhance Cumulus, else, you can always make a **donation** ([us]|[eu]) for that we spent more time on it, in fact it's not technical skills that hinder us but lack of time.
+Also with the intention to understand better the exchange between a official RTMFP server and a Flash client, we have create a '[worketable]' to facilitate sharing of information exchanged and its presentation.
 
 Usage
 ------------------------------------
@@ -129,7 +128,8 @@ Cumulus has not makefile for this time, Cumulus code is thought to be crossplafo
 [OpenSSL]: http://www.openssl.org/ "www.openssl.org"
 [Poco]: http://pocoproject.org/ "pocoproject.org" 
 [worketable]: http://openrtmfp.github.com/Cumulus/ "Cumulus Worketable"
-[donation]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A "Donation"
+[us]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A "Donation US"
+[eu]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=QPWT9V67YWSGG "Donation EU"
         
 
 
