@@ -1,5 +1,5 @@
 /* 
-	Copyright 2010 cumulus.dev@gmail.com
+	Copyright 2010 OpenRTMFP
 
 	This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,17 +55,17 @@ protected:
 		ServerApplication::defineOptions(options);
 		
 		options.addOption(
-			Option("help", "h", "display help information on command line arguments")
+			Option("help", "h", "displays help information about command-line usage")
 				.required(false)
 				.repeatable(false));
 
 		options.addOption(
-			Option("cirrus", "c", "cirrus url to activate 'man-in-the-middle' mode in bypassing flash packets to an official cirrus server")
+			Option("cirrus", "c", "cirrus url to activate a "man-in-the-middle" mode in bypassing flash packets to the official cirrus server of your choice")
 				.required(false)
 				.repeatable(false));
 
 		options.addOption(
-			Option("dump", "d", "activate packets trace in the console. Optionnal file argument allows a file dumping")
+			Option("dump", "d", "enables packet traces in the console. Optionnal 'file' argument also allows a file dumping. Often used with 'cirrus=url' option to observe flash/cirrus exchange")
 				.required(false)
 				.argument("file")
 				.repeatable(false));

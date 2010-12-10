@@ -9,7 +9,7 @@ We remind you that Cumulus is licensed under the [GNU General Public License] an
 
 Status
 ------------------------------------
-Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment only few scenarios work. If you are a developer, **help us** to evolve and enhance Cumulus, else, you can always make a **donation** ([us]|[eu]) for that we spent more time on it, in fact it's not technical skills that hinder us but lack of time.
+Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment only few scenarios work. If you are a developer **help us** to evolve and enhance Cumulus, else you can always make a **donation** ([us]|[eu]) for that we spent more time on it, in fact it's not technical skills that hinder us but lack of time.
 Also with the intention to understand better the exchange between a official RTMFP server and a Flash client, we have created a [worketable] to facilitate sharing of information exchanged and its presentation.
 
 Usage
@@ -87,6 +87,20 @@ A brief overview:
     server.start();
     ...
     server.stop();
+	
+### Flash side
+
+If your Cumulus instance is stared in local, Flash client can connect it by a classical NetConnection:
+
+    _netConnection.connect("rtmfp://localhost/");
+
+Here the port has its default value 1935. If you configure a different port on CumulusService you must indicate this port in the URL (after localhost, of course).
+
+In "man-in-the-middle" mode (see command-line argument 'cirrus' in usage part) you must indacted on side flash your Cirrus key developer.
+	
+	_netConnection.connect("rtmfp://localhost/KEY");
+	
+Of course "KEY" must be replaced by your Cirrus development key.
 
 Build
 ------------------------------------
@@ -127,7 +141,7 @@ Thanks
 Special thanks to Key2 and Andrei of [C++ RMTP Server] who by their preliminary work has made this project possible.
 
 
-[C++ RMTP Server][http://www.rtmpd.com] "www.rtmpd.com"
+[C++ RMTP Server]: [http://www.rtmpd.com] "www.rtmpd.com"
 [GNU General Public License]: http://www.gnu.org/licenses/ "www.gnu.org/licenses"
 [license]: https://github.com/OpenRTMFP/Cumulus/raw/master/LICENSE "LICENSE"
 [OpenSSL]: http://www.openssl.org/ "www.openssl.org"

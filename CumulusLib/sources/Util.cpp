@@ -1,5 +1,5 @@
 /* 
-	Copyright 2010 cumulus.dev@gmail.com
+	Copyright 2010 OpenRTMFP
  
 	This file is a part of Cumulus.
  
