@@ -20,15 +20,18 @@
 	   }
 
 	   #container {
+		  position: relative;
 		  margin: 0 auto;
 		  width: 700px;
 		  height: 100%;
+		  padding:0;
 		}
 		
 		a { color: #b2bb35; }
+		span { color: #b2bb35; }
 		
-		h1 { font-size: 3.8em; color: #b2bb35; }
-		h1 .small { font-size: 0.4em; }
+		h1 { font-size: 3em; color: #b2bb35; }
+		h1 .small { font-size: 0.7em; }
 		h1 a { text-decoration: none }
 		
 	</style> 
@@ -40,12 +43,23 @@
 
 	<a href="http://github.com/OpenRTMFP/Cumulus"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a> 
 
-	<h1 style="position: absolute; right: 0; top: 40%;">
-		<span class="small">by <a href="http://github.com/OpenRTMFP">OpenRTMFP</a></span>
-	</h1>
 	
-	<h1 style="position: absolute; left: 0; top: 40%;">
-		<a href="http://github.com/OpenRTMFP/Cumulus">Cumulus</a> 
+	<div style="position: absolute; right: 0; top: 40%; padding-right:10px;">
+		<h1 style="padding-bottom:0;margin:0;">
+			<span class="small">by
+				<a href="http://github.com/OpenRTMFP">OpenRTMFP</a>
+			</span>
+		</h1>
+		<div style="padding-left:60px">
+			<a href="https://docs2.google.com/document/d/1_hc8V_72zW4kULvLXuM04FAFpaE73h10GTgqWVVGCyY/edit">Edit</a>
+			<span>or</span>
+			<a href="mailto:cumulus.dev@gmail.com">contact me</a>
+			<span>for rights.</span>
+		</div>
+	</div>
+	
+	<h1 style="position: absolute; left: 0; top: 38%; padding-left:10px;">
+		<a href="http://github.com/OpenRTMFP/Cumulus">Cumulus</a>
 	</h1>
 	
 	<div id="container">
@@ -63,4 +77,4 @@
 		} catch(err) {}
 	</script> 
 </body> 
-</html>
+</html> 
