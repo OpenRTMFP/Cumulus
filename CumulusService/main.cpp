@@ -60,14 +60,11 @@ protected:
 				.repeatable(false));
 
 		options.addOption(
-			Option("cirrus", "c", "cirrus url to activate a "man-in-the-middle" mode in bypassing flash packets to the official cirrus server of your choice")
-				.required(false)
+			Option("cirrus", "c", "cirrus url to activate a 'man-in-the-middle' mode in bypassing flash packets to the official cirrus server of your choice",false,"url",true)
 				.repeatable(false));
 
 		options.addOption(
-			Option("dump", "d", "enables packet traces in the console. Optionnal 'file' argument also allows a file dumping. Often used with 'cirrus=url' option to observe flash/cirrus exchange")
-				.required(false)
-				.argument("file")
+			Option("dump", "d", "enables packet traces in the console. Optionnal 'file' argument also allows a file dumping. Often used with 'cirrus=url' option to observe flash/cirrus exchange",false,"file",false)
 				.repeatable(false));
 
 		options.addOption(

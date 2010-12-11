@@ -37,7 +37,7 @@ Logs::~Logs() {
 void Logs::Dump(bool activate,const string& file) {
 	s_file = file;
 	s_dump=activate;
-	if(s_dump) {
+	if(s_dump && !s_file.empty()) {
 		File dumpFile(s_file);
 		if(dumpFile.exists())
 			dumpFile.remove();
