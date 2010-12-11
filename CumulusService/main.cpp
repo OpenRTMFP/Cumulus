@@ -60,7 +60,7 @@ protected:
 				.repeatable(false));
 
 		options.addOption(
-			Option("cirrus", "c", "cirrus url to activate a "man-in-the-middle" mode in bypassing flash packets to the official cirrus server of your choice")
+			Option("cirrus", "c", "cirrus url to activate a 'man-in-the-middle' mode in bypassing flash packets to the official cirrus server of your choice")
 				.required(false)
 				.repeatable(false));
 
