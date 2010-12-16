@@ -30,7 +30,7 @@ public:
 
 	void	read(std::string& value);
 	double	readNumber();
-	void readNull();
+	void	readNull();
 
 	bool available();
 	

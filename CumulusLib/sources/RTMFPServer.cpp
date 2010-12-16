@@ -31,7 +31,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer() : _terminate(false),_pHandshake(NULL) {
+RTMFPServer::RTMFPServer(UInt16 keepAlivePeer,UInt16 keepAliveServer) : _terminate(false),_pCirrus(NULL),_sessions(2),_handshake(*this,_socket,_data),_data(keepAlivePeer,keepAliveServer) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -43,13 +43,14 @@ RTMFPServer::~RTMFPServer() {
 }
 
 Session* RTMFPServer::findSession(PacketReader& reader,const SocketAddress& sender) {
+
 	UInt32 id = RTMFP::Unpack(reader);
  
 	// Id session can't be egal to 0 (it's reserved to Handshake)
 	if(id==0) {
 		DEBUG("Handshaking");
-		_pHandshake->setPeerAddress(sender);
-		return _pHandshake;
+		_handshake.setPeerAddress(sender);
+		return &_handshake;
 	}
 	Session* pSession = _sessions.find(id);
 	if(pSession) {
@@ -68,9 +69,10 @@ void RTMFPServer::start(UInt16 port,const string& cirrusUrl) {
 		return;
 	}
 	_port = port;
-	if(!cirrusUrl.empty())
+	if(!cirrusUrl.empty()) {
 		INFO("Mode 'man in the middle' activated : the exchange bypass to '%s'",cirrusUrl.c_str())
-	_pHandshake = new Handshake(_sessions,_socket,_database,cirrusUrl);
+		_pCirrus = new Cirrus(cirrusUrl,_sessions);
+	}
 	_terminate = false;
 	_mainThread.start(*this);
 	
@@ -80,15 +82,15 @@ void RTMFPServer::stop() {
 	ScopedLock<FastMutex> lock(_mutex);
 	_terminate = true;
 	_mainThread.join();
-	if(_pHandshake) {
-		delete _pHandshake;
-		_pHandshake = NULL;
+	if(_pCirrus) {
+		delete _pCirrus;
+		_pCirrus = NULL;
 	}
 }
 
 void RTMFPServer::run() {
 	SetThreadName("RTMFPServer");
-	SocketAddress address("localhost",_port);
+	SocketAddress address("0.0.0.0",_port);
 	_socket.bind(address,true);
 	
 	SocketAddress sender;
@@ -99,11 +101,13 @@ void RTMFPServer::run() {
 	NOTE("RTMFP server starts on %hu port",_port);
 
 	while(!_terminate) {
+
+		_sessions.manage();
+
 		try {
-			if (_socket.poll(span, Socket::SELECT_READ))
-				size = _socket.receiveFrom(buff,MAX_SIZE_MSG,sender);
-			else
+			if (!_socket.poll(span, Socket::SELECT_READ))
 				continue;
+			size = _socket.receiveFrom(buff,MAX_SIZE_MSG,sender);
 		} catch(Exception& ex) {
 			ERROR("Main socket reception error : %s",ex.displayText().c_str());
 			continue;
@@ -111,19 +115,20 @@ void RTMFPServer::run() {
 
 		PacketReader packet(buff,size);
 		if(!RTMFP::IsValidPacket(packet)) {
-			// TODO log
+			ERROR("Invalid packet");
 			continue;
 		}
 
 		Session* pSession = this->findSession(packet,sender);
+
 		if(!pSession)
 			continue;
-		
+
 		if(!pSession->decode(packet)) {
-			// TODO Log
+			ERROR("Decrypt error");
 			continue;
 		}
-
+	
 		if(Logs::Dump()) {
 			printf("Request:\n");
 			Util::Dump(packet,Logs::DumpFile());
@@ -131,10 +136,81 @@ void RTMFPServer::run() {
 
 		pSession->packetHandler(packet);
 
-
 	}
 
 	NOTE("RTMFP server stops");
+
+}
+
+
+UInt32 RTMFPServer::createSession(UInt32 farId,const UInt8* peerId,const SocketAddress& peerAddress,const string& url,const UInt8* decryptKey,const UInt8* encryptKey) {
+	UInt32 id = 0;
+	RandomInputStream ris;
+	while(id==0 || _sessions.find(id))
+		ris.read((char*)(&id),4);
+
+	if(_pCirrus) {
+		_sessions.add(new Middle(id,farId,peerId,peerAddress,url,decryptKey,encryptKey,_socket,_data,*_pCirrus));
+		Sleep(500); // to wait the cirrus handshake 
+	} else
+		_sessions.add(new Session(id,farId,peerId,peerAddress,url,decryptKey,encryptKey,_socket,_data));
+
+	return id;
+}
+
+
+Poco::UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const BLOB& peerWantedId,const Poco::Net::SocketAddress& peerAddress) {
+
+	Session* pSessionConnected = _sessions.find(peerWantedId);
+	if(!pSessionConnected) {
+		CRITIC("UDP Hole punching error!");
+		return 0;
+	}
+
+	pSessionConnected->p2pHandshake(peerAddress);
+
+	/// Udp hole punching
+	if(!_pCirrus) {
+		// Normal mode
+		vector<string> routes;
+		_data.getRoutes(pSessionConnected->peerId(),routes);
+	
+		for(int i=0;i<routes.size();++i) {
+			response.write8(0x01);
+			response.writeAddress(SocketAddress(routes[i]));
+		}
+
+		return 0x71;
+	} else {
+		// Just to make working the man in the middle mode !
+		
+		PacketWriter request(12);
+		request.write8(0x22);request.write8(0x21);
+		request.write8(0x0F);
+
+		// find the flash client equivalence
+		Middle* pMiddle = NULL;
+		Sessions::Iterator it;
+		for(it=_sessions.begin();it!=_sessions.end();++it) {
+			pMiddle = (Middle*)it->second;
+			if(memcmp(pMiddle->peerAddress().addr(),peerAddress.addr(),sizeof(struct sockaddr))==0)
+				break;
+		}
+		if(it==_sessions.end()) {
+			CRITIC("UDP Hole punching error!");
+			return 0;
+		}
+
+		request.writeRaw(((Middle*)pSessionConnected)->middlePeerId().begin(),32);
+
+		pMiddle->pPeerAddressWanted = &pSessionConnected->peerAddress();
+		request.writeRaw(tag);
+		
+		pMiddle->sendHandshakeToCirrus(0x30,request);
+		// no response here!
+	}
+	
+	return 0;
 
 }
 

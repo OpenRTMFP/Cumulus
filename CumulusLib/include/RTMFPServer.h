@@ -21,7 +21,9 @@
 #include "Session.h"
 #include "PacketReader.h"
 #include "Handshake.h"
-#include "Database.h"
+#include "ServerData.h"
+#include "Cirrus.h"
+#include "Gateway.h"
 #include "Poco/Runnable.h"
 #include "Poco/Mutex.h"
 #include "Poco/Thread.h"
@@ -32,9 +34,9 @@
 
 namespace Cumulus {
 
-class CUMULUS_API RTMFPServer : public Poco::Runnable {
+class CUMULUS_API RTMFPServer : public Poco::Runnable,private Gateway {
 public:
-	RTMFPServer();
+	RTMFPServer(Poco::UInt16 keepAlivePeer=10000,Poco::UInt16 keepAliveServer=15000);
 	virtual ~RTMFPServer();
 
 	void start();
@@ -45,8 +47,10 @@ public:
 private:
 	Session* findSession(PacketReader& reader,const Poco::Net::SocketAddress& sender);
 	void	 run();
+	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const BLOB& peerWantedId,const Poco::Net::SocketAddress& peerAddress);
+	Poco::UInt32	createSession(Poco::UInt32 farId,const Poco::UInt8* peerId,const Poco::Net::SocketAddress& peerAddress,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey);
 
-	Handshake*						_pHandshake;
+	Handshake					_handshake;
 
 	volatile bool				_terminate;
 	Poco::FastMutex				_mutex;
@@ -55,7 +59,8 @@ private:
 	Poco::Net::DatagramSocket	_socket;
 
 	Sessions					_sessions;
-	Database					_database;
+	ServerData					_data;
+	Cirrus*						_pCirrus;
 };
 
 inline void RTMFPServer::start() {

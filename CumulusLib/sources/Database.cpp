@@ -18,7 +18,6 @@
 #include "Database.h"
 #include "Logs.h"
 #include "Poco/Data/SQLite/Connector.h"
-#include "Poco/Data/BLOB.h"
 
 using namespace std;
 using namespace Poco;
@@ -31,20 +30,24 @@ string Database::s_connector;
 string Database::s_connectionString;
 
 Database::Database() {
-	
 	if(!Loaded())
 		Load(SQLite::Connector::KEY,"data.db");
 
 	_pSession = new Session(s_connector,s_connectionString);
-
-	data() << "CREATE TABLE IF NOT EXISTS routes (peer_id BLOB NOT NULL," \
-				"route TEXT)",now;
-	data() << "CREATE TABLE IF NOT EXISTS groups (peer_id BLOB NOT NULL," \
-				"group_id BLOB NOT NULL)",now;
 }
 
 Database::~Database() {
 	delete _pSession;
+}
+
+DataStream Database::writer() {
+	s_rwLock.writeLock();
+	return DataStream(*_pSession,s_rwLock);
+}
+
+DataStream Database::reader() {
+	s_rwLock.readLock();
+	return DataStream(*_pSession,s_rwLock);
 }
 
 bool Database::Load(const string& connector,const string& connectionString) {
@@ -60,34 +63,9 @@ bool Database::Load(const string& connector,const string& connectionString) {
 }
 
 void Database::Unload() {
-	SQLite::Connector::unregisterConnector();
-}
-
-void Database::addRoute(const BLOB& peerId,const string& route) {
-	//string host = format("%hu,
-	ScopedWriteRWLock lock(s_rwLock);
-	data() << "INSERT INTO routes(peer_id,route) VALUES(?, ?)",
-					use(peerId),use(route), now;
-}
-
-bool Database::addGroup(const BLOB& peerId,const BLOB& groupId,BLOB& peerOwner) {
-	{
-		ScopedReadRWLock lock(s_rwLock);
-		data() << "SELECT peer_id FROM groups WHERE group_id=?",
-				use(groupId), into(peerOwner), limit(1),now;
-		if(peerOwner.begin())
-			return false;
+	if(s_connector==SQLite::Connector::KEY) {
+		SQLite::Connector::unregisterConnector();
 	}
-	ScopedWriteRWLock lock(s_rwLock);
-	data() << "INSERT INTO groups(peer_id,group_id) VALUES(?, ?)",
-					use(peerId),use(groupId), now;
-	return true;
-}
-
-void Database::getRoutes(const BLOB& peerId,vector<string>& routes) {
-	ScopedReadRWLock lock(s_rwLock);
-	data() << "SELECT route FROM routes WHERE peer_id=?",
-			use(peerId), into(routes),now;
 }
 
 

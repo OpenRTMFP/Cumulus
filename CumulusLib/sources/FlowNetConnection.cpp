@@ -27,7 +27,7 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-FlowNetConnection::FlowNetConnection(Poco::UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,Database& database) : Flow(id,peerId,peerAddress,database) {
+FlowNetConnection::FlowNetConnection(Poco::UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,ServerData& data) : Flow(id,peerId,peerAddress,data) {
 }
 
 FlowNetConnection::~FlowNetConnection() {
@@ -59,6 +59,7 @@ int FlowNetConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWr
 
 			return 0x10;
 		case 0x02: {
+
 			request.readRaw(buff,6); // unknown, 11 00 00 03 96 00
 
 			string tmp; 
@@ -69,12 +70,15 @@ int FlowNetConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWr
 
 			while(reader.available()) {
 				reader.read(tmp); // private host
-				database.addRoute(peerId,tmp);
+				data.addRoute(peerId,tmp);
 			}
 			// public host
-			database.addRoute(peerId,peerAddress.toString());
+			data.addRoute(peerId,peerAddress.toString());
 
-			response.writeRaw("\x04\x00\x00\x00\x00\x00\x29\x00\x00\x3a\x98\x00\x00\x27\x10",15); // Unknown!
+			response.writeRaw("\x04\x00\x00\x00\x00\x00\x29\x00\x00",9); // Unknown!
+			response.write16(data.keepAliveServer);
+			response.write16(0); // Unknown!
+			response.write16(data.keepAlivePeer);
 			return 0x10;
 		}
 		default:

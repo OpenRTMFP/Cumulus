@@ -28,7 +28,7 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-FlowNetStream::FlowNetStream(Poco::UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,Database& database) : Flow(id,peerId,peerAddress,database) {
+FlowNetStream::FlowNetStream(Poco::UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,ServerData& data) : Flow(id,peerId,peerAddress,data) {
 }
 
 FlowNetStream::~FlowNetStream() {
@@ -42,21 +42,15 @@ int FlowNetStream::requestHandler(UInt8 stage,PacketReader& request,PacketWriter
 	switch(stage){
 		case 0x01: {
 			request.readRaw(buff,6);
+			request.skip(3);
 
-			string type;
-			reader.read(type);
-			
-			request.skip(3); // 0x10 G :
+			UInt32 size = request.read7BitValue();
 
-			request.skip(16); // 01010102010c290e
+			BLOB groupId;
+			request.readRaw(groupId,size);
 
-			UInt8 groupId[80];
-			request.readRaw(groupId,sizeof(groupId));
-			MemoryInputStream mis((char*)groupId,sizeof(groupId));
-			HexBinaryDecoder(mis).read((char*)groupId,40);
-			
 			BLOB peerOwner;
-			if(database.addGroup(peerId,BLOB(groupId,40),peerOwner))
+			if(data.addGroup(peerId,groupId,peerOwner))
 				return 0;
 
 			response.writeRaw(buff,6);

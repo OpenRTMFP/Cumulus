@@ -24,7 +24,7 @@ namespace Cumulus {
 
 class FlowNetStream : public Flow {
 public:
-	FlowNetStream(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,Database& database);
+	FlowNetStream(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,ServerData& data);
 	virtual ~FlowNetStream();
 
 private:

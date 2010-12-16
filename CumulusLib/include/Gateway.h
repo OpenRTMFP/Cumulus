@@ -18,36 +18,21 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "DataStream.h"
-#include "Poco/Data/Session.h"
-#include "Poco/RWLock.h"
+#include "PacketWriter.h"
+#include "Poco/Net/SocketAddress.h"
 
 namespace Cumulus {
 
-class CUMULUS_API Database
+
+class Gateway
 {
 public:
-	Database();
-	virtual ~Database();
+	Gateway();
+	virtual ~Gateway();
 
-	static bool Load(const std::string& connector,const std::string& connectionString);
-	static bool Loaded();
-	static void Unload();
-
-	DataStream Database::reader();
-	DataStream Database::writer();
-
-private:
-	Poco::Data::Session* _pSession;
-	
-	static Poco::RWLock	s_rwLock;
-	static std::string	s_connector;
-	static std::string	s_connectionString;
+	virtual Poco::UInt8 p2pHandshake(const std::string& tag,PacketWriter& response,const BLOB& peerWantedId,const Poco::Net::SocketAddress& peerAddress)=0;
+	virtual Poco::UInt32 createSession(Poco::UInt32 farId,const Poco::UInt8* peerId,const Poco::Net::SocketAddress& peerAddress,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey)=0;
 };
-
-inline bool Database::Loaded() {
-	return !s_connector.empty();
-}
 
 
 } // namespace Cumulus

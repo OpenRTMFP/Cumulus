@@ -19,6 +19,8 @@
 
 #include "Cumulus.h"
 #include "Poco/StreamUtil.h"
+#include <streambuf>
+#include <iostream>
 
 namespace Cumulus {
 
@@ -56,8 +58,8 @@ private:
 /// inlines
 
 inline void MemoryStreamBuf::skip(std::streamsize size) {
-	setp(_pBuffer, pCurrent()+size, _pBuffer + _bufferSize);
-	setg(_pBuffer, gCurrent()+size, _pBuffer + _bufferSize);
+	pbump(size);
+	gbump(size);
 }
 
 inline std::streamsize MemoryStreamBuf::size() {

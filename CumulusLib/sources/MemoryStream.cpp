@@ -22,13 +22,14 @@ using namespace std;
 namespace Cumulus {
 
 MemoryStreamBuf::MemoryStreamBuf(char* pBuffer, streamsize bufferSize): _pBuffer(pBuffer),_bufferSize(bufferSize),_written(0) {
-	setg(_pBuffer, _pBuffer, _pBuffer + _bufferSize);
+	setg(_pBuffer, _pBuffer,_pBuffer + _bufferSize);
 	setp(_pBuffer, _pBuffer + _bufferSize);
 }
 
 MemoryStreamBuf::MemoryStreamBuf(MemoryStreamBuf& other): _pBuffer(other._pBuffer),_bufferSize(other._bufferSize),_written(other._written) {
-	setg(_pBuffer, other.gCurrent(), _pBuffer + _bufferSize);
-	setp(_pBuffer, other.pCurrent(),_pBuffer + _bufferSize);
+	setg(_pBuffer,other.gCurrent(),_pBuffer + _bufferSize);
+	setp(_pBuffer,_pBuffer + _bufferSize);
+	pbump((int)(other.pCurrent()-_pBuffer));
 }
 
 
@@ -37,14 +38,15 @@ MemoryStreamBuf::~MemoryStreamBuf() {
 
 void MemoryStreamBuf::position(streampos pos) {
 	written(); // Save nb char written
-	setg(_pBuffer, _pBuffer+pos, _pBuffer + _bufferSize);
-	setp(_pBuffer, _pBuffer+pos, _pBuffer + _bufferSize);
+	setp(_pBuffer,_pBuffer + _bufferSize);
+	pbump((int)pos);
+	setg(_pBuffer,_pBuffer+pos,_pBuffer + _bufferSize);
 }
 
-void MemoryStreamBuf::resize(std::streamsize newSize) {
+void MemoryStreamBuf::resize(streamsize newSize) {
 	_bufferSize = newSize;
-	setp(_pBuffer, pCurrent(), _pBuffer + _bufferSize);
-	setg(_pBuffer, gCurrent(), _pBuffer + _bufferSize);
+	setg(_pBuffer,gCurrent(),_pBuffer + _bufferSize);
+	setp(_pBuffer,_pBuffer + _bufferSize);
 }
 
 streamsize MemoryStreamBuf::written(streamsize size) {
@@ -71,7 +73,7 @@ int MemoryStreamBuf::sync() {
 }
 
 
-MemoryIOS::MemoryIOS(char* pBuffer, std::streamsize bufferSize):_buf(pBuffer, bufferSize) {
+MemoryIOS::MemoryIOS(char* pBuffer, streamsize bufferSize):_buf(pBuffer, bufferSize) {
 	poco_ios_init(&_buf);
 }
 MemoryIOS::MemoryIOS(MemoryIOS& other):_buf(other._buf) {
@@ -92,7 +94,7 @@ void MemoryIOS::reset(streampos newPos,streamsize newSize) {
 
 
 
-MemoryInputStream::MemoryInputStream(const char* pBuffer, std::streamsize bufferSize): 
+MemoryInputStream::MemoryInputStream(const char* pBuffer, streamsize bufferSize): 
 	MemoryIOS(const_cast<char*>(pBuffer), bufferSize), istream(rdbuf()) {
 }
 

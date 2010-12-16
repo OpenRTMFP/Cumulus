@@ -27,6 +27,7 @@
 
 
 #include "Poco/Foundation.h"
+#include <stdio.h>
 
 
 #if defined(_WIN32)

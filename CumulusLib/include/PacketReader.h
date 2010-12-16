@@ -19,6 +19,7 @@
 
 #include "Cumulus.h"
 #include "PacketWriter.h"
+#include "BLOB.h"
 #include "Poco/BinaryReader.h"
 
 namespace Cumulus {
@@ -31,6 +32,8 @@ public:
 	PacketReader(PacketWriter&);
 	virtual ~PacketReader();
 
+	Poco::UInt32 read7BitValue();
+	void readRaw(BLOB& blob,int size);
 	void readRaw(Poco::UInt8* value,int size);
 	void readRaw(char* value,int size);
 	void readRaw(int size,std::string& value);

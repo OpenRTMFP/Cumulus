@@ -25,6 +25,7 @@
 #include "Logs.h"
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <string.h>
 
 #define TIMESTAMP_SCALE 4
 
@@ -32,6 +33,9 @@ using namespace std;
 using namespace Poco;
 
 namespace Cumulus {
+
+AESEngine RTMFP::s_aesDecrypt(RTMFP_SYMETRIC_KEY,AESEngine::DECRYPT);
+AESEngine RTMFP::s_aesEncrypt(RTMFP_SYMETRIC_KEY,AESEngine::ENCRYPT);
 
 
 UInt8 g_dh1024p[] = {
@@ -61,7 +65,8 @@ RTMFP::~RTMFP() {
 }
 
 
-bool RTMFP::IsValidPacket(PacketReader packet) {
+
+bool RTMFP::IsValidPacket(PacketReader& packet) {
 	if(packet.available()<=12)
 		return false;
 	return true;
@@ -82,10 +87,9 @@ UInt16 RTMFP::CheckSum(PacketReader packet) {
 }
 
 
-bool RTMFP::Decode(AESEngine& aes,PacketReader& packet) {
-
+bool RTMFP::Decode(AESEngine& aesDecrypt,PacketReader& packet) {
 	// Decrypt
-	aes.process(packet.current(),packet.current(),packet.available());
+	aesDecrypt.process(packet.current(),packet.current(),packet.available());
 
 	// Check the first 2 CRC bytes 
 	packet.reset(4);
@@ -94,7 +98,7 @@ bool RTMFP::Decode(AESEngine& aes,PacketReader& packet) {
 }
 
 
-void RTMFP::Encode(AESEngine& aes,PacketWriter packet) {
+void RTMFP::Encode(AESEngine& aesEncrypt,PacketWriter packet) {
 	// paddingBytesLength=(0xffffffff-plainRequestLength+5)&0x0F
 	int paddingBytesLength = (0xFFFFFFFF-packet.size()+5)&0x0F;
 	// Padd the plain request with paddingBytesLength of value 0xff at the end
@@ -102,14 +106,14 @@ void RTMFP::Encode(AESEngine& aes,PacketWriter packet) {
 	string end(paddingBytesLength,(UInt8)0xFF);
 	packet.writeRaw(end);
 	// Compute the CRC and add it at the beginning of the request
-	PacketReader reader = packet;
+	PacketReader reader(packet);
 	reader.skip(6);
 	UInt16 sum = CheckSum(reader);
 	packet.reset(4);packet << sum;
 	
 	// Encrypt the resulted request
 	reader.reset(4);
-	aes.process(reader.current(),reader.current(),reader.available());
+	aesEncrypt.process(reader.current(),reader.current(),reader.available());
 }
 
 UInt32 RTMFP::Unpack(PacketReader& packet) {
@@ -123,7 +127,7 @@ UInt32 RTMFP::Unpack(PacketReader& packet) {
 
 void RTMFP::Pack(PacketWriter packet,UInt32 farId) {
 	packet.reset();
-	PacketReader reader = packet;
+	PacketReader reader(packet);
 	reader.next32();
 	packet << (UInt32)(reader.next32() ^ reader.next32() ^ farId);
 }

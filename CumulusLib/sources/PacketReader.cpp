@@ -38,6 +38,13 @@ PacketReader::PacketReader(PacketWriter& writer) : _memory((char*)writer.begin()
 PacketReader::~PacketReader() {
 }
 
+void PacketReader::readRaw(BLOB& blob,int size) {
+	UInt8* data = new UInt8[size]();
+	readRaw(data,size);
+	delete [] data;
+	blob.assignRaw(data,size);
+}
+
 
 UInt8 PacketReader::next8() {
 	UInt8 c;
@@ -55,6 +62,34 @@ UInt32 PacketReader::next32() {
 	UInt32 c;
 	(*this) >> c;
 	return c;
+}
+
+UInt32 PacketReader::read7BitValue() {
+	UInt8 a=0,b=0,c=0,d=0;
+	Int8 s = 0;
+	*this >> a;
+	if(a & 0x80) {
+		*this >> b;++s;
+		if(b & 0x80) {
+			*this >> c;++s;
+			if(c & 0x80) {
+				*this >> d;++s;
+			}
+		}
+	}
+	UInt32 value = ((a&0x7F)<<(s*7));
+	--s;
+	if(s<0)
+		return value;
+	value += ((b&0x7F)<<(s*7));
+	--s;
+	if(s<0)
+		return value;
+	value += ((c&0x7F)<<(s*7));
+	--s;
+	if(s<0)
+		return value;
+	return value + ((d&0x7F)<<(s*7));
 }
 
 

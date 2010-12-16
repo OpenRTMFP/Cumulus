@@ -18,35 +18,36 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "DataStream.h"
-#include "Poco/Data/Session.h"
-#include "Poco/RWLock.h"
+#include "AESEngine.h"
+#include "Sessions.h"
+
 
 namespace Cumulus {
 
-class CUMULUS_API Database
+
+class Cirrus
 {
 public:
-	Database();
-	virtual ~Database();
+	Cirrus(const std::string& url,Sessions& sessions);
+	virtual ~Cirrus();
 
-	static bool Load(const std::string& connector,const std::string& connectionString);
-	static bool Loaded();
-	static void Unload();
+	const BLOB&			findPeerId(const BLOB& middlePeerId);
 
-	DataStream Database::reader();
-	DataStream Database::writer();
+	const std::string&				url();
+	const Poco::Net::SocketAddress&	address();
 
 private:
-	Poco::Data::Session* _pSession;
-	
-	static Poco::RWLock	s_rwLock;
-	static std::string	s_connector;
-	static std::string	s_connectionString;
+	Sessions&					_sessions;
+	std::string					_url;
+	Poco::Net::SocketAddress	_address;
 };
 
-inline bool Database::Loaded() {
-	return !s_connector.empty();
+inline const std::string& Cirrus::url() {
+	return _url;
+}
+
+inline const Poco::Net::SocketAddress& Cirrus::address() {
+	return _address;
 }
 
 

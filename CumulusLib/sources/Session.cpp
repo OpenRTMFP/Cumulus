@@ -36,9 +36,9 @@ Session::Session(UInt32 id,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey,
 				 DatagramSocket& socket,
-				 Database& database) : 
+				 ServerData& data) : 
 	_id(id),_farId(farId),_socket(socket),
-	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_url(url),_database(database),_peerId(peerId,peerId?32:0),_peerAddress(peerAddress) {
+	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_url(url),_data(data),_peerId(peerId,peerId?32:0),_peerAddress(peerAddress) {
 
 		
 }
@@ -50,6 +50,14 @@ Session::~Session() {
 	for(it=_flows.begin();it!=_flows.end();++it)
 		delete it->second;
 	_flows.clear();
+}
+
+bool Session::manage() {
+	// TODO _timeUpdate "update this time and if it's more than a laps time reference, delete session!"
+//	map<UInt8,Flow*>::const_iterator it;
+//	for(it=_flows.begin();it!=_flows.end();++it)
+//		it->second->manage();
+	return true;
 }
 
 Flow& Session::flow(Poco::UInt8 id) {
@@ -82,8 +90,7 @@ void Session::p2pHandshake(const SocketAddress& peerAddress) {
 	send(0x4e,packet);
 }
 
-
-void Session::send(UInt8 marker,PacketWriter packet) {
+void Session::send(UInt8 marker,PacketWriter packet,bool forceSymetricEncrypt) {
 	packet.reset(6);
 	packet << marker;
 	packet << RTMFP::Timestamp();
@@ -93,7 +100,10 @@ void Session::send(UInt8 marker,PacketWriter packet) {
 		Util::Dump(packet,6,Logs::DumpFile());
 	}
 
-	RTMFP::Encode(_aesEncrypt,packet);
+	if(_farId==0 || forceSymetricEncrypt)
+		RTMFP::Encode(packet);
+	else
+		RTMFP::Encode(_aesEncrypt,packet);
 
 	RTMFP::Pack(packet,_farId);
 
@@ -172,6 +182,7 @@ void Session::packetHandler(PacketReader& packet) {
 					}
 					break;
 				}
+				case 0x11 : // request in request case
 				case 0x10 : {
 					/// Request
 					
@@ -239,14 +250,14 @@ Flow* Session::createFlow(UInt8 id) {
 	switch(id) {
 		case 0x02 :
 			// NetConnection
-			return new FlowNetConnection(id,_peerId,_peerAddress,_database);
+			return new FlowNetConnection(id,_peerId,_peerAddress,_data);
 		case 0x03 :
 			// NetStream on NetGroup 
-			return new FlowNetStream(id,_peerId,_peerAddress,_database);
+			return new FlowNetStream(id,_peerId,_peerAddress,_data);
 		default :
 			ERROR("Flow id '%02x' unknown",id);	
 	}
-	return new FlowNull(id,_peerId,_peerAddress,_database);
+	return new FlowNull(id,_peerId,_peerAddress,_data);
 }
 
 

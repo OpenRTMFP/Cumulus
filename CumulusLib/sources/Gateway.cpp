@@ -15,39 +15,21 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "Gateway.h"
 
-#include "Cumulus.h"
-#include "DataStream.h"
-#include "Poco/Data/Session.h"
-#include "Poco/RWLock.h"
+
+using namespace std;
 
 namespace Cumulus {
 
-class CUMULUS_API Database
-{
-public:
-	Database();
-	virtual ~Database();
-
-	static bool Load(const std::string& connector,const std::string& connectionString);
-	static bool Loaded();
-	static void Unload();
-
-	DataStream Database::reader();
-	DataStream Database::writer();
-
-private:
-	Poco::Data::Session* _pSession;
+Gateway::Gateway() {
 	
-	static Poco::RWLock	s_rwLock;
-	static std::string	s_connector;
-	static std::string	s_connectionString;
-};
-
-inline bool Database::Loaded() {
-	return !s_connector.empty();
 }
+
+
+Gateway::~Gateway() {
+}
+
 
 
 } // namespace Cumulus

@@ -19,7 +19,7 @@
 
 #include "Cumulus.h"
 #include "Session.h"
-#include "Sessions.h"
+#include "Cirrus.h"
 #include "Poco/URI.h"
 #include <openssl/dh.h>
 
@@ -36,40 +36,45 @@ public:
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
 			Poco::Net::DatagramSocket& socket,
-			Database& database,
-			const Sessions& sessions,
-			const std::string& listenCirrusUrl);
+			ServerData& data,
+			Cirrus& cirrus);
 	~Middle();
 
-	const BLOB&		middleId();
+	const BLOB&		middlePeerId();
 
-	PacketReader	receiveFromCirrus(AESEngine& aesDecrypt);
-	void			sendToCirrus(Poco::UInt32 id,AESEngine& aesEncrypt,PacketWriter& request);
+	void				cirrusHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
+	void				cirrusPacketHandler(PacketReader& packet);
 
+	const Poco::Net::SocketAddress* pPeerAddressWanted;
+
+	void				sendHandshakeToCirrus(Poco::UInt8 type,PacketWriter& request);
 private:
-	void			p2pHandshake(const Poco::Net::SocketAddress& peerAddress);
+	bool				manage();
+	void				sendToCirrus(Poco::UInt32 id,PacketWriter& request);
 	
 	
 	void		packetHandler(PacketReader& packet);
 	Poco::UInt8 cirrusHandshakeHandler(Poco::UInt8 type,PacketReader& response,PacketWriter request);
 
-	Poco::UInt8				_buffer[MAX_SIZE_MSG];
-
 	AESEngine*				_pMiddleAesDecrypt;
 	AESEngine*				_pMiddleAesEncrypt;
 	
-	Poco::UInt32				_cirrusId;
-	Poco::URI					_cirrusUri;
+	Poco::UInt32				_middleId;
 	std::string					_middleCertificat;
 	DH*							_pMiddleDH;
-	BLOB						_middleId;
-	const Sessions&				_sessions;
+	BLOB						_middlePeerId;
+	Cirrus&						_cirrus;
 
-	Poco::Net::DatagramSocket	_socketCirrus;
+	Poco::Net::DatagramSocket	_socket;
+	Poco::Timespan				_span;
+	Poco::UInt8					_buffer[MAX_SIZE_MSG];
+
 };
 
-inline const BLOB& Middle::middleId() {
-	return _middleId;
+
+inline const BLOB& Middle::middlePeerId() {
+	return _middlePeerId;
 }
+
 
 } // namespace Cumulus

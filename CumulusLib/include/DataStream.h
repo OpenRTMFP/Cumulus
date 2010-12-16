@@ -18,35 +18,32 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "DataStream.h"
-#include "Poco/Data/Session.h"
 #include "Poco/RWLock.h"
+#include "Poco/Data/Session.h"
 
 namespace Cumulus {
 
-class CUMULUS_API Database
-{
+
+class DataStream : public Poco::Data::Session {
 public:
-	Database();
-	virtual ~Database();
-
-	static bool Load(const std::string& connector,const std::string& connectionString);
-	static bool Loaded();
-	static void Unload();
-
-	DataStream Database::reader();
-	DataStream Database::writer();
-
+	DataStream(const Poco::Data::Session& session,Poco::RWLock& rwLock);
+	DataStream(DataStream& other);
+	virtual ~DataStream();
 private:
-	Poco::Data::Session* _pSession;
-	
-	static Poco::RWLock	s_rwLock;
-	static std::string	s_connector;
-	static std::string	s_connectionString;
+	bool			_unlock;
+	Poco::RWLock&  _rwLock;
 };
 
-inline bool Database::Loaded() {
-	return !s_connector.empty();
+inline DataStream::DataStream(const Poco::Data::Session& session,Poco::RWLock& rwLock):_rwLock(rwLock),Poco::Data::Session(session),_unlock(true) {
+}
+
+inline DataStream::DataStream(DataStream& other):_rwLock(other._rwLock),Poco::Data::Session(other),_unlock(true) {
+	other._unlock = false;
+}
+
+inline DataStream::~DataStream() {
+	if(_unlock)
+		_rwLock.unlock();
 }
 
 

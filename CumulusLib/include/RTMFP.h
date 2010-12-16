@@ -22,18 +22,22 @@
 #include "AESEngine.h"
 #include <openssl/dh.h>
 
-#define RTMFP_SYMETRIC_KEY (Poco::UInt8*)"Adobe Systems 02"
-
 namespace Cumulus {
+
+#define RTMFP_SYMETRIC_KEY (Poco::UInt8*)"Adobe Systems 02"
 
 class RTMFP
 {
 public:
 	static Poco::UInt32				Unpack(PacketReader& packet);
-	static void						Pack(PacketWriter packet,Poco::UInt32 farId);
-	static bool						Decode(AESEngine& aes,PacketReader& packet);
-	static void						Encode(AESEngine& aes,PacketWriter packet);
-	static bool						IsValidPacket(PacketReader packet);
+	static void						Pack(PacketWriter packet,Poco::UInt32 farId=0);
+
+	static bool						Decode(PacketReader& packet);
+	static bool						Decode(AESEngine& aesDecrypt,PacketReader& packet);
+	static void						Encode(PacketWriter packet);
+	static void						Encode(AESEngine& aesEncrypt,PacketWriter packet);
+	
+	static bool						IsValidPacket(PacketReader& packet);
 	static Poco::UInt16				CheckSum(PacketReader packet);
 
 	static DH*						BeginDiffieHellman(Poco::UInt8* pubKey);
@@ -49,8 +53,19 @@ public:
 
 private:
 
+	static AESEngine				s_aesDecrypt;
+	static AESEngine				s_aesEncrypt;
+
 	RTMFP();
 	~RTMFP();
 };
+
+inline bool RTMFP::Decode(PacketReader& packet) {
+	return Decode(s_aesDecrypt,packet);
+}
+
+inline void RTMFP::Encode(PacketWriter packet) {
+	Encode(s_aesEncrypt,packet);
+}
 
 }  // namespace Cumulus

@@ -21,14 +21,14 @@
 #include "Session.h"
 #include "Cookie.h"
 #include "Middle.h"
-#include "Sessions.h"
+#include "Gateway.h"
 
 namespace Cumulus {
 
 
 class Handshake : public Session {
 public:
-	Handshake(Sessions& sessions,Poco::Net::DatagramSocket& socket,Database& database,const std::string& cirrusUrl="");
+	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& socket,ServerData& data);
 	~Handshake();
 
 	void			setPeerAddress(const Poco::Net::SocketAddress& peerAddress);
@@ -36,17 +36,13 @@ private:
 	void		packetHandler(PacketReader& packet);
 	Poco::UInt8	handshakeHandler(Poco::UInt8 id,PacketReader& request,PacketWriter& response);
 
-	Poco::UInt32 createSession(Poco::UInt32 farId,const Poco::UInt8* peerId,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey);
-
 	// Cookie, in waiting of creation session
 	std::map<std::string,Cookie*> _cookies;
-
-	std::string		_cirrusUrl;
 
 	Poco::UInt8		_certificat[77];
 	std::string		_signature;
 
-	Sessions&		_sessions;
+	Gateway&		_gateway;
 };
 
 inline void	Handshake::setPeerAddress(const Poco::Net::SocketAddress& peerAddress) {

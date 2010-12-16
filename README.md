@@ -9,7 +9,8 @@ We remind you that Cumulus is licensed under the [GNU General Public License] an
 
 Status
 ------------------------------------
-Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment only few scenarios work. If you are a developer **help us** to evolve and enhance Cumulus, else you can always make a **donation** ([us]|[eu]) for that we spent more time on it, in fact it's not technical skills that hinder us but lack of time.
+Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment only few scenarios work.
+If you are a developer **help us** to evolve and enhance Cumulus, else you can always make a **donation** ([us]|[eu]) for that we spent more time on it, in fact it's not technical skills that hinder us but lack of time.
 Also with the intention to understand better the exchange between a official RTMFP server and a Flash client, we have created a [worketable] to facilitate sharing of information exchanged and its presentation.
 
 Usage
@@ -26,28 +27,37 @@ displays help information about command-line usage.
 cirrus url to activate a "man-in-the-middle" mode in bypassing flash packets to the official cirrus server of your choice.
 
 - **dump[=file]**,
-enables packet traces in the console. Optionnal 'file' argument also allows a file dumping. Often used with 'cirrus=url' option to observe flash/cirrus exchange.
+enables packet traces in the console. Optionnal *file* argument also allows a file dumping. Often used with *cirrus=url* option to observe flash/cirrus exchange.
 
 - **log=level**,
 log level argument beetween 0 and 8 : none, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (note), all logs until info level are displayed.
 
-Command-line way is preferred during development and test usage. To statically configure the service the better practice is a optionnal configuration file to the installation directory. The possible configurations are:
+Command-line way is preferred during development and test usage. To statically configure the service the better practice is a optionnal configuration file to the installation directory.
+The possible configurations are:
 
 - **port**,
 equals 1935 by default (RTMFP server default port), it's the port used by CumulusService to listen incoming RTMFP requests.
 
+- **keepAlivePeer**,
+time in milliseconds for periodic keep-alive packet sending by peer, 10000 ms by default.
+
+- **keepAliveServer**,
+time in milliseconds after which server considers the flash's death, 15000 ms by default.
+
 - **database.connector**,
-equals 'SQLite' by default, it selects the database type used. For this moment, SQLite is the only choice possible.
+equals *SQLite* by default, it selects the database type used. For this moment, SQLite is the only choice possible.
 
 - **database.connectionString**,
-equals 'data.db' by default, it's the connection string associated with the database used, with a SQLite database it is the file storage path.
+equals *data.db* by default, it's the connection string associated with the database used, with a SQLite database it is the file storage path.
 
-The configuration file must have "CumulusService" as base name and can be a "ini", "xml", or "properties" file type, as you like (personnal choice of preferred style).
+The configuration file must have *CumulusService* as base name and can be a *ini*, *xml*, or *properties* file type, as you like (personnal choice of preferred style).
 
 **CumulusService.ini**
 
-    ;Cumulus server port
+    ;Cumulus server configurations
     port = 1985 
+	keepAlivePeer = 10000
+	keepAliveServer = 15000
     ;Database configurations
     [database]
     connector = SQLite
@@ -57,6 +67,8 @@ The configuration file must have "CumulusService" as base name and can be a "ini
 
     <config>
       <port>1985</port>
+	  <keepAlivePeer>10000</port>
+	  <keepAliveServer>15000</port>
       <database>
         <connector>SQLite</connector>
         <connectionString>data.db</connectionString>
@@ -67,6 +79,8 @@ The configuration file must have "CumulusService" as base name and can be a "ini
 
     # Cumulus server port
     port=1985
+	keepAlivePeer=10000
+	keepAliveServer=15000
     # Database configurations
     database.connector = SQLite
     database.connectionString = data.db
@@ -75,7 +89,8 @@ If this configuration file doesn't exist, default values will be used.
 
 ### CumulusLib
 
-CumulusService is almost a empty project, it includes just a main.cpp file which uses all CumulusLib API. Looks its file content is still the best way to learn to play with ;-)
+CumulusService is almost a empty project, it includes just a main.cpp file which uses all CumulusLib API.
+Looks its file content is still the best way to learn to play with ;-)
 
 A brief overview:
 
@@ -96,11 +111,13 @@ If your Cumulus instance is stared in local, Flash client can connect it by a cl
 
 Here the port has its default value 1935. If you configure a different port on CumulusService you must indicate this port in the URL (after localhost, of course).
 
-In "man-in-the-middle" mode (see command-line argument 'cirrus' in usage part) you must indacted on side flash your Cirrus key developer.
+In "man-in-the-middle" mode (see command-line argument *cirrus* in usage part) you must indacted on side flash your Cirrus key developer.
 	
 	_netConnection.connect("rtmfp://localhost/KEY");
 	
 Of course "KEY" must be replaced by your Cirrus development key.
+
+__notice:__ The *ipMulticastMemberUpdatesEnabled* NetGroup mode is not supporter for this moment.
 
 Build
 ------------------------------------
@@ -113,7 +130,8 @@ Cumulus has the following dependencies:
 
 - [OpenSSL] is required.
 
-- [Poco] in its Complete edition but just with 'Foundation','XML','Util','Net' (Basic edition), 'Data' and 'Data/SQLite' (parts of Complete edition) components. So contrary to what is said on their website, there is no other dependencies (doesn't require OpenSSL, MySQL and ODBC).
+- [Poco] in its Complete edition but just with *Foundation*,*XML*,*Util*,*Net* (Basic edition), *Data* and *Data/SQLite* (parts of Complete edition) components.
+So contrary to what is said on their website, there is no other dependencies (doesn't require OpenSSL, MySQL and ODBC).
 To build [Poco] Complete edition just with these six compoments you must edit the components file on Windows to have this
 
         Foundation
@@ -123,14 +141,15 @@ To build [Poco] Complete edition just with these six compoments you must edit th
         Data
         Data/SQLite
 
-    On Linux/Unix you can uses "omit" argument with configure command-line.
+    On Linux/Unix you can uses *omit* argument with configure command-line.
 
-        ./configure --omit=CppUnit,NetSSL_OpenSSL,Crypto,Data/MySQL,Data/ODBC,PageCompiler,Zip
+        ./configure --not-tests --not-samples --omit=CppUnit,...--omit=CppUnit,NetSSL_OpenSSL,Crypto,Data/MySQL,Data/ODBC,PageCompiler,Zip
 
 ### Building
 **Windows**
 
 Visual Studio 2008 file solutions and projects are included.
+It seeks the external librairies in "External/lib" folder and external includes in "External/include" folder at the root project.
 
 **Linux/Unix**
 

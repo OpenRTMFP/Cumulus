@@ -19,7 +19,7 @@
 
 #include "Cumulus.h"
 #include "PacketReader.h"
-#include "Database.h"
+#include "ServerData.h"
 #include "Poco/Net/SocketAddress.h"
 #include <map>
 
@@ -29,7 +29,7 @@ class Response;
 class Flow
 {
 public:
-	Flow(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,Database& database);
+	Flow(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,ServerData& data);
 	virtual ~Flow();
 
 	int request(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
@@ -41,7 +41,7 @@ public:
 	const BLOB&						peerId;
 	const Poco::Net::SocketAddress& peerAddress;
 	Poco::UInt8 stage() const;
-	Database& database;
+	ServerData&		data;
 	
 	
 private:

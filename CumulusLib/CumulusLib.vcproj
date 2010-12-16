@@ -393,6 +393,14 @@
 				Name="Util"
 				>
 				<File
+					RelativePath=".\sources\Cirrus.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Cirrus.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\Util.cpp"
 					>
 				</File>
@@ -428,6 +436,14 @@
 					RelativePath=".\include\RTMFPServer.h"
 					>
 				</File>
+				<File
+					RelativePath=".\sources\ServerData.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\ServerData.h"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="Logs"
@@ -454,6 +470,14 @@
 				</File>
 				<File
 					RelativePath=".\include\Cookie.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Gateway.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Gateway.h"
 					>
 				</File>
 				<File
@@ -549,6 +573,10 @@
 				</File>
 				<File
 					RelativePath=".\include\Database.h"
+					>
+				</File>
+				<File
+					RelativePath=".\include\DataStream.h"
 					>
 				</File>
 			</Filter>

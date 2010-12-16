@@ -24,7 +24,7 @@ namespace Cumulus {
 
 class FlowNetConnection : public Flow {
 public:
-	FlowNetConnection(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,Database& database);
+	FlowNetConnection(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,ServerData& data);
 	virtual ~FlowNetConnection();
 
 private:

@@ -19,6 +19,7 @@
 #include "Logs.h"
 #include "Database.h"
 
+#include "Poco/File.h"
 #include "Poco/Data/SQLite/Connector.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
@@ -31,6 +32,7 @@ using namespace Poco::Util;
 using namespace Cumulus;
 
 char * g_logPriorities[] = { "FATAL","CRITIC" ,"ERROR","WARN","NOTE","INFO","DEBUG","TRACE" };
+// TODO on linux : warning: deprecated conversion from string constant to ‘char*’
 
 class CumulusService: public ServerApplication , private Cumulus::Logger {
 public:
@@ -104,11 +106,17 @@ protected:
 			displayHelp();
 		}
 		else {
+
+			// TODO remove it!
+			File dataFile("data.db");
+			if(dataFile.exists())
+				dataFile.remove();
+
 			Database::Load(
 				config().getString("database.connector",SQLite::Connector::KEY),
 				config().getString("database.connectionString","data.db"));
 				
-			RTMFPServer server;
+			RTMFPServer server(config().getInt("keepAlivePeer",10000),config().getInt("keepAliveServer",15000));
 			server.start(config().getInt("port", CUMULUS_DEFAULT_PORT),_cirrusUrl);
 			// wait for CTRL-C or kill
 			waitForTerminationRequest();

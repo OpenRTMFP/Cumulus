@@ -122,7 +122,7 @@ void raiseThreadName(LPCSTR szThreadName) {
 	}
 }
 
-void SetThreadName(LPCSTR szThreadName) {
+void SetThreadName(const char* szThreadName) {
 	Poco::Thread* pThread = Poco::Thread::current();
 	if(pThread)
 		pThread->setName(szThreadName);
@@ -132,7 +132,7 @@ void SetThreadName(LPCSTR szThreadName) {
 }
  
 #else
-void SetThreadName(LPCSTR szThreadName) {
+void SetThreadName(const char* szThreadName) {
 	Poco::Thread* pThread = Poco::Thread::current();
 	if(pThread)
 		pThread->setName(szThreadName);

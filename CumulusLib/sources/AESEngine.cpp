@@ -16,7 +16,7 @@
 */
 
 #include "AESEngine.h"
-
+#include <string.h>
 
 using namespace Poco;
 
