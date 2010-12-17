@@ -143,7 +143,7 @@ To build [Poco] Complete edition just with these six compoments you must edit th
 
     On Linux/Unix you can uses *omit* argument with configure command-line.
 
-        ./configure --not-tests --not-samples --omit=CppUnit,...--omit=CppUnit,NetSSL_OpenSSL,Crypto,Data/MySQL,Data/ODBC,PageCompiler,Zip
+        ./configure --not-tests --not-samples --omit=CppUnit,NetSSL_OpenSSL,Crypto,Data/MySQL,Data/ODBC,PageCompiler,Zip
 
 ### Building
 **Windows**
