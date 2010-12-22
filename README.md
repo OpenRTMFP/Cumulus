@@ -38,17 +38,11 @@ The possible configurations are:
 - **port**,
 equals 1935 by default (RTMFP server default port), it's the port used by CumulusService to listen incoming RTMFP requests.
 
-- **keepAlivePeer**,
-time in milliseconds for periodic keep-alive packet sending by peer, 10000 ms by default.
-
 - **keepAliveServer**,
-time in milliseconds after which server considers the flash's death, 15000 ms by default.
+time in milliseconds for periodically sending packets keep-alive with server, 15000 ms by default.
 
-- **database.connector**,
-equals *SQLite* by default, it selects the database type used. For this moment, SQLite is the only choice possible.
-
-- **database.connectionString**,
-equals *data.db* by default, it's the connection string associated with the database used, with a SQLite database it is the file storage path.
+- **keepAlivePeer**,
+time in milliseconds for periodically sending packets keep-alive between peers, 10000 ms by default.
 
 The configuration file must have *CumulusService* as base name and can be a *ini*, *xml*, or *properties* file type, as you like (personnal choice of preferred style).
 
@@ -58,10 +52,6 @@ The configuration file must have *CumulusService* as base name and can be a *ini
     port = 1985 
 	keepAlivePeer = 10000
 	keepAliveServer = 15000
-    ;Database configurations
-    [database]
-    connector = SQLite
-    connectionString = data.db
 
 **CumulusService.xml**
 
@@ -69,10 +59,6 @@ The configuration file must have *CumulusService* as base name and can be a *ini
       <port>1985</port>
 	  <keepAlivePeer>10000</port>
 	  <keepAliveServer>15000</port>
-      <database>
-        <connector>SQLite</connector>
-        <connectionString>data.db</connectionString>
-      </database>
     </config>
 
 **CumulusService.properties**
@@ -81,9 +67,6 @@ The configuration file must have *CumulusService* as base name and can be a *ini
     port=1985
 	keepAlivePeer=10000
 	keepAliveServer=15000
-    # Database configurations
-    database.connector = SQLite
-    database.connectionString = data.db
 
 If this configuration file doesn't exist, default values will be used.
 
@@ -130,20 +113,7 @@ Cumulus has the following dependencies:
 
 - [OpenSSL] is required.
 
-- [Poco] in its Complete edition but just with *Foundation*,*XML*,*Util*,*Net* (Basic edition), *Data* and *Data/SQLite* (parts of Complete edition) components.
-So contrary to what is said on their website, there is no other dependencies (doesn't require OpenSSL, MySQL and ODBC).
-To build [Poco] Complete edition just with these six compoments you must edit the components file on Windows to have this
-
-        Foundation
-        XML
-        Util
-        Net
-        Data
-        Data/SQLite
-
-    On Linux/Unix you can uses *omit* argument with configure command-line.
-
-        ./configure --not-tests --not-samples --omit=CppUnit,NetSSL_OpenSSL,Crypto,Data/MySQL,Data/ODBC,PageCompiler,Zip
+- [Poco] in its Basic edition is required.
 
 ### Building
 **Windows**

@@ -17,17 +17,14 @@
 
 #include "RTMFPServer.h"
 #include "Logs.h"
-#include "Database.h"
 
 #include "Poco/File.h"
-#include "Poco/Data/SQLite/Connector.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
 #include <iostream>
 
 using namespace std;
 using namespace Poco;
-using namespace Poco::Data;
 using namespace Poco::Util;
 using namespace Cumulus;
 
@@ -106,24 +103,12 @@ protected:
 			displayHelp();
 		}
 		else {
-
-			// TODO remove it!
-			File dataFile("data.db");
-			if(dataFile.exists())
-				dataFile.remove();
-
-			Database::Load(
-				config().getString("database.connector",SQLite::Connector::KEY),
-				config().getString("database.connectionString","data.db"));
-				
-			RTMFPServer server(config().getInt("keepAlivePeer",10000),config().getInt("keepAliveServer",15000));
+			RTMFPServer server(config().getInt("keepAliveServer",15000),config().getInt("keepAlivePeer",10000));
 			server.start(config().getInt("port", CUMULUS_DEFAULT_PORT),_cirrusUrl);
 			// wait for CTRL-C or kill
 			waitForTerminationRequest();
 			// Stop the HTTPServer
 			server.stop();
-
-			Database::Unload();
 		}
 		return Application::EXIT_OK;
 	}
