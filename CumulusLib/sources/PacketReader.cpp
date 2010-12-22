@@ -38,14 +38,6 @@ PacketReader::PacketReader(PacketWriter& writer) : _memory((char*)writer.begin()
 PacketReader::~PacketReader() {
 }
 
-void PacketReader::readRaw(BLOB& blob,int size) {
-	UInt8* data = new UInt8[size]();
-	readRaw(data,size);
-	delete [] data;
-	blob.assignRaw(data,size);
-}
-
-
 UInt8 PacketReader::next8() {
 	UInt8 c;
 	(*this) >> c;

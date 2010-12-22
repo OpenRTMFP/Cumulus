@@ -30,8 +30,7 @@ class Middle : public Session {
 public:
 	Middle(Poco::UInt32 id,
 			Poco::UInt32 farId,
-			const Poco::UInt8* peerId,
-			const Poco::Net::SocketAddress& peerAddress,
+			const Peer& peer,
 			const std::string& url,
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
@@ -40,12 +39,12 @@ public:
 			Cirrus& cirrus);
 	~Middle();
 
-	const BLOB&		middlePeerId();
+	const Peer&			middlePeer();
 
 	void				cirrusHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
 	void				cirrusPacketHandler(PacketReader& packet);
 
-	const Poco::Net::SocketAddress* pPeerAddressWanted;
+	const Peer*			pPeerWanted;
 
 	void				sendHandshakeToCirrus(Poco::UInt8 type,PacketWriter& request);
 private:
@@ -60,9 +59,9 @@ private:
 	AESEngine*				_pMiddleAesEncrypt;
 	
 	Poco::UInt32				_middleId;
+	Peer						_middlePeer;
 	std::string					_middleCertificat;
 	DH*							_pMiddleDH;
-	BLOB						_middlePeerId;
 	Cirrus&						_cirrus;
 
 	Poco::Net::DatagramSocket	_socket;
@@ -72,8 +71,8 @@ private:
 };
 
 
-inline const BLOB& Middle::middlePeerId() {
-	return _middlePeerId;
+inline const Peer& Middle::middlePeer() {
+	return _middlePeer;
 }
 
 

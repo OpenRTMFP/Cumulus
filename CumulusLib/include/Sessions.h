@@ -33,7 +33,7 @@ public:
 	virtual ~Sessions();
 
 	Session* find(Poco::UInt32 id);
-	Session* find(const BLOB& peerId);
+	Session* find(const Poco::UInt8* peerId);
 	
 	Session* add(Session* pSession);
 

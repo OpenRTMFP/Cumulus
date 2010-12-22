@@ -31,18 +31,18 @@ namespace Cumulus {
 
 Middle::Middle(UInt32 id,
 				UInt32 farId,
-				const UInt8* peerId,
-				const SocketAddress& peerAddress,
+				const Peer& peer,
 				const string& url,
 				const UInt8* decryptKey,
 				const UInt8* encryptKey,
 				DatagramSocket& socket,
 				ServerData& data,
-				Cirrus& cirrus) : Session(id,farId,peerId,peerAddress,url,decryptKey,encryptKey,socket,data),_middleCertificat("\x02\x1D\x02\x41\x0E",5),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),
-					_cirrus(cirrus),_middleId(0),pPeerAddressWanted(NULL) {
+				Cirrus& cirrus) : Session(id,farId,peer,url,decryptKey,encryptKey,socket,data),_middleCertificat("\x02\x1D\x02\x41\x0E",5),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),
+					_cirrus(cirrus),_middleId(0),pPeerWanted(NULL) {
 
 	// connection to cirrus
 	_socket.connect(_cirrus.address());
+	
 
 	INFO("Handshake Cirrus");
 
@@ -154,11 +154,9 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 			UInt8 middlePubKey[128];
 			_pMiddleDH = RTMFP::BeginDiffieHellman(middlePubKey);
 
-			UInt8 middlePeerId[32];
 			string temp(middleSignature);
 			temp.append((char*)middlePubKey,sizeof(middlePubKey));
-			EVP_Digest(temp.c_str(),temp.size(),middlePeerId,NULL,EVP_sha256(),NULL);
-			_middlePeerId.assignRaw(middlePeerId,32);
+			EVP_Digest(temp.c_str(),temp.size(),(UInt8*)_middlePeer.id,NULL,EVP_sha256(),NULL);
 			
 
 			PacketWriter request(12);
@@ -186,10 +184,10 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 				response.writeString8(tag);
 				response.write8(0x01);
 				// replace public ip
-				if(pPeerAddressWanted) {
-					response.writeAddress(*pPeerAddressWanted);
+				if(pPeerWanted) {
+					response.writeAddress(pPeerWanted->address);
 					packet.skip(7);
-					pPeerAddressWanted = NULL;
+					pPeerWanted = NULL;
 				}
 				response.writeRaw(packet.current(),packet.available());
 
@@ -262,11 +260,12 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 				if(stage==0x01 && ((marker==0x4e && idFlow==0x03) || (marker==0x8e && idFlow==0x05))) {
 					// replace "middleId" by "peerId"
 					packetOut.writeRaw(content.current(),10);content.skip(10);
-					UInt8 temp[32];
-					content.readRaw(temp,sizeof(temp));
 
-					const BLOB& peerId = _cirrus.findPeerId(BLOB(temp,sizeof(temp)));
-					packetOut.writeRaw(peerId.begin(),peerId.size());
+					Peer middlePeer;
+					content.readRaw((UInt8*)middlePeer.id,32);
+
+					const Peer& peer = _cirrus.findPeer(middlePeer);
+					packetOut.writeRaw(peer.id,32);
 
 				}
 			} else if(type == 0x0F) {

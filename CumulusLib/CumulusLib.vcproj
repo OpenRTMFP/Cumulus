@@ -421,6 +421,22 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\Group.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Group.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Peer.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Peer.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\RTMFP.cpp"
 					>
 				</File>
@@ -532,19 +548,19 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\FlowNetConnection.cpp"
+					RelativePath=".\sources\FlowConnection.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\include\FlowNetConnection.h"
+					RelativePath=".\include\FlowConnection.h"
 					>
 				</File>
 				<File
-					RelativePath=".\sources\FlowNetStream.cpp"
+					RelativePath=".\sources\FlowGroup.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\include\FlowNetStream.h"
+					RelativePath=".\include\FlowGroup.h"
 					>
 				</File>
 				<File
@@ -553,30 +569,6 @@
 				</File>
 				<File
 					RelativePath=".\include\FlowNull.h"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="Database"
-				>
-				<File
-					RelativePath=".\sources\BLOB.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\BLOB.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\Database.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Database.h"
-					>
-				</File>
-				<File
-					RelativePath=".\include\DataStream.h"
 					>
 				</File>
 			</Filter>

@@ -15,43 +15,45 @@
 	This file is a part of Cumulus.
 */
 
-#include "ServerData.h"
-#include "Session.h"
+#include "Peer.h"
+#include "Group.h"
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Net;
 
 namespace Cumulus {
 
-ServerData::ServerData(UInt16 keepAliveServer,UInt16 keepAlivePeer) : keepAliveServer(keepAliveServer),keepAlivePeer(keepAlivePeer) {
-
+Peer::Peer():id() {
 }
 
-ServerData::~ServerData() {
-	// delete groupes
-	Group* pGroup;
-	list<Group*>::const_iterator it;
-	for(it=_groups.begin();it!=_groups.end();++it) {
-		pGroup=*it;
-		pGroup->clear();
-		delete pGroup;
+Peer::~Peer() {
+	list<Group*>::const_iterator it=_groups.begin();
+	while(it!=_groups.end()) {
+		(*it)->removePeer(*this);
+		it = _groups.begin();
 	}
-	_groups.clear();
 }
 
-
-Group& ServerData::group(const vector<UInt8>& id) {
-	Group* pGroup;
-	list<Group*>::const_iterator it;
-	for(it=_groups.begin();it!=_groups.end();++it) {
-		pGroup=*it;
-		if(pGroup->operator==(id))
-			return *pGroup;
+void Peer::addPrivateAddress(const SocketAddress& address) {
+	if(memcmp(this->address.addr(),address.addr(),sizeof(struct sockaddr))==0)
+		return;
+	vector<SocketAddress>::const_iterator it;
+	for(it=privateAddress.begin();it!=privateAddress.end();++it) {
+		if(memcmp(it->addr(),address.addr(),sizeof(struct sockaddr))==0)
+			return;
 	}
-	pGroup = new Group(id);
-	_groups.push_back(pGroup);
-	return *pGroup;
+	((vector<SocketAddress>&)privateAddress).push_back(address);
 }
+
+bool Peer::isIn(Group& group,list<Group*>::const_iterator& it) {
+	for(it=_groups.begin();it!=_groups.end();++it) {
+		if(group == **it)
+			return true;
+	}
+	return false;
+}
+
 
 
 } // namespace Cumulus

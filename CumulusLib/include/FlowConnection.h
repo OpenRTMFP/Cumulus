@@ -18,29 +18,18 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Poco/Data/BLOB.h"
+#include "Flow.h"
 
 namespace Cumulus {
 
-class CUMULUS_API BLOB : public Poco::Data::BLOB {
+class FlowConnection : public Flow {
 public:
-	BLOB();
-		/// Creates an empty BLOB.
-	BLOB(const Poco::UInt8* content, std::size_t size);
-	BLOB(const std::string& content);
-	virtual ~BLOB();
+	FlowConnection(Poco::UInt8 id,Peer& peer,ServerData& data);
+	virtual ~FlowConnection();
 
-	const Poco::UInt8* begin() const;
-	void assignRaw(const Poco::UInt8* content, std::size_t count);
-
+private:
+	int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 };
 
-inline const Poco::UInt8* BLOB::begin() const {
-	return (const Poco::UInt8*)Poco::Data::BLOB::rawContent();
-}
-
-inline void BLOB::assignRaw(const Poco::UInt8* content, std::size_t count) {
-	Poco::Data::BLOB::assignRaw((const char*)content,count);
-}
 
 } // namespace Cumulus

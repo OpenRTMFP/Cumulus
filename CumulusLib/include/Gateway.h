@@ -19,7 +19,7 @@
 
 #include "Cumulus.h"
 #include "PacketWriter.h"
-#include "Poco/Net/SocketAddress.h"
+#include "Peer.h"
 
 namespace Cumulus {
 
@@ -30,8 +30,8 @@ public:
 	Gateway();
 	virtual ~Gateway();
 
-	virtual Poco::UInt8 p2pHandshake(const std::string& tag,PacketWriter& response,const BLOB& peerWantedId,const Poco::Net::SocketAddress& peerAddress)=0;
-	virtual Poco::UInt32 createSession(Poco::UInt32 farId,const Poco::UInt8* peerId,const Poco::Net::SocketAddress& peerAddress,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey)=0;
+	virtual Poco::UInt8 p2pHandshake(const std::string& tag,PacketWriter& response,const Peer& peer,const Poco::UInt8* peerIdWanted)=0;
+	virtual Poco::UInt32 createSession(Poco::UInt32 farId,const Peer& peer,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey)=0;
 };
 
 

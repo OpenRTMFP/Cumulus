@@ -15,27 +15,48 @@
 	This file is a part of Cumulus.
 */
 
-#include "BLOB.h"
+#include "Group.h"
 
+using namespace std;
 using namespace Poco;
-using namespace Poco::Data;
 
 namespace Cumulus {
 
-BLOB::BLOB() {
-
+Group::Group(const vector<UInt8>& id) : _id(id) {
 }
 
-BLOB::BLOB(const Poco::UInt8* content, std::size_t size) : Poco::Data::BLOB((char*)content,size) {
-
+Group::~Group() {
 }
 
-BLOB::BLOB(const std::string& content) : Poco::Data::BLOB(content) {
-	
+
+
+void Group::addPeer(Peer& peer) {
+	if(!peer.isIn(*this)) {
+		peer._groups.push_back(this);
+		_peers.push_back(&peer);
+	}
 }
 
-BLOB::~BLOB() {
+void Group::removePeer(Peer& peer) {
+	list<Group*>::const_iterator itG;
+	if(peer.isIn(*this,itG)) {
+		peer._groups.erase(itG);
+		list<Peer*>::const_iterator it =_peers.begin();
+		for(it =_peers.begin();it != _peers.end();++it) {
+			if((**it) == peer) {
+				_peers.erase(it);
+				break;
+			}
+		}
+	}
+}
 
+void Group::clear() {
+	list<Peer*>::const_iterator it = _peers.begin();
+	while(it!=_peers.end()) {
+		removePeer(**it);
+		it = _peers.begin();
+	}
 }
 
 

@@ -18,36 +18,18 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "DataStream.h"
-#include "Poco/Data/Session.h"
-#include "Poco/RWLock.h"
+#include "Flow.h"
 
 namespace Cumulus {
 
-class CUMULUS_API Database
-{
+class FlowGroup : public Flow {
 public:
-	Database();
-	virtual ~Database();
-
-	static bool Load(const std::string& connector,const std::string& connectionString);
-	static bool Loaded();
-	static void Unload();
-
-	DataStream Database::reader();
-	DataStream Database::writer();
+	FlowGroup(Poco::UInt8 id,Peer& peer,ServerData& data);
+	virtual ~FlowGroup();
 
 private:
-	Poco::Data::Session* _pSession;
-	
-	static Poco::RWLock	s_rwLock;
-	static std::string	s_connector;
-	static std::string	s_connectionString;
+	int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 };
-
-inline bool Database::Loaded() {
-	return !s_connector.empty();
-}
 
 
 } // namespace Cumulus

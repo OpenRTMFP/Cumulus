@@ -15,7 +15,7 @@
 	This file is a part of Cumulus.
 */
 
-#include "FlowNetConnection.h"
+#include "FlowConnection.h"
 #include "AMFReader.h"
 #include "AMFWriter.h"
 #include "Logs.h"
@@ -27,13 +27,13 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-FlowNetConnection::FlowNetConnection(Poco::UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,ServerData& data) : Flow(id,peerId,peerAddress,data) {
+FlowConnection::FlowConnection(Poco::UInt8 id,Peer& peer,ServerData& data) : Flow(id,peer,data) {
 }
 
-FlowNetConnection::~FlowNetConnection() {
+FlowConnection::~FlowConnection() {
 }
 
-int FlowNetConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
+int FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
 
 	char buff[MAX_SIZE_MSG];
 	AMFReader reader(request);
@@ -43,7 +43,7 @@ int FlowNetConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWr
 		case 0x01:
 			request.readRaw(buff,6);
 			response.writeRaw(buff,6);
-			response.writeRaw("\x02\x0a\x02");
+			response.writeRaw("\x02\x0a\x02",3);
 			request.readRaw(buff,6);
 			response.writeRaw(buff,6);
 			writer.write("_result");
@@ -70,10 +70,8 @@ int FlowNetConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWr
 
 			while(reader.available()) {
 				reader.read(tmp); // private host
-				data.addRoute(peerId,tmp);
+				peer.addPrivateAddress(SocketAddress(tmp));
 			}
-			// public host
-			data.addRoute(peerId,peerAddress.toString());
 
 			response.writeRaw("\x04\x00\x00\x00\x00\x00\x29\x00\x00",9); // Unknown!
 			response.write16(data.keepAliveServer);

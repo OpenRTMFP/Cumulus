@@ -24,7 +24,7 @@ namespace Cumulus {
 
 class FlowNull : public Flow {
 public:
-	FlowNull(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,ServerData& data);
+	FlowNull(Poco::UInt8 id,Peer& peer,ServerData& data);
 	virtual ~FlowNull();
 
 private:

@@ -31,7 +31,7 @@ public:
 	Cirrus(const std::string& url,Sessions& sessions);
 	virtual ~Cirrus();
 
-	const BLOB&			findPeerId(const BLOB& middlePeerId);
+	const Peer&						findPeer(const Peer& middlePeer);
 
 	const std::string&				url();
 	const Poco::Net::SocketAddress&	address();

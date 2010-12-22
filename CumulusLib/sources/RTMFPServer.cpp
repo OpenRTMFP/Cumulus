@@ -31,7 +31,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer(UInt16 keepAlivePeer,UInt16 keepAliveServer) : _terminate(false),_pCirrus(NULL),_sessions(2),_handshake(*this,_socket,_data),_data(keepAlivePeer,keepAliveServer) {
+RTMFPServer::RTMFPServer(UInt16 keepAliveServer,UInt16 keepAlivePeer) : _terminate(false),_pCirrus(NULL),_sessions(2),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -49,7 +49,7 @@ Session* RTMFPServer::findSession(PacketReader& reader,const SocketAddress& send
 	// Id session can't be egal to 0 (it's reserved to Handshake)
 	if(id==0) {
 		DEBUG("Handshaking");
-		_handshake.setPeerAddress(sender);
+		((SocketAddress&)_handshake.peer().address) = sender;
 		return &_handshake;
 	}
 	Session* pSession = _sessions.find(id);
@@ -143,41 +143,41 @@ void RTMFPServer::run() {
 }
 
 
-UInt32 RTMFPServer::createSession(UInt32 farId,const UInt8* peerId,const SocketAddress& peerAddress,const string& url,const UInt8* decryptKey,const UInt8* encryptKey) {
+UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const string& url,const UInt8* decryptKey,const UInt8* encryptKey) {
 	UInt32 id = 0;
 	RandomInputStream ris;
 	while(id==0 || _sessions.find(id))
 		ris.read((char*)(&id),4);
 
 	if(_pCirrus) {
-		_sessions.add(new Middle(id,farId,peerId,peerAddress,url,decryptKey,encryptKey,_socket,_data,*_pCirrus));
+		_sessions.add(new Middle(id,farId,peer,url,decryptKey,encryptKey,_socket,_data,*_pCirrus));
 		Sleep(500); // to wait the cirrus handshake 
 	} else
-		_sessions.add(new Session(id,farId,peerId,peerAddress,url,decryptKey,encryptKey,_socket,_data));
+		_sessions.add(new Session(id,farId,peer,url,decryptKey,encryptKey,_socket,_data));
 
 	return id;
 }
 
 
-Poco::UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const BLOB& peerWantedId,const Poco::Net::SocketAddress& peerAddress) {
+UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const Peer& peer,const UInt8* peerIdWanted) {
 
-	Session* pSessionConnected = _sessions.find(peerWantedId);
-	if(!pSessionConnected) {
+	Session* pSessionWanted = _sessions.find(peerIdWanted);
+	if(!pSessionWanted) {
 		CRITIC("UDP Hole punching error!");
 		return 0;
 	}
 
-	pSessionConnected->p2pHandshake(peerAddress);
+	pSessionWanted->p2pHandshake(peer);
 
 	/// Udp hole punching
 	if(!_pCirrus) {
 		// Normal mode
-		vector<string> routes;
-		_data.getRoutes(pSessionConnected->peerId(),routes);
-	
-		for(int i=0;i<routes.size();++i) {
+		response.write8(0x01);
+		response.writeAddress(pSessionWanted->peer().address);
+		vector<SocketAddress>::const_iterator it;
+		for(it=pSessionWanted->peer().privateAddress.begin();it!=pSessionWanted->peer().privateAddress.end();++it) {
 			response.write8(0x01);
-			response.writeAddress(SocketAddress(routes[i]));
+			response.writeAddress(*it);
 		}
 
 		return 0x71;
@@ -193,7 +193,7 @@ Poco::UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,c
 		Sessions::Iterator it;
 		for(it=_sessions.begin();it!=_sessions.end();++it) {
 			pMiddle = (Middle*)it->second;
-			if(memcmp(pMiddle->peerAddress().addr(),peerAddress.addr(),sizeof(struct sockaddr))==0)
+			if(memcmp(pMiddle->peer().address.addr(),peer.address.addr(),sizeof(struct sockaddr))==0)
 				break;
 		}
 		if(it==_sessions.end()) {
@@ -201,9 +201,9 @@ Poco::UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,c
 			return 0;
 		}
 
-		request.writeRaw(((Middle*)pSessionConnected)->middlePeerId().begin(),32);
+		request.writeRaw(((Middle*)pSessionWanted)->middlePeer().id,32);
 
-		pMiddle->pPeerAddressWanted = &pSessionConnected->peerAddress();
+		pMiddle->pPeerWanted = &pSessionWanted->peer();
 		request.writeRaw(tag);
 		
 		pMiddle->sendHandshakeToCirrus(0x30,request);

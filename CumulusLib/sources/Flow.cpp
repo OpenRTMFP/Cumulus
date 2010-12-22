@@ -45,7 +45,7 @@ private:
 };
 
 
-Flow::Flow(UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,ServerData& data) : id(id),_stage(0),peerId(peerId),data(data),peerAddress(peerAddress) {
+Flow::Flow(UInt8 id,Peer& peer,ServerData& data) : id(id),_stage(0),peer(peer),data(data) {
 }
 
 Flow::~Flow() {

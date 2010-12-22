@@ -15,7 +15,7 @@
 	This file is a part of Cumulus.
 */
 
-#include "FlowNetStream.h"
+#include "FlowGroup.h"
 #include "AMFReader.h"
 #include "AMFWriter.h"
 #include "Logs.h"
@@ -28,13 +28,13 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-FlowNetStream::FlowNetStream(Poco::UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,ServerData& data) : Flow(id,peerId,peerAddress,data) {
+FlowGroup::FlowGroup(Poco::UInt8 id,Peer& peer,ServerData& data) : Flow(id,peer,data) {
 }
 
-FlowNetStream::~FlowNetStream() {
+FlowGroup::~FlowGroup() {
 }
 
-int FlowNetStream::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
+int FlowGroup::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
 	char buff[MAX_SIZE_MSG];
 	AMFReader reader(request);
 	AMFWriter writer(response);
@@ -46,16 +46,19 @@ int FlowNetStream::requestHandler(UInt8 stage,PacketReader& request,PacketWriter
 
 			UInt32 size = request.read7BitValue();
 
-			BLOB groupId;
-			request.readRaw(groupId,size);
+			vector<UInt8> groupId(size);
+			request.readRaw(&groupId[0],size);
 
-			BLOB peerOwner;
-			if(data.addGroup(peerId,groupId,peerOwner))
+			Group& group = data.group(groupId);
+
+			Peer* pPeer = group.onePeer();
+			group.addPeer(peer);
+			if(!pPeer)
 				return 0;
 
 			response.writeRaw(buff,6);
 			response.writeRaw("\x03\x00\x0b",3);
-			response.writeRaw(peerOwner.begin(),peerOwner.size());
+			response.writeRaw(pPeer->id,32);
 
 			return 0x10;
 		}

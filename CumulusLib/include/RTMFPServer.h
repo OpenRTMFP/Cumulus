@@ -36,7 +36,7 @@ namespace Cumulus {
 
 class CUMULUS_API RTMFPServer : public Poco::Runnable,private Gateway {
 public:
-	RTMFPServer(Poco::UInt16 keepAlivePeer=10000,Poco::UInt16 keepAliveServer=15000);
+	RTMFPServer(Poco::UInt16 keepAliveServer=15000,Poco::UInt16 keepAlivePeer=10000);
 	virtual ~RTMFPServer();
 
 	void start();
@@ -47,8 +47,8 @@ public:
 private:
 	Session* findSession(PacketReader& reader,const Poco::Net::SocketAddress& sender);
 	void	 run();
-	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const BLOB& peerWantedId,const Poco::Net::SocketAddress& peerAddress);
-	Poco::UInt32	createSession(Poco::UInt32 farId,const Poco::UInt8* peerId,const Poco::Net::SocketAddress& peerAddress,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey);
+	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Peer& peer,const Poco::UInt8* peerIdWanted);
+	Poco::UInt32	createSession(Poco::UInt32 farId,const Peer& peer,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey);
 
 	Handshake					_handshake;
 

@@ -31,7 +31,6 @@ public:
 	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& socket,ServerData& data);
 	~Handshake();
 
-	void			setPeerAddress(const Poco::Net::SocketAddress& peerAddress);
 private:
 	void		packetHandler(PacketReader& packet);
 	Poco::UInt8	handshakeHandler(Poco::UInt8 id,PacketReader& request,PacketWriter& response);
@@ -44,10 +43,6 @@ private:
 
 	Gateway&		_gateway;
 };
-
-inline void	Handshake::setPeerAddress(const Poco::Net::SocketAddress& peerAddress) {
-	_peerAddress = peerAddress;
-}
 
 
 } // namespace Cumulus

@@ -24,7 +24,6 @@
 #include "RTMFP.h"
 #include "Flow.h"
 #include "Poco/Timestamp.h"
-#include "Poco/Net/SocketAddress.h"
 #include "Poco/Net/DatagramSocket.h"
 
 namespace Cumulus {
@@ -35,8 +34,7 @@ public:
 
 	Session(Poco::UInt32 id,
 			Poco::UInt32 farId,
-			const Poco::UInt8* peerId,
-			const Poco::Net::SocketAddress& peerAddress,
+			const Peer& peer,
 			const std::string& url,
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
@@ -49,12 +47,10 @@ public:
 
 	Poco::UInt32	id() const;
 	Poco::UInt32	farId() const;
+	const Peer& 	peer() const;
 	virtual bool	manage();
 
-	const BLOB&						peerId();
-	const Poco::Net::SocketAddress&	peerAddress();
-
-	void	p2pHandshake(const Poco::Net::SocketAddress& peerAddress);
+	void	p2pHandshake(const Peer& peer);
 
 	bool	decode(PacketReader& packet);
 
@@ -63,8 +59,7 @@ protected:
 
 	void			send(Poco::UInt8 marker,PacketWriter packet,bool forceSymetricEncrypt=false);
 
-	Poco::UInt32				_farId; // Protected for Middle session
-	Poco::Net::SocketAddress	_peerAddress; // Protected for Handshake session
+	Poco::UInt32	_farId; // Protected for Middle session
 
 private:
 	
@@ -75,33 +70,28 @@ private:
 
 	void				keepaliveHandler();
 
-	Poco::Timestamp		_timeUpdate;
-	ServerData&			_data;
+	Poco::Timestamp				_timeUpdate;
+	ServerData&					_data;
 
 	std::map<Poco::UInt8,Flow*> _flows;	
 
 	std::string					_url;
 	Poco::UInt32				_id;
-	BLOB						_peerId;
 
 	Poco::Net::DatagramSocket&	_socket;
 	AESEngine					_aesDecrypt;
 	AESEngine					_aesEncrypt;
+
+	Peer						_peer;
 };
 
 inline bool Session::decode(PacketReader& packet) {
 	return RTMFP::Decode(_aesDecrypt,packet);
 }
 
-
-inline const BLOB& Session::peerId() {
-	return _peerId;
+inline const Peer& Session::peer() const {
+	return _peer;
 }
-
-inline const Poco::Net::SocketAddress& Session::peerAddress() {
-	return _peerAddress;
-}
-
 
 inline Poco::UInt32 Session::id() const {
 	return _id;

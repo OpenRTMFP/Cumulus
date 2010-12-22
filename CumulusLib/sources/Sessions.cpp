@@ -48,15 +48,15 @@ Session* Sessions::add(Session* pSession) {
 	return _sessions[pSession->id()] = pSession;
 }
 
-Session* Sessions::find(const BLOB& peerId) {
+Session* Sessions::find(const Poco::UInt8* peerId) {
 	Iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
-		if(it->second->peerId()==peerId)
+		if(it->second->peer() == peerId)
 			return it->second;
 	}
 	char printPeerId[65];
 	MemoryOutputStream mos(printPeerId,65);
-	HexBinaryEncoder(mos).write((char*)peerId.begin(),32);
+	HexBinaryEncoder(mos).write((char*)peerId,32);
 	mos.put('\0');
 	WARN("Unknown session for a peerId of '%s'",printPeerId);
 	return NULL;

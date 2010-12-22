@@ -29,7 +29,7 @@ class Response;
 class Flow
 {
 public:
-	Flow(Poco::UInt8 id,const BLOB& peerId,const Poco::Net::SocketAddress& peerAddress,ServerData& data);
+	Flow(Poco::UInt8 id,Peer& peer,ServerData& data);
 	virtual ~Flow();
 
 	int request(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
@@ -37,17 +37,16 @@ public:
 	void acknowledgment(Poco::UInt8 stage,bool ack);
 	bool responseNotAck(PacketWriter& response);
 
-	const Poco::UInt8				id;
-	const BLOB&						peerId;
-	const Poco::Net::SocketAddress& peerAddress;
-	Poco::UInt8 stage() const;
-	ServerData&		data;
+	const Poco::UInt8	id;
+	Peer&				peer;
+	Poco::UInt8			stage() const;
+	ServerData&			data;
 	
 	
 private:
 	virtual int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response)=0;
 
-	Poco::UInt8 _stage;
+	Poco::UInt8						_stage;
 	std::map<Poco::UInt8,Response*> _responses;
 };
 

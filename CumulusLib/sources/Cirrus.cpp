@@ -41,18 +41,18 @@ Cirrus::~Cirrus() {
 }
 
 
-const BLOB& Cirrus::findPeerId(const BLOB& middlePeerId) {
+const Peer& Cirrus::findPeer(const Peer& middlePeer) {
 	Sessions::Iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
 		Middle* pMiddle = (Middle*)it->second;
-		if(pMiddle->middlePeerId()==middlePeerId)
-			return pMiddle->peerId();
+		if(pMiddle->middlePeer() == middlePeer)
+			return pMiddle->peer();
 	}
 	char printMiddlePeerId[65];
 	MemoryOutputStream mos(printMiddlePeerId,65);
-	HexBinaryEncoder(mos).write((char*)middlePeerId.begin(),32); mos.put('\0');
-	ERROR("No peer id find for midde id '%s'",printMiddlePeerId);
-	return middlePeerId;
+	HexBinaryEncoder(mos).write((char*)middlePeer.id,32); mos.put('\0');
+	ERROR("No peer find for midde peer '%s'",printMiddlePeerId);
+	return middlePeer;
 }
 
 

@@ -18,26 +18,23 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Database.h"
-#include "BLOB.h"
+#include "Group.h"
 
 namespace Cumulus {
 
 class CUMULUS_API ServerData
 {
 public:
-	ServerData(Poco::UInt16 keepAlivePeer,Poco::UInt16 keepAliveServer);
+	ServerData(Poco::UInt16 keepAliveServer,Poco::UInt16 keepAlivePeer);
 	virtual ~ServerData();
 
-	void addRoute(const BLOB& peerId,const std::string& route);
-	bool addGroup(const BLOB& peerId,const BLOB& groupId,BLOB& peerOwner);
-	void getRoutes(const BLOB& peerId,std::vector<std::string>& routes);
+	Group& group(const std::vector<Poco::UInt8>& id);
 
 	const Poco::UInt16 keepAlivePeer;
 	const Poco::UInt16 keepAliveServer;
 
 private:
-	Database _database;
+	std::list<Group*>				_groups;
 	
 };
 

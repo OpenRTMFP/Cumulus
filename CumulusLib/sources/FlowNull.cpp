@@ -24,7 +24,7 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-FlowNull::FlowNull(UInt8 id,const BLOB& peerId,const SocketAddress& peerAddress,ServerData& data) : Flow(id,peerId,peerAddress,data) {
+FlowNull::FlowNull(UInt8 id,Peer& peer,ServerData& data) : Flow(id,peer,data) {
 }
 
 FlowNull::~FlowNull() {
