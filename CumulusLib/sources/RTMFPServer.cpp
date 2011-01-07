@@ -31,7 +31,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer(UInt16 keepAliveServer,UInt16 keepAlivePeer) : _terminate(false),_pCirrus(NULL),_sessions(2),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer) {
+RTMFPServer::RTMFPServer(UInt16 keepAliveServer,UInt16 keepAlivePeer) : _terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -69,9 +69,17 @@ void RTMFPServer::start(UInt16 port,const string& cirrusUrl) {
 		return;
 	}
 	_port = port;
+	_sessions.freqManage(2);
 	if(!cirrusUrl.empty()) {
-		INFO("Mode 'man in the middle' activated : the exchange bypass to '%s'",cirrusUrl.c_str())
-		_pCirrus = new Cirrus(cirrusUrl,_sessions);
+		try {
+			URI uri(cirrusUrl);
+			SocketAddress address(uri.getHost(),uri.getPort());
+			_pCirrus = new Cirrus(address,uri.getPathAndQuery(),_sessions);
+			INFO("Mode 'man in the middle' activated : the exchange bypass to '%s'",cirrusUrl.c_str());
+			_sessions.freqManage(0); // no waiting, direct process in the middle case!
+		} catch(Exception& ex) {
+			ERROR("Mode 'man in the middle' impossible : %s",ex.displayText().c_str());
+		}
 	}
 	_terminate = false;
 	_mainThread.start(*this);
@@ -150,8 +158,11 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const string& ur
 		ris.read((char*)(&id),4);
 
 	if(_pCirrus) {
-		_sessions.add(new Middle(id,farId,peer,url,decryptKey,encryptKey,_socket,_data,*_pCirrus));
-		Sleep(500); // to wait the cirrus handshake 
+		Middle* pMiddle = new Middle(id,farId,peer,url,decryptKey,encryptKey,_socket,_data,*_pCirrus);
+		_sessions.add(pMiddle);
+		DEBUG("500ms sleeping to wait cirrus handshaking");
+		Sleep(500); // to wait the cirrus handshake
+		pMiddle->manage();
 	} else
 		_sessions.add(new Session(id,farId,peer,url,decryptKey,encryptKey,_socket,_data));
 
@@ -183,10 +194,6 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const P
 		return 0x71;
 	} else {
 		// Just to make working the man in the middle mode !
-		
-		PacketWriter request(12);
-		request.write8(0x22);request.write8(0x21);
-		request.write8(0x0F);
 
 		// find the flash client equivalence
 		Middle* pMiddle = NULL;
@@ -201,12 +208,16 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const P
 			return 0;
 		}
 
+		PacketWriter& request = pMiddle->handshaker();
+		request.write8(0x22);request.write8(0x21);
+		request.write8(0x0F);
+
 		request.writeRaw(((Middle*)pSessionWanted)->middlePeer().id,32);
 
 		pMiddle->pPeerWanted = &pSessionWanted->peer();
 		request.writeRaw(tag);
 		
-		pMiddle->sendHandshakeToCirrus(0x30,request);
+		pMiddle->sendHandshakeToCirrus(0x30);
 		// no response here!
 	}
 	

@@ -26,9 +26,8 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Sessions::Sessions(UInt8 freqManage) : _freqManage(freqManage*1000000) {
-
-		
+Sessions::Sessions() {
+	freqManage(2); // 2 sec by default
 }
 
 Sessions::~Sessions() {
@@ -45,6 +44,7 @@ Session* Sessions::add(Session* pSession) {
 		ERROR("A session exists yet with the same id '%u'",pSession->id());
 		return NULL;
 	}
+	NOTE("Session %u created",pSession->id());
 	return _sessions[pSession->id()] = pSession;
 }
 
@@ -69,15 +69,19 @@ Session* Sessions::find(UInt32 id) {
 }
 
 void Sessions::manage() {
-	if(_timeLastManage.isElapsed(_freqManage)) {
-		_timeLastManage.update();
-		map<UInt32,Session*>::const_iterator it;
-		for(it=_sessions.begin();it!=_sessions.end();++it) {
-			if(!it->second->manage()) {
-				delete it->second;
-				_sessions.erase(it);
-			}
+	if(!_timeLastManage.isElapsed(_freqManage))
+		return;
+	_timeLastManage.update();
+	map<UInt32,Session*>::const_iterator it=_sessions.begin();
+	while(it!=_sessions.end()) {
+		it->second->manage();
+		if(it->second->die()) {
+			NOTE("Session %u died",it->second->id());
+			delete it->second;
+			_sessions.erase(it++);
+			continue;
 		}
+		it++;
 	}
 }
 

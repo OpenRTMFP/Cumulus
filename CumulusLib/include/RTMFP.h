@@ -20,11 +20,13 @@
 #include "Cumulus.h"
 #include "PacketReader.h"
 #include "AESEngine.h"
+#include "Poco/Timestamp.h"
 #include <openssl/dh.h>
 
 namespace Cumulus {
 
 #define RTMFP_SYMETRIC_KEY (Poco::UInt8*)"Adobe Systems 02"
+#define RTMFP_DEFAULT_PORT 1935
 
 class RTMFP
 {
@@ -44,12 +46,13 @@ public:
 	static void						EndDiffieHellman(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt8* sharedSecret);
 
 	static void						ComputeAsymetricKeys(const Poco::UInt8* sharedSecret,
-														 Poco::UInt8* requestKey,
-														 Poco::UInt8* responseKey,
 														 const Poco::UInt8* serverPubKey,
 														 const std::string& serverSignature,
-														 const std::string& clientCertificat);
-	static Poco::UInt16				Timestamp();
+														 const std::string& clientCertificat,
+														 Poco::UInt8* requestKey,
+														 Poco::UInt8* responseKey);
+	static Poco::UInt16				TimeNow();
+	static Poco::UInt16				Time(Poco::Timestamp::TimeVal timeVal);
 
 private:
 
@@ -66,6 +69,10 @@ inline bool RTMFP::Decode(PacketReader& packet) {
 
 inline void RTMFP::Encode(PacketWriter packet) {
 	Encode(s_aesEncrypt,packet);
+}
+
+inline Poco::UInt16 RTMFP::TimeNow() {
+	return Time(Poco::Timestamp().epochMicroseconds());
 }
 
 }  // namespace Cumulus

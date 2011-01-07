@@ -39,14 +39,53 @@ MemoryStreamBuf::~MemoryStreamBuf() {
 void MemoryStreamBuf::position(streampos pos) {
 	written(); // Save nb char written
 	setp(_pBuffer,_pBuffer + _bufferSize);
+	if(pos<0)
+		pos = 0;
+	else if(pos>=_bufferSize)
+		pos = _bufferSize-1;
 	pbump((int)pos);
 	setg(_pBuffer,_pBuffer+pos,_pBuffer + _bufferSize);
 }
 
 void MemoryStreamBuf::resize(streamsize newSize) {
+	if(newSize<0)
+		return;
 	_bufferSize = newSize;
-	setg(_pBuffer,gCurrent(),_pBuffer + _bufferSize);
+	int pos = gCurrent()-_pBuffer;
+	if(pos>=_bufferSize)
+		pos = _bufferSize-1;
+	setg(_pBuffer,_pBuffer+pos,_pBuffer + _bufferSize);
+	pos = pCurrent()-_pBuffer;
+	if(pos>=_bufferSize)
+		pos = _bufferSize-1;
 	setp(_pBuffer,_pBuffer + _bufferSize);
+	pbump(pos);
+	if(_written>=_bufferSize)
+		_written = _bufferSize-1;
+}
+
+void MemoryStreamBuf::clip(streampos offset) {
+	if(offset>=_bufferSize)
+		offset = _bufferSize-1;
+
+	int gpos = gCurrent()-_pBuffer;
+	int ppos = pCurrent()-_pBuffer;
+
+	_pBuffer += offset;
+	_bufferSize -= offset;
+	
+	if(gpos>=_bufferSize)
+		gpos = _bufferSize-1;
+	if(ppos>=_bufferSize)
+		ppos = _bufferSize-1;
+
+	setg(_pBuffer,_pBuffer+gpos,_pBuffer + _bufferSize);
+
+	setp(_pBuffer,_pBuffer + _bufferSize);
+	pbump(ppos);
+
+	if(_written>=_bufferSize)
+		_written = _bufferSize-1;
 }
 
 streamsize MemoryStreamBuf::written(streamsize size) {
@@ -83,11 +122,7 @@ MemoryIOS::MemoryIOS(MemoryIOS& other):_buf(other._buf) {
 MemoryIOS::~MemoryIOS() {
 }
 
-void MemoryIOS::reset(streampos newPos,streamsize newSize) {
-	if(newSize>0)
-		rdbuf()->resize(newSize);
-	if(newPos>=rdbuf()->size())
-		newPos = rdbuf()->size()-1;
+void MemoryIOS::reset(streampos newPos) {
 	rdbuf()->position(newPos);
 	clear();
 }

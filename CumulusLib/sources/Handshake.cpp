@@ -67,13 +67,12 @@ void Handshake::packetHandler(PacketReader& packet) {
 	
 	UInt16 time = packet.next16();
 	UInt8 id = packet.next8();
-	UInt16 length = packet.next16();
-	packet.reset(packet.position(),packet.position()+length);
+	packet.shrink(packet.next16()); // length
 
-	PacketWriter packetOut(9); // 9 for future marker, timestamp, crc 2 bytes and id session 4 bytes
+	PacketWriter& packetOut = writer();
 	UInt8 idResponse=0;
 	{
-		PacketWriter response = packetOut;
+		PacketWriter response(packetOut);
 		response.skip(3);
 		idResponse = handshakeHandler(id,packet,response);
 		if(idResponse==0)
@@ -83,7 +82,7 @@ void Handshake::packetHandler(PacketReader& packet) {
 	packetOut << (UInt8)idResponse;
 	packetOut << (UInt16)(packetOut.size()-packetOut.position()-2);
 
-	send(marker,packetOut,true);
+	send(true);
 	// reset farid to 0!
 	_farId=0;
 }
@@ -110,7 +109,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 
 			// UDP hole punching
 
-			if(type == 0x0f) // mode man in the middle
+			if(type == 0x0f)
 				return _gateway.p2pHandshake(tag,response,peer(),(const UInt8*)epd.c_str());
 
 			if(type == 0x0a){ // TODO vérifier ça!
@@ -143,7 +142,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 
 			map<string,Cookie*>::iterator itCookie = _cookies.find(cookie.c_str());
 			if(itCookie==_cookies.end()) {
-				ERROR("Handshake cookie '0x38' unknown");
+				ERROR("Handshake cookie '%s' unknown",cookie.c_str());
 				return 0;
 			}
 
@@ -173,7 +172,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			// Compute Keys
 			UInt8 requestKey[AES_KEY_SIZE];
 			UInt8 responseKey[AES_KEY_SIZE];
-			RTMFP::ComputeAsymetricKeys(sharedSecret,requestKey,responseKey,pubKey,_signature,farCertificat);
+			RTMFP::ComputeAsymetricKeys(sharedSecret,pubKey,_signature,farCertificat,requestKey,responseKey);
 
 			// RESPONSE
 			response << _gateway.createSession(_farId,peer(),itCookie->second->url,requestKey,responseKey);

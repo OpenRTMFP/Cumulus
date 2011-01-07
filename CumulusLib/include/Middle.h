@@ -41,19 +41,23 @@ public:
 
 	const Peer&			middlePeer();
 
-	void				cirrusHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
 	void				cirrusPacketHandler(PacketReader& packet);
+
+	PacketWriter&		handshaker();
+	void				sendHandshakeToCirrus(Poco::UInt8 type);
 
 	const Peer*			pPeerWanted;
 
-	void				sendHandshakeToCirrus(Poco::UInt8 type,PacketWriter& request);
+	void				manage();
+	
 private:
-	bool				manage();
-	void				sendToCirrus(Poco::UInt32 id,PacketWriter& request);
 	
+
+	void				cirrusHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
 	
-	void		packetHandler(PacketReader& packet);
-	Poco::UInt8 cirrusHandshakeHandler(Poco::UInt8 type,PacketReader& response,PacketWriter request);
+	PacketWriter&		requester();
+	void				packetHandler(PacketReader& packet);
+	void				sendToCirrus(Poco::UInt32 id);
 
 	AESEngine*				_pMiddleAesDecrypt;
 	AESEngine*				_pMiddleAesEncrypt;
@@ -68,12 +72,15 @@ private:
 	Poco::Timespan				_span;
 	Poco::UInt8					_buffer[MAX_SIZE_MSG];
 
+	bool						_firstResponse;
+
 };
 
 
 inline const Peer& Middle::middlePeer() {
 	return _middlePeer;
 }
+
 
 
 } // namespace Cumulus

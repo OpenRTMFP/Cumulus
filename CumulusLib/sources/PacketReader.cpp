@@ -16,6 +16,7 @@
 */
 
 #include "PacketReader.h"
+#include "Logs.h"
 
 using namespace std;
 using namespace Poco;
@@ -36,6 +37,18 @@ PacketReader::PacketReader(PacketWriter& writer) : _memory((char*)writer.begin()
 
 
 PacketReader::~PacketReader() {
+}
+
+void PacketReader::shrink(int rest) {
+	if(rest<0) {
+		ERROR("rest must be a positive value");
+		return;
+	}
+	if(rest>available()) {
+		WARN("rest '%d' more upper than available '%d' bytes",rest,available());
+		rest = available();
+	}
+	_memory.resize(position()+rest);
 }
 
 UInt8 PacketReader::next8() {

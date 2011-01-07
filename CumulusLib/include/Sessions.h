@@ -29,7 +29,7 @@ public:
 
 	typedef std::map<Poco::UInt32,Session*>::const_iterator Iterator;
 
-	Sessions(Poco::UInt8 freqManage);
+	Sessions();
 	virtual ~Sessions();
 
 	Session* find(Poco::UInt32 id);
@@ -41,19 +41,24 @@ public:
 	Iterator end() const;
 	
 	void	manage();
+
+	void	freqManage(Poco::UInt8 freq);
 protected:
 	
 
 private:
 	std::map<Poco::UInt32,Session*>	_sessions;
 	Poco::Timestamp					_timeLastManage;
-	Poco::Timestamp::TimeDiff		_freqManage;
+	int								_freqManage;
 };
 
 inline Sessions::Iterator Sessions::begin() const {
 	return _sessions.begin();
 }
 
+inline void Sessions::freqManage(Poco::UInt8 freq) {
+	_freqManage = freq*1000000;
+}
 
 inline Sessions::Iterator Sessions::end() const {
 	return _sessions.end();

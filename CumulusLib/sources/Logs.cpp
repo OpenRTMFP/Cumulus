@@ -26,6 +26,7 @@ namespace Cumulus {
 Logger* Logs::s_pLogger(NULL);
 string	Logs::s_file;
 bool	Logs::s_dump(false);
+bool	Logs::s_middle(false);
 UInt8	Logs::s_level(Logger::PRIO_INFO); // default log level
 
 Logs::Logs() {

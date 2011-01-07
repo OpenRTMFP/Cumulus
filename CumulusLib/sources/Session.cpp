@@ -37,7 +37,7 @@ Session::Session(UInt32 id,
 				 DatagramSocket& socket,
 				 ServerData& data) : 
 	_id(id),_farId(farId),_socket(socket),
-	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_url(url),_data(data),_peer(peer) {
+	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_url(url),_data(data),_peer(peer),_die(false),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG) {
 
 }
 
@@ -50,12 +50,26 @@ Session::~Session() {
 	_flows.clear();
 }
 
-bool Session::manage() {
+PacketWriter& Session::writer() {
+	_packetOut.clear(11);  // 11 for future crc 2 bytes, id session 4 bytes, marker 1 byte, timestamp 2 bytes and timecho 2 bytes 
+	return _packetOut;
+}
+
+void Session::manage() {
+	if(die())
+		return;
 	// TODO _timeUpdate "update this time and if it's more than a laps time reference, delete session!"
-//	map<UInt8,Flow*>::const_iterator it;
-//	for(it=_flows.begin();it!=_flows.end();++it)
+	map<UInt8,Flow*>::const_iterator it;
+	for(it=_flows.begin();it!=_flows.end();++it) {
 //		it->second->manage();
-	return true;
+	}
+}
+
+void Session::fail() {
+	PacketWriter& packet = writer();
+	packet.write8(0x0C);
+	packet.write16(0x00);
+	send();
 }
 
 Flow& Session::flow(Poco::UInt8 id) {
@@ -66,11 +80,10 @@ Flow& Session::flow(Poco::UInt8 id) {
 
 void Session::p2pHandshake(const Peer& peer) {
 	DEBUG("Peer newcomer address send to peer '%u' connected",id());
-	PacketWriter packet(9);
-	packet << RTMFP::Timestamp();
-	packet.write8(0x0F);
+	PacketWriter& packetOut = writer();
+	packetOut.write8(0x0F);
 	{
-		PacketWriter content = packet;
+		PacketWriter content(packetOut);
 		content.skip(2);
 		content.write8(34);
 		content.write8(33);
@@ -84,31 +97,44 @@ void Session::p2pHandshake(const Peer& peer) {
 		content.writeRandom(16); // tag
 	}
 
-	packet.write16(packet.size()-packet.position()-2);
-	send(0x4e,packet);
+	packetOut.write16(packetOut.size()-packetOut.position()-2);
+	send();
 }
 
-void Session::send(UInt8 marker,PacketWriter packet,bool forceSymetricEncrypt) {
-	packet.reset(6);
-	packet << marker;
-	packet << RTMFP::Timestamp();
+void Session::send(bool symetric) {
+	_packetOut.reset(6);
+
+	bool timeEcho = true;
+
+	// After 30 sec, send packet without echo time
+	if(symetric || _recvTimestamp.isElapsed(30000000)) {
+		timeEcho = false;
+		_packetOut.clip(2);
+	}
+
+	UInt8 marker = symetric ? 0x0b : (timeEcho ? 0x4e : 0x4a);
+
+	_packetOut << marker;
+	_packetOut << RTMFP::TimeNow();
+	if(timeEcho)
+		_packetOut.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
 
 	if(Logs::Dump()) {
 		printf("Response:\n");
-		Util::Dump(packet,6,Logs::DumpFile());
+		Util::Dump(_packetOut,6,Logs::DumpFile());
 	}
 
-	if(_farId==0 || forceSymetricEncrypt)
-		RTMFP::Encode(packet);
+	if(symetric)
+		RTMFP::Encode(_packetOut);
 	else
-		RTMFP::Encode(_aesEncrypt,packet);
+		RTMFP::Encode(_aesEncrypt,_packetOut);
 
-	RTMFP::Pack(packet,_farId);
+	RTMFP::Pack(_packetOut,_farId);
 
 	try {
 		// TODO remake? without retry (but flow)
 		bool retry=false;
-		while(_socket.sendTo(packet.begin(),packet.size(),_peer.address)!=packet.size()) {
+		while(_socket.sendTo(_packetOut.begin(),_packetOut.size(),_peer.address)!=_packetOut.size()) {
 			if(retry) {
 				ERROR("Socket send error on session '%u' : all data were not sent",_id);
 				break;
@@ -122,19 +148,25 @@ void Session::send(UInt8 marker,PacketWriter packet,bool forceSymetricEncrypt) {
 
 void Session::packetHandler(PacketReader& packet) {
 
+	_recvTimestamp.update();
+
 	// Read packet
 	UInt8 marker = packet.next8();
-	if(marker!=0x8d &&  marker!=0x0d) {
-		ERROR("Packet marker unknown : %02x",marker);
-		return;
+	
+	_timeSent = packet.next16();
+
+	// with time echo
+	if((marker|0xF0) == 0xFD) {
+		UInt16 ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.next16();
+		DEBUG("Ping : %hu",ping);
 	}
 
-	UInt16 sendTime = packet.next16();
-	UInt16 timeEcho = packet.next16();
+	if(marker!=0x8d &&  marker!=0x0d && marker!=0x89 &&  marker!=0x09)
+		WARN("Packet marker unknown : %02x",marker);
+
 
 	// Begin a possible response
-	PacketWriter packetOut(9); // 9 for future marker, timestamp, crc 2 bytes and id session 4 bytes
-	packetOut << sendTime; // echo time response
+	PacketWriter& packetOut = writer();
 
 	UInt8 type = packet.available()>0 ? packet.next8() : 0xFF;
 	bool answer = false;
@@ -147,13 +179,13 @@ void Session::packetHandler(PacketReader& packet) {
 		{
 			PacketReader request(packet.current(),size);
 
-			PacketWriter response = packetOut;
+			PacketWriter response(packetOut);
 			response.skip(3); // skip the futur possible id and length response
 
 			switch(type) {
 				case 0x4c :
 					/// Session death!
-					// TODO
+					_die = true;
 					break;
 				case 0x01 :
 					/// KeepAlive
@@ -234,7 +266,7 @@ void Session::packetHandler(PacketReader& packet) {
 	}
 
 	if(answer)
-		send(0x4e,packetOut);
+		send();
 }
 
 

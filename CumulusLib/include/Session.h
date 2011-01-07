@@ -48,7 +48,8 @@ public:
 	Poco::UInt32	id() const;
 	Poco::UInt32	farId() const;
 	const Peer& 	peer() const;
-	virtual bool	manage();
+	bool			die();
+	virtual void	manage();
 
 	void	p2pHandshake(const Peer& peer);
 
@@ -56,14 +57,21 @@ public:
 
 protected:
 	
+	PacketWriter&	writer();
+	void			send(bool symetric=false);
 
-	void			send(Poco::UInt8 marker,PacketWriter packet,bool forceSymetricEncrypt=false);
+	void				fail();
 
-	Poco::UInt32	_farId; // Protected for Middle session
+	Poco::UInt32			_farId; // Protected for Middle session
+	PacketWriter			_packetOut; // Protected for Middle session
+	Poco::Timestamp			_recvTimestamp; // Protected for Middle session
+	Poco::UInt16			_timeSent; // Protected for Middle session
+	bool					_die; // Protected for Middle session
 
 private:
 	
 	
+
 	Flow*				createFlow(Poco::UInt8 id);
 	Flow&				flow(Poco::UInt8 id);
 	
@@ -83,7 +91,9 @@ private:
 	AESEngine					_aesEncrypt;
 
 	Peer						_peer;
+	Poco::UInt8					_buffer[MAX_SIZE_MSG];
 };
+
 
 inline bool Session::decode(PacketReader& packet) {
 	return RTMFP::Decode(_aesDecrypt,packet);
@@ -99,6 +109,10 @@ inline Poco::UInt32 Session::id() const {
 
 inline Poco::UInt32 Session::farId() const {
 	return _farId;
+}
+
+inline bool Session::die() {
+	return _die;
 }
 
 

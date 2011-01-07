@@ -21,7 +21,6 @@
 #include "MemoryStream.h"
 #include "Poco/BinaryWriter.h"
 #include "Poco/StreamCopier.h"
-#include "Poco/Timestamp.h"
 #include "Logs.h"
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -155,7 +154,7 @@ void RTMFP::EndDiffieHellman(DH* pDH,const UInt8* farPubKey,UInt8* sharedSecret)
 	DH_free(pDH);
 }
 
-void RTMFP::ComputeAsymetricKeys(const UInt8* sharedSecret,UInt8* requestKey,UInt8* responseKey,const UInt8* serverPubKey,const string& serverSignature,const string& clientCertificat) {
+void RTMFP::ComputeAsymetricKeys(const UInt8* sharedSecret,const UInt8* serverPubKey,const string& serverSignature,const string& clientCertificat,UInt8* requestKey,UInt8* responseKey) {
 	int bufSize = serverSignature.size()+128;
 	UInt8* buf = new UInt8[bufSize]();
 	memcpy(buf,serverSignature.c_str(),serverSignature.size());
@@ -176,10 +175,10 @@ void RTMFP::ComputeAsymetricKeys(const UInt8* sharedSecret,UInt8* requestKey,UIn
 	HMAC(EVP_sha256(),sharedSecret,128,md2,sizeof(md2),responseKey,NULL);
 }
 
-UInt16 RTMFP::Timestamp() {
-	UInt32 now = (UInt32)(Poco::Timestamp().epochMicroseconds()/1000);
-	return (now/TIMESTAMP_SCALE);
+UInt16 RTMFP::Time(Timestamp::TimeVal timeVal) {
+	return (UInt16)(timeVal/(1000*TIMESTAMP_SCALE));
 }
+
 
 
 

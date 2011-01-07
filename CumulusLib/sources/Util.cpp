@@ -29,18 +29,18 @@ Util::Util() {
 Util::~Util() {
 }
 
-void Util::Dump(PacketReader& packet,const string& fileName,bool justFile) {
-	Dump(packet.current(),packet.available(),fileName,justFile);
+void Util::Dump(PacketReader& packet,const string& fileName) {
+	Dump(packet.current(),packet.available(),fileName);
 }
-void Util::Dump(PacketWriter& packet,const string& fileName,bool justFile) {
-	Dump(packet.begin(),packet.size(),fileName,justFile);
+void Util::Dump(PacketWriter& packet,const string& fileName) {
+	Dump(packet.begin(),packet.size(),fileName);
 }
-void Util::Dump(PacketWriter& packet,UInt16 offset,const string& fileName,bool justFile) {
-	Dump(packet.begin()+offset,packet.size()-offset,fileName,justFile);
+void Util::Dump(PacketWriter& packet,UInt16 offset,const string& fileName) {
+	Dump(packet.begin()+offset,packet.size()-offset,fileName);
 }
 
 
-void Util::Dump(const UInt8* data,int size,const string& fileName,bool justFile) {
+void Util::Dump(const UInt8* data,int size,const string& fileName) {
 	int i = 0;
 	int c = 0;
 	unsigned char b;
@@ -48,31 +48,24 @@ void Util::Dump(const UInt8* data,int size,const string& fileName,bool justFile)
 		c = 0;
 		while ( (c < 16) && (i+c < size) ) {
 			b = data[i+c];
-			if(!justFile)
-				printf("%X%X ", b/16, b & 0x0f );
+			printf("%X%X ", b/16, b & 0x0f );
 			c++;
 		}
-		while (c++ < 16) {
-			if(!justFile)
-				printf("   ");
-		}
+		while (c++ < 16)
+			printf("   ");
 		c = 0;
 		while ( (c < 16) && (i+c < size) ) {
 			b = data[i+c];
-			if(!justFile) {
-				if (b > 31)
-					printf("%c", (char)b );
-				else
-					printf(".");
-			}
+			if (b > 31)
+				printf("%c", (char)b );
+			else
+				printf(".");
 			c++;
 		}
 		i += 16;
-		if(!justFile)
-			printf("\n");
-	}
-	if(!justFile)
 		printf("\n");
+	}
+	printf("\n");
 	if(!fileName.empty()) {
 		FileOutputStream fos(fileName,std::ios::app | std::ios::out);
 		fos.write((char*)data,size);

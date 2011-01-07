@@ -28,11 +28,13 @@ public:
 	static void			SetLogger(Logger& logger);
 	static void			SetLevel(Poco::UInt8 level);
 	static void			Dump(bool activate,const std::string& file="");
+	static void			Middle(bool activate);
 
 
 #if defined(CUMULUS_EXPORTS)
 	static Logger*				GetLogger();
 	static bool					Dump();
+	static bool					Middle();
 	static const std::string&	DumpFile();
 	static Poco::UInt8			Level();
 #endif
@@ -45,6 +47,7 @@ private:
 	static Logger*	s_pLogger;
 
 	static bool			s_dump;
+	static bool			s_middle;
 	static std::string	s_file;
 	static Poco::UInt8  s_level;
 };
@@ -54,11 +57,19 @@ inline void Logs::SetLogger(Logger& logger) {
 	s_pLogger = &logger;
 }
 
+inline void Logs::Middle(bool activate) {
+	s_middle = activate;
+}
+
 
 #if defined(CUMULUS_EXPORTS)
 
 	inline bool Logs::Dump() {
 		return s_dump;
+	}
+
+	inline bool Logs::Middle() {
+		return s_middle;
 	}
 
 	inline Poco::UInt8 Logs::Level() {

@@ -41,7 +41,7 @@ void Group::removePeer(Peer& peer) {
 	list<Group*>::const_iterator itG;
 	if(peer.isIn(*this,itG)) {
 		peer._groups.erase(itG);
-		list<Peer*>::const_iterator it =_peers.begin();
+		list<Peer*>::const_iterator it;
 		for(it =_peers.begin();it != _peers.end();++it) {
 			if((**it) == peer) {
 				_peers.erase(it);

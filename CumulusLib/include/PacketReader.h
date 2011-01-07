@@ -45,7 +45,8 @@ public:
 	Poco::UInt8*	current();
 	int				position();
 
-	void			reset(int newPos=0,int newSize=0);
+	void			reset(int newPos=0);
+	void			shrink(int rest);
 	void			skip(int size);
 private:
 	MemoryInputStream _memory;
@@ -78,8 +79,8 @@ inline int PacketReader::position() {
 	return _memory.current()-_memory.begin();
 }
 
-inline void PacketReader::reset(int newPos,int newSize) {
-	_memory.reset(newPos,newSize);
+inline void PacketReader::reset(int newPos) {
+	_memory.reset(newPos);
 }
 
 inline void PacketReader::skip(int size) {

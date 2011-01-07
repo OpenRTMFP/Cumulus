@@ -67,6 +67,10 @@ protected:
 				.repeatable(false));
 
 		options.addOption(
+			Option("middle", "m", "enables middle traces if dump option is activated. Otherwise it does nothing.",false)
+				.repeatable(false));
+
+		options.addOption(
 			Option("log", "l", "log level argument, must be beetween 0 and 8 : nothing, fatal, critic, error, warn, note, info, debug, trace")
 				.required(false)
 				.argument("level")
@@ -82,6 +86,8 @@ protected:
 			_cirrusUrl = value;
 		else if (name == "dump")
 			Logs::Dump(true,value);
+		else if (name == "middle")
+			Logs::Middle(true);
 		else if (name == "log")
 			Logs::SetLevel(atoi(value.c_str()));
 	}
@@ -104,7 +110,7 @@ protected:
 		}
 		else {
 			RTMFPServer server(config().getInt("keepAliveServer",15000),config().getInt("keepAlivePeer",10000));
-			server.start(config().getInt("port", CUMULUS_DEFAULT_PORT),_cirrusUrl);
+			server.start(config().getInt("port", RTMFP_DEFAULT_PORT),_cirrusUrl);
 			// wait for CTRL-C or kill
 			waitForTerminationRequest();
 			// Stop the HTTPServer

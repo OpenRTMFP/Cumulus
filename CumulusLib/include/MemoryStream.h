@@ -41,6 +41,7 @@ public:
 	std::streamsize written(std::streamsize size=-1);
 	std::streamsize size();
 	void			resize(std::streamsize newSize);
+	void			clip(std::streampos offset);
 	char*			begin();
 	void			position(std::streampos pos=0);
 	char*			gCurrent();
@@ -93,7 +94,9 @@ public:
 	MemoryStreamBuf* rdbuf();
 		/// Returns a pointer to the underlying streambuf.
 
-	void			reset(std::streampos newPos=0,std::streamsize newSize=0);
+	void			reset(std::streampos newPos=0);
+	void			resize(std::streamsize newSize);
+	void			clip(std::streampos pos);
 	char*			begin();
 	void			skip(std::streamsize size);
 		
@@ -104,6 +107,12 @@ private:
 /// inlines
 inline char* MemoryIOS::begin() {
 	return rdbuf()->begin();
+}
+inline void MemoryIOS::resize(std::streamsize newSize) {
+	rdbuf()->resize(newSize);
+}
+inline void MemoryIOS::clip(std::streampos pos) {
+	rdbuf()->clip(pos);
 }
 inline void MemoryIOS::skip(std::streamsize size) {
 	rdbuf()->skip(size);

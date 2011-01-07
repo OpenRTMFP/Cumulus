@@ -5,7 +5,7 @@ Cumulus
 Cumulus is a crossplatform "rendezvous" service to assist P2P connection in RTMFP peer's communication. In RTMFP protocol, Cumulus plays the server role.
 Cumulus can be used as a library to include in your "publisher" software, or be installed as a service on your server computer.
 
-We remind you that Cumulus is licensed under the [GNU General Public License] and **can't be used in any commercial project** (see [license]).
+We remind you that Cumulus is licensed under the [GNU General Public License], so **CumulusLib can't be linked with any closed source project** (see [license]).
 
 Status
 ------------------------------------
@@ -28,6 +28,9 @@ cirrus url to activate a "man-in-the-middle" mode in bypassing flash packets to 
 
 - **dump[=file]**,
 enables packet traces in the console. Optionnal *file* argument also allows a file dumping. Often used with *cirrus=url* option to observe flash/cirrus exchange.
+
+- **middle**,
+enables middle traces if dump option is activated. Otherwise it does nothing.
 
 - **log=level**,
 log level argument beetween 0 and 8 : none, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (note), all logs until info level are displayed.

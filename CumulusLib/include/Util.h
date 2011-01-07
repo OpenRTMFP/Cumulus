@@ -26,10 +26,10 @@ public:
 	Util();
 	~Util();
 
-	static void Dump(const Poco::UInt8* data,int size,const std::string& fileName="",bool justFile=false);
-	static void Dump(PacketReader& packet,const std::string& fileName="",bool justFile=false);
-	static void Dump(PacketWriter& packet,const std::string& fileName="",bool justFile=false);
-	static void Dump(PacketWriter& packet,Poco::UInt16 offset,const std::string& fileName="",bool justFile=false);
+	static void Dump(const Poco::UInt8* data,int size,const std::string& fileName="");
+	static void Dump(PacketReader& packet,const std::string& fileName="");
+	static void Dump(PacketWriter& packet,const std::string& fileName="");
+	static void Dump(PacketWriter& packet,Poco::UInt16 offset,const std::string& fileName="");
 };
 
 } // namespace Cumulus

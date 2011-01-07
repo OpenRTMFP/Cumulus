@@ -30,7 +30,6 @@
 #include "Poco/Net/DatagramSocket.h"
 #include "Poco/Net/SocketAddress.h"
 
-#define CUMULUS_DEFAULT_PORT 1935
 
 namespace Cumulus {
 
@@ -64,7 +63,7 @@ private:
 };
 
 inline void RTMFPServer::start() {
-	start(CUMULUS_DEFAULT_PORT);
+	start(RTMFP_DEFAULT_PORT);
 }
 
 inline bool RTMFPServer::running() {

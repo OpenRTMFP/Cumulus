@@ -28,7 +28,7 @@ namespace Cumulus {
 class Cirrus
 {
 public:
-	Cirrus(const std::string& url,Sessions& sessions);
+	Cirrus(const Poco::Net::SocketAddress& address,const std::string& pathAndQuery,Sessions& sessions);
 	virtual ~Cirrus();
 
 	const Peer&						findPeer(const Peer& middlePeer);
