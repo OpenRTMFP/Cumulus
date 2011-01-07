@@ -23,7 +23,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-ServerData::ServerData(UInt16 keepAliveServer,UInt16 keepAlivePeer) : keepAliveServer(keepAliveServer),keepAlivePeer(keepAlivePeer) {
+	ServerData::ServerData(UInt8 keepAliveServer,UInt8 keepAlivePeer) : keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),keepAlivePeer(keepAlivePeer<5 ? 5000 : keepAlivePeer*1000) {
 
 }
 
@@ -42,11 +42,18 @@ ServerData::~ServerData() {
 
 Group& ServerData::group(const vector<UInt8>& id) {
 	Group* pGroup;
-	list<Group*>::const_iterator it;
-	for(it=_groups.begin();it!=_groups.end();++it) {
+	list<Group*>::iterator it=_groups.begin();
+	while(it!=_groups.end()) {
 		pGroup=*it;
 		if(pGroup->operator==(id))
 			return *pGroup;
+		// delete a possible empty group in same time
+		if(pGroup->nbPeers()==0) {
+			delete pGroup;
+			_groups.erase(it++);
+			continue;
+		}
+		++it;
 	}
 	pGroup = new Group(id);
 	_groups.push_back(pGroup);

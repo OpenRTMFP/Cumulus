@@ -24,11 +24,12 @@ namespace Cumulus {
 
 class FlowConnection : public Flow {
 public:
-	FlowConnection(Poco::UInt8 id,Peer& peer,ServerData& data);
+	FlowConnection(Peer& peer,ServerData& data);
 	virtual ~FlowConnection();
 
 private:
-	int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	bool requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	Poco::UInt8 maxStage();
 };
 
 

@@ -22,6 +22,7 @@
 #include "Util.h"
 #include "Logs.h"
 #include "Poco/RandomStream.h"
+#include "string.h"
 
 
 using namespace std;
@@ -31,7 +32,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer(UInt16 keepAliveServer,UInt16 keepAlivePeer) : _terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer) {
+RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -42,9 +43,7 @@ RTMFPServer::~RTMFPServer() {
 	stop();
 }
 
-Session* RTMFPServer::findSession(PacketReader& reader,const SocketAddress& sender) {
-
-	UInt32 id = RTMFP::Unpack(reader);
+Session* RTMFPServer::findSession(UInt32 id,const SocketAddress& sender) {
  
 	// Id session can't be egal to 0 (it's reserved to Handshake)
 	if(id==0) {
@@ -57,12 +56,13 @@ Session* RTMFPServer::findSession(PacketReader& reader,const SocketAddress& send
 		DEBUG("Session d'identification '%u'",id);
 		return pSession;
 	}
+
 	WARN("Unknown session '%u'",id);
 	return NULL;
 }
 
 
-void RTMFPServer::start(UInt16 port,const string& cirrusUrl) {
+void RTMFPServer::start(UInt16 port,const SocketAddress* pCirrus) {
 	ScopedLock<FastMutex> lock(_mutex);
 	if(_mainThread.isRunning()) {
 		ERROR("RTMFPServer server is yet running, call stop method before");
@@ -70,16 +70,9 @@ void RTMFPServer::start(UInt16 port,const string& cirrusUrl) {
 	}
 	_port = port;
 	_sessions.freqManage(2);
-	if(!cirrusUrl.empty()) {
-		try {
-			URI uri(cirrusUrl);
-			SocketAddress address(uri.getHost(),uri.getPort());
-			_pCirrus = new Cirrus(address,uri.getPathAndQuery(),_sessions);
-			INFO("Mode 'man in the middle' activated : the exchange bypass to '%s'",cirrusUrl.c_str());
-			_sessions.freqManage(0); // no waiting, direct process in the middle case!
-		} catch(Exception& ex) {
-			ERROR("Mode 'man in the middle' impossible : %s",ex.displayText().c_str());
-		}
+	if(pCirrus) {
+		_pCirrus = new Cirrus(*pCirrus,_sessions);
+		_sessions.freqManage(0); // no waiting, direct process in the middle case!
 	}
 	_terminate = false;
 	_mainThread.start(*this);
@@ -127,7 +120,8 @@ void RTMFPServer::run() {
 			continue;
 		}
 
-		Session* pSession = this->findSession(packet,sender);
+		UInt32 idSession = RTMFP::Unpack(packet);
+		Session* pSession = this->findSession(idSession,sender);
 
 		if(!pSession)
 			continue;
@@ -146,8 +140,13 @@ void RTMFPServer::run() {
 
 	}
 
-	NOTE("RTMFP server stops");
+	INFO("RTMFP server stopping");
+	
+	_sessions.clear();
+	_handshake.clear();
+	_socket.close();
 
+	NOTE("RTMFP server stops");
 }
 
 
@@ -161,7 +160,7 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const string& ur
 		Middle* pMiddle = new Middle(id,farId,peer,url,decryptKey,encryptKey,_socket,_data,*_pCirrus);
 		_sessions.add(pMiddle);
 		DEBUG("500ms sleeping to wait cirrus handshaking");
-		Sleep(500); // to wait the cirrus handshake
+		Thread::sleep(500); // to wait the cirrus handshake
 		pMiddle->manage();
 	} else
 		_sessions.add(new Session(id,farId,peer,url,decryptKey,encryptKey,_socket,_data));
@@ -174,7 +173,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const P
 
 	Session* pSessionWanted = _sessions.find(peerIdWanted);
 	if(!pSessionWanted) {
-		CRITIC("UDP Hole punching error!");
+		ERROR("UDP Hole punching error : session wanted not found");
 		return 0;
 	}
 
@@ -204,7 +203,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const P
 				break;
 		}
 		if(it==_sessions.end()) {
-			CRITIC("UDP Hole punching error!");
+			ERROR("UDP Hole punching error : middle equivalence not found for session wanted");
 			return 0;
 		}
 
@@ -216,7 +215,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const P
 
 		pMiddle->pPeerWanted = &pSessionWanted->peer();
 		request.writeRaw(tag);
-		
+
 		pMiddle->sendHandshakeToCirrus(0x30);
 		// no response here!
 	}

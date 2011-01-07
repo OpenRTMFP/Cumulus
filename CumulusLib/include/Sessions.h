@@ -40,6 +40,7 @@ public:
 	Iterator begin() const;
 	Iterator end() const;
 	
+	void	clear();
 	void	manage();
 
 	void	freqManage(Poco::UInt8 freq);

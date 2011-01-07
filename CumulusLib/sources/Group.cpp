@@ -16,32 +16,55 @@
 */
 
 #include "Group.h"
+#include "string.h"
+#include "Logs.h"
 
 using namespace std;
 using namespace Poco;
 
 namespace Cumulus {
 
-Group::Group(const vector<UInt8>& id) : _id(id) {
+Group::Group(const vector<UInt8>& id) : _id(id),_pBestPeer(NULL) {
 }
 
 Group::~Group() {
 }
 
 
+bool Group::operator==(const std::vector<Poco::UInt8>& id) const {
+	return _id.size()==id.size() && memcmp(&id[0],&_id[0],id.size())==0;
+}
+bool Group::operator!=(const std::vector<Poco::UInt8>& id) const {
+	return _id.size()!=id.size() || memcmp(&id[0],&_id[0],id.size())!=0;
+}
+
+Peer* Group::bestPeer() {
+	if(_pBestPeer)
+		return _pBestPeer;
+	return _peers.size()==0 ? NULL : _peers.back();
+}
 
 void Group::addPeer(Peer& peer) {
 	if(!peer.isIn(*this)) {
 		peer._groups.push_back(this);
 		_peers.push_back(&peer);
+		// Don't considerate a localhost peer
+		if(peer.address.host().isLoopback()) {
+			DEBUG("Peer with a loopback address skipped for a bestpeer record");
+			return;
+		}
+		if(!_pBestPeer || peer.getPing()<_pBestPeer->getPing())
+			_pBestPeer = &peer;
 	}
 }
 
 void Group::removePeer(Peer& peer) {
-	list<Group*>::const_iterator itG;
+	list<Group*>::iterator itG;
 	if(peer.isIn(*this,itG)) {
+		if(_pBestPeer==&peer)
+			_pBestPeer=NULL;
 		peer._groups.erase(itG);
-		list<Peer*>::const_iterator it;
+		list<Peer*>::iterator it;
 		for(it =_peers.begin();it != _peers.end();++it) {
 			if((**it) == peer) {
 				_peers.erase(it);

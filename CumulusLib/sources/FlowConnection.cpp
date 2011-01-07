@@ -27,13 +27,17 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-FlowConnection::FlowConnection(Poco::UInt8 id,Peer& peer,ServerData& data) : Flow(id,peer,data) {
+FlowConnection::FlowConnection(Peer& peer,ServerData& data) : Flow(peer,data) {
 }
 
 FlowConnection::~FlowConnection() {
 }
 
-int FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
+UInt8 FlowConnection::maxStage() {
+	return 0x02;
+}
+
+bool FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
 
 	char buff[MAX_SIZE_MSG];
 	AMFReader reader(request);
@@ -57,7 +61,7 @@ int FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWrite
 			writer.writeObjectProperty("code","NetConnection.Connect.Success");
 			writer.endObject();
 
-			return 0x10;
+			return true;
 		case 0x02: {
 
 			request.readRaw(buff,6); // unknown, 11 00 00 03 96 00
@@ -70,20 +74,25 @@ int FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWrite
 
 			while(reader.available()) {
 				reader.read(tmp); // private host
-				peer.addPrivateAddress(SocketAddress(tmp));
+				try {
+					SocketAddress addr(tmp);
+					peer.addPrivateAddress(addr);
+				} catch(Exception& ex) {
+					ERROR("Incorrect peer address : %s",ex.displayText().c_str());
+				}
 			}
 
 			response.writeRaw("\x04\x00\x00\x00\x00\x00\x29\x00\x00",9); // Unknown!
 			response.write16(data.keepAliveServer);
 			response.write16(0); // Unknown!
 			response.write16(data.keepAlivePeer);
-			return 0x10;
+			return true;
 		}
 		default:
 			ERROR("Unkown FlowNetConnection stage '%02x'",stage);
 	}
 
-	return 0;
+	return false;
 }
 
 } // namespace Cumulus

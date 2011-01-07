@@ -29,10 +29,9 @@ using namespace Net;
 
 namespace Cumulus {
 
-Cirrus::Cirrus(const SocketAddress& address,const string& pathAndQuery,Sessions& sessions) : _sessions(sessions),_url("rtmfp://"),_address(address) {
+Cirrus::Cirrus(const SocketAddress& address,Sessions& sessions) : _sessions(sessions),_address(address) {
 	if(_address.port()==0)
 		_address = SocketAddress(_address.host(),RTMFP_DEFAULT_PORT);
-	_url.append(address.toString()+pathAndQuery);
 }
 
 

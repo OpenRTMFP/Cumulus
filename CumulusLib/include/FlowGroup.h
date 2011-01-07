@@ -24,11 +24,15 @@ namespace Cumulus {
 
 class FlowGroup : public Flow {
 public:
-	FlowGroup(Poco::UInt8 id,Peer& peer,ServerData& data);
+	FlowGroup(Peer& peer,ServerData& data);
 	virtual ~FlowGroup();
 
 private:
-	int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	bool requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	Poco::UInt8 maxStage();
+
+	Group*	_pGroup;
+	bool	_memberRemoved;
 };
 
 

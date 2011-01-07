@@ -37,7 +37,7 @@ Session::Session(UInt32 id,
 				 DatagramSocket& socket,
 				 ServerData& data) : 
 	_id(id),_farId(farId),_socket(socket),
-	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_url(url),_data(data),_peer(peer),_die(false),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG) {
+	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_url(url),_data(data),_peer(peer),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG),_timesKeepalive(0) {
 
 }
 
@@ -58,23 +58,79 @@ PacketWriter& Session::writer() {
 void Session::manage() {
 	if(die())
 		return;
-	// TODO _timeUpdate "update this time and if it's more than a laps time reference, delete session!"
-	map<UInt8,Flow*>::const_iterator it;
-	for(it=_flows.begin();it!=_flows.end();++it) {
-//		it->second->manage();
+
+	// After 6 mn we considerate than the session has failed
+	if(_recvTimestamp.isElapsed(360000000))
+		setFailed();
+	// to accelerate the deletion of peer ghost (mainly for netgroup efficient)
+	if(!_failed && _recvTimestamp.isElapsed(_data.keepAliveServer+10000))
+		keepAlive();
+
+	if(_failed) {
+		fail();
+		return;
+	}
+	
+	map<UInt8,Flow*>::iterator it=_flows.begin();
+	while(it!=_flows.end()) {
+		Flow& flow = *it->second;
+
+		if(flow.consumed()) {
+			delete it->second;
+			_flows.erase(it++);
+			continue;
+		}
+
+		PacketWriter& response = writer();
+		try {
+			if(flow.lastResponse(response))
+				send();
+		} catch(const exception& ex) {
+			WARN("Resend last response : %s",ex.what());
+			fail();
+			return;
+		}
+		++it;
 	}
 }
 
+void Session::keepAlive() {
+	if(_timesKeepalive==10) {
+		setFailed();
+		return;
+	}
+	++_timesKeepalive;
+	PacketWriter& packet = writer();
+	packet.write8(0x01);
+	packet.write16(0x00);
+}
+
+void Session::setFailed() {
+	if(_failed)
+		return;
+	_failed=true;
+	_peer.unsubscribeGroups();
+	ERROR("Session failed on the server side");
+}
+
 void Session::fail() {
+	++_timesFailed;
+	setFailed();
 	PacketWriter& packet = writer();
 	packet.write8(0x0C);
 	packet.write16(0x00);
 	send();
+	// After 6 mn we can considerated than the session is died!
+	if(_timesFailed==10 || _recvTimestamp.isElapsed(360000000))
+		_die = true;
 }
 
-Flow& Session::flow(Poco::UInt8 id) {
-	if(_flows.find(id)==_flows.end())
+Flow& Session::flow(Poco::UInt8 id,bool canCreate) {
+	if(_flows.find(id)==_flows.end()) {
+		if(!canCreate)
+			id=0; // for force FlowNull returning
 		_flows[id] = createFlow(id);
+	}
 	return *_flows[id];
 }
 
@@ -83,8 +139,7 @@ void Session::p2pHandshake(const Peer& peer) {
 	PacketWriter& packetOut = writer();
 	packetOut.write8(0x0F);
 	{
-		PacketWriter content(packetOut);
-		content.skip(2);
+		PacketWriter content(packetOut,2);
 		content.write8(34);
 		content.write8(33);
 
@@ -97,7 +152,7 @@ void Session::p2pHandshake(const Peer& peer) {
 		content.writeRandom(16); // tag
 	}
 
-	packetOut.write16(packetOut.size()-packetOut.position()-2);
+	packetOut.write16(packetOut.length()-packetOut.position()-2);
 	send();
 }
 
@@ -134,7 +189,7 @@ void Session::send(bool symetric) {
 	try {
 		// TODO remake? without retry (but flow)
 		bool retry=false;
-		while(_socket.sendTo(_packetOut.begin(),_packetOut.size(),_peer.address)!=_packetOut.size()) {
+		while(_socket.sendTo(_packetOut.begin(),_packetOut.length(),_peer.address)!=_packetOut.length()) {
 			if(retry) {
 				ERROR("Socket send error on session '%u' : all data were not sent",_id);
 				break;
@@ -142,7 +197,7 @@ void Session::send(bool symetric) {
 			retry = true;
 		}
 	} catch(Exception& ex) {
-		ERROR("Socket send error on session '%u' : %s",_id,ex.displayText().c_str());
+		 CRITIC("Socket send error on session '%u' : %s",_id,ex.displayText().c_str());
 	}
 }
 
@@ -151,13 +206,13 @@ void Session::packetHandler(PacketReader& packet) {
 	_recvTimestamp.update();
 
 	// Read packet
-	UInt8 marker = packet.next8();
+	UInt8 marker = packet.read8();
 	
-	_timeSent = packet.next16();
+	_timeSent = packet.read16();
 
 	// with time echo
 	if((marker|0xF0) == 0xFD) {
-		UInt16 ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.next16();
+		UInt16 ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16();
 		DEBUG("Ping : %hu",ping);
 	}
 
@@ -168,80 +223,126 @@ void Session::packetHandler(PacketReader& packet) {
 	// Begin a possible response
 	PacketWriter& packetOut = writer();
 
-	UInt8 type = packet.available()>0 ? packet.next8() : 0xFF;
+	// Variables for request (0x10 and 0x11)
+	UInt8 flag;
+	UInt8 idFlow;
+	UInt8 stage;
+
+	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 	bool answer = false;
 
 	// Can have nested queries
 	while(type!=0xFF) {
-		UInt16 size = packet.next16();
+		UInt16 size = packet.read16();
 		int idResponse = 0;
 
 		{
 			PacketReader request(packet.current(),size);
 
-			PacketWriter response(packetOut);
-			response.skip(3); // skip the futur possible id and length response
+			PacketWriter response(packetOut,3); // skip the futur possible id and length response
 
 			switch(type) {
+				case 0x0c :
+					setFailed();
+					ERROR("Session failed on the client side");
+					break;
+
 				case 0x4c :
 					/// Session death!
 					_die = true;
 					break;
+
+				/// KeepAlive
 				case 0x01 :
-					/// KeepAlive
-					keepaliveHandler();
 					idResponse = 0x41;
+				case 0x41 :
+					_timesKeepalive=0;
 					break;
+
+				// This following message is not really understood (flow header interrogation perhaps?)
+				// So we emulate a mechanism which seems to answer the same thing when it's necessary
+				case 0x5e : {
+					UInt8 flowId = request.read8();
+					Flow& flow = this->flow(flowId);
+					if(!flow.isNull()) {
+						idResponse = 0x10;
+						response.write8(3);
+						response.write8(flowId);
+						response.write8(flow.stage());
+						response.write8(1); // perhaps 0|1 for stage completed|not completed
+					}
+					break;
+				}
+
 				case 0x18 : {
-					/// TODO This response is sent when we answer with a not Acknowledgment message.
-					// It contains the id flow, and means that we must replay the last message
-					// Be carreful : it can loop indefinitely, so change the marker for 09 (it means flow exception or close, I don't know)
-					// UInt8 idFlow= request.next8();
+					/// This response is sent when we answer with a null Acknowledgment
+					// It contains the id flow
+					// Resend the last Acknowledgment success
+					// I don't unsertand the usefulness...
+					UInt8 idFlow = request.read8();
+					UInt8 stage = flow(idFlow).stage();
+					if(stage>0) {
+						idResponse = 0x51;
+						response.write8(idFlow);
+						response.write8(0x3f);
+						response.write8(stage);
+					}
 					break;
 				}
 				case 0x51 : {
 					/// Acknowledgment 
-					UInt8 idFlow= request.next8();
-					bool ack = request.next8()==0x7f;
-					UInt8 stage = request.next8();
-					flow(idFlow).acknowledgment(stage,ack);
-					/// replay the flow is not ack
-					if(!ack) {
-						idResponse = 0x18;
-						response.write8(idFlow);
+					UInt8 idFlow= request.read8();
+					if(request.read8()>0) { // is usually equal to 0x7f
+						UInt8 stage = request.read8();
+						flow(idFlow).acknowledgment(stage);
 					}
+					// else {
+					// In fact here, we should set a acknowledgment to "false" value, to
+					// send a 0x18 message (with id flow) instead of resending the entire message at the repeat timing,
+					// but in a concern to keep things simple and efficient, we believe it is better
+					// to assimilate a acknowledgment to false like a no ack received (so we resend the entire
+					// message at the next repeat timer)
 					break;
 				}
-				case 0x11 : // "request in request" case
-				case 0x10 : {
-					/// Request
-					
-					UInt8 firstFlag = request.next8(); // Unknown, is 0x80 or 0x00
-					UInt8 idFlow= request.next8();
-					UInt8 stage = request.next8();
-					UInt8 secondFlag = request.next8(); // Unknown, is 0x01 in general
+				/// Request
+				// 0x10 normal request
+				// 0x11 special request, in repeat case (following stage request)
+				case 0x10 :
+					flag = request.read8(); // Unknown, is 0x80 or 0x00
+					idFlow= request.read8();
+					stage = request.read8()-1;
+				case 0x11 :
+					++stage;
+					if(request.read8()==0x02) {
+						// It happens when the previus stage is not ack,
+						// and the 6 next bytes are the 6 bytes of previus flow request in the same location.
+						// Unknown why it's really used, but it can be omitted.
+						// In this case, we must remove the 7 next bytes
+						request.next(7);
+					}
 
 					// Write Acknowledgment (nested in response)
 					packetOut.write8(0x51);
 					packetOut.write16(3);
 					packetOut.write8(idFlow);
-					response.skip(6);
+					packetOut.write8(0x3f); // ack!
+					packetOut.write8(stage);
+					response.next(6);
 					answer = true;
 
 					// Prepare response
-					response.write8(firstFlag);
+					response.write8(flag);
 					response.write8(idFlow);
 					response.write8(stage);
-					response.write8(secondFlag);
-					
+					response.write8(0x01); // Send always a 0x01 flag here means that we considerate that
+					// the possible previus stage message is ack, even if it's wrong, because we can considerate
+					// to keep things simple that a request is a acknowledgment for its response
+
 					// Process request
-					idResponse = flow(idFlow).request(stage,request,response);
-					
-					packetOut.write8(idResponse<0 ? 0x00 : 0x3f); // not ack or ack
-					packetOut.write8(stage);
-					
+					if(flow(idFlow,true).request(stage,request,response))
+						idResponse = 0x10;
+
 					break;
-				}
 				default :
 					ERROR("Request type '%02x' unknown",type);
 			}
@@ -253,41 +354,31 @@ void Session::packetHandler(PacketReader& packet) {
 		if(idResponse>0) {
 			answer = true;
 			packetOut.write8(idResponse);
-			int len = packetOut.size()-packetOut.position()-2;
+			int len = packetOut.length()-packetOut.position()-2;
 			if(len<0)
 				len = 0;
 			packetOut.write16(len);
-			packetOut.skip(len);
+			packetOut.next(len);
 		}
 		
 		// Next
-		packet.skip(size);
-		type = packet.available()>0 ? packet.next8() : 0xFF;
+		packet.next(size);
+		type = packet.available()>0 ? packet.read8() : 0xFF;
 	}
 
 	if(answer)
 		send();
 }
 
-
-void Session::keepaliveHandler() {
-	// TODO ?
-}
-
-
 // Don't must return a null value!
 Flow* Session::createFlow(UInt8 id) {
-	switch(id) {
-		case 0x02 :
-			// NetConnection
-			return new FlowConnection(id,_peer,_data);
-		case 0x03 :
-			// NetStream on NetGroup 
-			return new FlowGroup(id,_peer,_data);
-		default :
-			ERROR("Flow id '%02x' unknown",id);	
-	}
-	return new FlowNull(id,_peer,_data);
+	if(id==0x02) // NetConnection
+		return new FlowConnection(_peer,_data);	
+	else if(id>=0x03) // NetGroup
+		return new FlowGroup(_peer,_data);
+	else if(id>0)
+		ERROR("Flow id '%02x' unknown",id);	
+	return new FlowNull(_peer,_data);
 }
 
 

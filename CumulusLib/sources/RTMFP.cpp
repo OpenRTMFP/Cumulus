@@ -66,7 +66,7 @@ RTMFP::~RTMFP() {
 
 
 bool RTMFP::IsValidPacket(PacketReader& packet) {
-	if(packet.available()<=12)
+	if(packet.available()<12)
 		return false;
 	return true;
 }
@@ -77,7 +77,7 @@ UInt16 RTMFP::CheckSum(PacketReader packet) {
 	int sum = 0;
 
 	while(packet.available()>0)
-		sum += packet.available()==1 ? packet.next8() : packet.next16();
+		sum += packet.available()==1 ? packet.read8() : packet.read16();
 
   /* add back carry outs from top 16 bits to low 16 bits */
   sum = (sum >> 16) + (sum & 0xffff);     /* add hi 16 to low 16 */
@@ -92,21 +92,21 @@ bool RTMFP::Decode(AESEngine& aesDecrypt,PacketReader& packet) {
 
 	// Check the first 2 CRC bytes 
 	packet.reset(4);
-	UInt16 sum = packet.next16();
+	UInt16 sum = packet.read16();
 	return (sum == CheckSum(packet));
 }
 
 
 void RTMFP::Encode(AESEngine& aesEncrypt,PacketWriter packet) {
 	// paddingBytesLength=(0xffffffff-plainRequestLength+5)&0x0F
-	int paddingBytesLength = (0xFFFFFFFF-packet.size()+5)&0x0F;
+	int paddingBytesLength = (0xFFFFFFFF-packet.length()+5)&0x0F;
 	// Padd the plain request with paddingBytesLength of value 0xff at the end
-	packet.reset(packet.size());
+	packet.reset(packet.length());
 	string end(paddingBytesLength,(UInt8)0xFF);
 	packet.writeRaw(end);
 	// Compute the CRC and add it at the beginning of the request
 	PacketReader reader(packet);
-	reader.skip(6);
+	reader.next(6);
 	UInt16 sum = CheckSum(reader);
 	packet.reset(4);packet << sum;
 	
@@ -119,7 +119,7 @@ UInt32 RTMFP::Unpack(PacketReader& packet) {
 	packet.reset();
 	UInt32 id=0;
 	for(int i=0;i<3;++i)
-		id ^= packet.next32();
+		id ^= packet.read32();
 	packet.reset(4);
 	return id;
 }
@@ -127,8 +127,8 @@ UInt32 RTMFP::Unpack(PacketReader& packet) {
 void RTMFP::Pack(PacketWriter packet,UInt32 farId) {
 	packet.reset();
 	PacketReader reader(packet);
-	reader.next32();
-	packet << (UInt32)(reader.next32() ^ reader.next32() ^ farId);
+	reader.read32();
+	packet.write32(reader.read32()^reader.read32()^farId);
 }
 
 DH* RTMFP::BeginDiffieHellman(UInt8* pubKey) {

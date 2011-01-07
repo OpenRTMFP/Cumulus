@@ -38,7 +38,7 @@ Middle::Middle(UInt32 id,
 				DatagramSocket& socket,
 				ServerData& data,
 				Cirrus& cirrus) : Session(id,farId,peer,url,decryptKey,encryptKey,socket,data),_middleCertificat("\x02\x1D\x02\x41\x0E",5),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),
-					_cirrus(cirrus),_middleId(0),pPeerWanted(NULL),_firstResponse(false) {
+					_cirrus(cirrus),_middleId(0),pPeerWanted(NULL),_firstResponse(false),_middleUrl("rtmfp://") {
 
 	// connection to cirrus
 	_socket.connect(_cirrus.address());
@@ -51,14 +51,16 @@ Middle::Middle(UInt32 id,
 	_middleCertificat.append(rand,sizeof(rand));
 	_middleCertificat.append("\x03\x1A\x02\x0A\x02\x1E\x02",7);
 
+	_middleUrl.append(cirrus.address().toString()+URI(url).getPathAndQuery());
+
 	////  HANDSHAKE CIRRUS  /////
 
 	PacketWriter& packet = handshaker();
 
-	packet.write8(_cirrus.url().size()+2);
-	packet.write8(_cirrus.url().size()+1);
+	packet.write8(_middleUrl.size()+2);
+	packet.write8(_middleUrl.size()+1);
 	packet.write8(0x0A);
-	packet.writeRaw(_cirrus.url());
+	packet.writeRaw(_middleUrl);
 	packet.writeRandom(16); // tag
 
 	sendHandshakeToCirrus(0x30);
@@ -128,7 +130,7 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 				// replace public ip
 				if(pPeerWanted) {
 					response.writeAddress(pPeerWanted->address);
-					packet.skip(7);
+					packet.next(7);
 					pPeerWanted = NULL;
 				}
 				response.writeRaw(packet.current(),packet.available());
@@ -144,9 +146,9 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 				PacketReader content(packet);
 				WARN("Man-in-middle mode leaks : redirection request, restart Cumulus with a url pertinant chooses among the following list");
 				while(content.available()) {
-				   if(content.next8()==0x01) {
-					   UInt8 a=content.next8(),b=content.next8(),c=content.next8(),d=content.next8();
-					   printf("%u.%u.%u.%u:%hu\n",a,b,c,d,content.next16());
+				   if(content.read8()==0x01) {
+					   UInt8 a=content.read8(),b=content.read8(),c=content.read8(),d=content.read8();
+					   printf("%u.%u.%u.%u:%hu\n",a,b,c,d,content.read16());
 				   }
 				}
 				 _die = true; // In this redirection request case, the session has never existed!
@@ -159,7 +161,7 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 
 			// response
 			packet >> _middleId;
-			packet.skip(1); // 0x81
+			packet.next(1); // 0x81
 			string cirrusSignature;
 			packet.readString8(cirrusSignature);
 			UInt8 cirrusPubKey[128];
@@ -187,7 +189,7 @@ void Middle::sendHandshakeToCirrus(UInt8 type) {
 	_packetOut.write8(0x0b);
 	_packetOut << RTMFP::TimeNow();
 	_packetOut << type;
-	_packetOut.write16(_packetOut.size()-_packetOut.position()-2);
+	_packetOut.write16(_packetOut.length()-_packetOut.position()-2);
 
 	if(Logs::Dump() && Logs::Middle()) {
 		printf("Middle to Cirrus : handshake\n");
@@ -196,7 +198,7 @@ void Middle::sendHandshakeToCirrus(UInt8 type) {
 
 	RTMFP::Encode(_packetOut);
 	RTMFP::Pack(_packetOut);
-	_socket.sendBytes(_packetOut.begin(),_packetOut.size());
+	_socket.sendBytes(_packetOut.begin(),_packetOut.length());
 }
 
 PacketWriter& Middle::requester() {
@@ -207,92 +209,90 @@ PacketWriter& Middle::requester() {
 void Middle::packetHandler(PacketReader& packet) {
 	if(!_pMiddleAesEncrypt) {
 		DEBUG("500ms sleeping to wait cirrus handshaking");
-		Sleep(500); // to wait the cirrus handshake response
+		Thread::sleep(500); // to wait the cirrus handshake response
 		manage();
 	}
-
-	_recvTimestamp.update();
 
 	// Middle to cirrus
 	PacketWriter& request = requester();
 
-	UInt8 marker = packet.next8();
+	UInt8 marker = packet.read8();
 	request << marker;
 
-	request << packet.next16();
+	request << packet.read16();
 
 	if((marker|0xF0) == 0xFD)
-		request.write16(packet.next16()); // time echo
+		request.write16(packet.read16()); // time echo
 
 	int pos = request.position();
 
-	UInt8 type = packet.available()>0 ? packet.next8() : 0xFF;
+	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 	while(type!=0xFF) {
-		request<<type;
-
-		UInt16 size = packet.next16();
-		PacketReader content(packet.current(),size);
+		UInt16 oldSize = packet.read16();
+		UInt16 newSize = oldSize;
+		PacketReader content(packet.current(),oldSize);
 
 		{
-			PacketWriter out(request);
-			out.skip(2); // future size
+			PacketWriter out(request); // 3 for future type and size
+			out.next(3);
 			
-			if(type==0x10 || type==0x11) {
+			if(type==0x10) {
 
-				out.write8(content.next8());
-				UInt8 idFlow = content.next8();out.write8(idFlow);
-				UInt8 stage = content.next8();out.write8(stage);
+				out.write8(content.read8());
+				UInt8 idFlow = content.read8();out.write8(idFlow);
+				UInt8 stage = content.read8();out.write8(stage);
 
 				if(idFlow==0x02 && stage==0x01) {
 					// Replace http address
-					out.writeRaw(content.current(),14);content.skip(14);
-					int temp = content.next16();out.write16(temp);
-					out.writeRaw(content.current(),temp);content.skip(temp);
+					out.writeRaw(content.current(),14);content.next(14);
+					int temp = content.read16();out.write16(temp);
+					out.writeRaw(content.current(),temp);content.next(temp);
 
-					out.writeRaw(content.current(),10);content.skip(10); // double
+					out.writeRaw(content.current(),10);content.next(10); // double
 
-					temp = content.next16();out.write16(temp);++temp; // app
-						out.writeRaw(content.current(),temp);content.skip(temp);
-						temp = content.next16();out.write16(temp);
-						out.writeRaw(content.current(),temp);content.skip(temp);
+					temp = content.read16();out.write16(temp);++temp; // app
+						out.writeRaw(content.current(),temp);content.next(temp);
+						temp = content.read16();out.write16(temp);
+						out.writeRaw(content.current(),temp);content.next(temp);
 
-					temp = content.next16();out.write16(temp);++temp; // flashVer
-						out.writeRaw(content.current(),temp);content.skip(temp);
-						temp = content.next16();out.write16(temp);
-						out.writeRaw(content.current(),temp);content.skip(temp);
+					temp = content.read16();out.write16(temp);++temp; // flashVer
+						out.writeRaw(content.current(),temp);content.next(temp);
+						temp = content.read16();out.write16(temp);
+						out.writeRaw(content.current(),temp);content.next(temp);
 
-					temp = content.next16();out.write16(temp); // swfUrl
-						out.writeRaw(content.current(),temp);content.skip(temp);
-						out.write8(content.next8());
+					temp = content.read16();out.write16(temp); // swfUrl
+						out.writeRaw(content.current(),temp);content.next(temp);
+						out.write8(content.read8());
 
-					temp = content.next16();out.write16(temp);++temp; // tcUrl
-						out.writeRaw(content.current(),temp);content.skip(temp);
+					temp = content.read16();out.write16(temp);++temp; // tcUrl
+						out.writeRaw(content.current(),temp);content.next(temp);
 
 					string oldUrl;
 					content.readString16(oldUrl);
-					out.writeString16(_cirrus.url()); // new url
-					size += _cirrus.url().size()-oldUrl.size();
+					out.writeString16(_middleUrl); // new url
+					newSize += _middleUrl.size()-oldUrl.size();
+
 				}
 
 			}  else if(type == 0x4C) {
 				_die = true;
-			}  else if(type == 0x51) {
-				//&& idFlow==0x7F && stage == 0x02)
 			}
-
 			out.writeRaw(content.current(),content.available());
 		}
-		request.write16(size);
-		packet.skip(size);
+		if((request.length()-request.position())==(newSize+3)) {
+			request<<type;
+			request.write16(newSize);request.next(newSize);
+		}
 
-		type = packet.available()>0 ? packet.next8() : 0xFF;
+		packet.next(oldSize);
+		type = packet.available()>0 ? packet.read8() : 0xFF;
 	}
-	
-	if(request.size()>pos)
-		sendToCirrus(_middleId);
+
+	if(request.length()>pos)
+		sendToCirrus();
 }
 
-void Middle::sendToCirrus(UInt32 id) {
+void Middle::sendToCirrus() {
 	if(!_pMiddleAesEncrypt) {
 		CRITIC("Send to cirrus packet impossible because the middle hanshake has certainly failed, restart Cumulus");
 		return;
@@ -305,8 +305,8 @@ void Middle::sendToCirrus(UInt32 id) {
 
 	_firstResponse = true;
 	RTMFP::Encode(*_pMiddleAesEncrypt,_packetOut);
-	RTMFP::Pack(_packetOut,id);
-	_socket.sendBytes(_packetOut.begin(),_packetOut.size());
+	RTMFP::Pack(_packetOut,_middleId);
+	_socket.sendBytes(_packetOut.begin(),_packetOut.length());
 }
 
 void Middle::cirrusPacketHandler(PacketReader& packet) {
@@ -315,31 +315,31 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 		_recvTimestamp.update(); // To emulate a long ping corresponding, otherwise client send muyltiple times each packet
 	_firstResponse = false;
 
-	UInt8 marker = packet.next8();
+	UInt8 marker = packet.read8();
 	
-	packet.next16(); // time
+	packet.read16(); // time
 
 	if((marker|0xF0) == 0xFE)
-		_timeSent = packet.next16(); // time echo
+		_timeSent = packet.read16(); // time echo
 
 	PacketWriter& packetOut = writer();
 	int pos = packetOut.position();
 
-	UInt8 type = packet.available()>0 ? packet.next8() : 0xFF;
+	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 
 	while(type!=0xFF) {
 		packetOut.write8(type);
 
-		UInt16 size = packet.next16();
+		UInt16 size = packet.read16();
 		PacketReader content(packet.current(),size);packetOut.write16(size);
 		
-		if(type==0x10 || type==0x11) {
-			packetOut.write8(content.next8());
-			UInt8 idFlow = content.next8();packetOut.write8(idFlow);
-			UInt8 stage = content.next8();packetOut.write8(stage);
+		if(type==0x10) {
+			packetOut.write8(content.read8());
+			UInt8 idFlow = content.read8();packetOut.write8(idFlow);
+			UInt8 stage = content.read8();packetOut.write8(stage);
 			if(stage==0x01 && ((marker==0x4e && idFlow==0x03) || (marker==0x8e && idFlow==0x05))) {
 				// replace "middleId" by "peerId"
-				packetOut.writeRaw(content.current(),10);content.skip(10);
+				packetOut.writeRaw(content.current(),10);content.next(10);
 
 				Peer middlePeer;
 				content.readRaw((UInt8*)middlePeer.id,32);
@@ -351,17 +351,16 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 		} else if(type == 0x0F) {
 			// Stop the P2PHANDSHAKE CIRRUS PACKET!
 			packetOut.clear(packetOut.position()-3);
-			content.skip(content.available());
+			content.next(content.available());
 		}
 
 		packetOut.writeRaw(content.current(),content.available());
-		packet.skip(size);
+		packet.next(size);
 
-		type = packet.available()>0 ? packet.next8() : 0xFF;
+		type = packet.available()>0 ? packet.read8() : 0xFF;
 	}
 
-
-	if(packetOut.size()>pos)
+	if(packetOut.length()>pos)
 		send();
 }
 
@@ -402,17 +401,18 @@ void Middle::manage() {
 			Util::Dump(packet,Logs::DumpFile());
 		}
 
-		UInt8 marker = packet.next8();
+		UInt8 marker = packet.read8();
 		if(marker!=0x0B) {
 			ERROR("Cirrus handshake received with a marker different of '0b'");
 			return;
 		}
 
-		packet.next16(); // time
+		packet.read16(); // time
 
-		UInt8 type = packet.next8();
-		UInt16 size = packet.next16();
-		cirrusHandshakeHandler(type,PacketReader(packet.current(),size));
+		UInt8 type = packet.read8();
+		UInt16 size = packet.read16();
+		PacketReader content(packet.current(),size);
+		cirrusHandshakeHandler(type,content);
 		return;
 	}
 

@@ -28,23 +28,16 @@ namespace Cumulus {
 class Cirrus
 {
 public:
-	Cirrus(const Poco::Net::SocketAddress& address,const std::string& pathAndQuery,Sessions& sessions);
+	Cirrus(const Poco::Net::SocketAddress& address,Sessions& sessions);
 	virtual ~Cirrus();
 
 	const Peer&						findPeer(const Peer& middlePeer);
-
-	const std::string&				url();
 	const Poco::Net::SocketAddress&	address();
 
 private:
 	Sessions&					_sessions;
-	std::string					_url;
 	Poco::Net::SocketAddress	_address;
 };
-
-inline const std::string& Cirrus::url() {
-	return _url;
-}
 
 inline const Poco::Net::SocketAddress& Cirrus::address() {
 	return _address;

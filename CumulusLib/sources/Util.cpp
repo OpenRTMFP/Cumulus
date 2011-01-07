@@ -33,10 +33,10 @@ void Util::Dump(PacketReader& packet,const string& fileName) {
 	Dump(packet.current(),packet.available(),fileName);
 }
 void Util::Dump(PacketWriter& packet,const string& fileName) {
-	Dump(packet.begin(),packet.size(),fileName);
+	Dump(packet.begin(),packet.length(),fileName);
 }
 void Util::Dump(PacketWriter& packet,UInt16 offset,const string& fileName) {
-	Dump(packet.begin()+offset,packet.size()-offset,fileName);
+	Dump(packet.begin()+offset,packet.length()-offset,fileName);
 }
 
 
@@ -49,7 +49,7 @@ void Util::Dump(const UInt8* data,int size,const string& fileName) {
 		while ( (c < 16) && (i+c < size) ) {
 			b = data[i+c];
 			printf("%X%X ", b/16, b & 0x0f );
-			c++;
+			++c;
 		}
 		while (c++ < 16)
 			printf("   ");
@@ -60,7 +60,7 @@ void Util::Dump(const UInt8* data,int size,const string& fileName) {
 				printf("%c", (char)b );
 			else
 				printf(".");
-			c++;
+			++c;
 		}
 		i += 16;
 		printf("\n");

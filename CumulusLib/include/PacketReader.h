@@ -37,9 +37,9 @@ public:
 	void readRaw(int size,std::string& value);
 	void readString8(std::string& value);
 	void readString16(std::string& value);
-	Poco::UInt8		next8();
-	Poco::UInt16	next16();
-	Poco::UInt32	next32();
+	Poco::UInt8		read8();
+	Poco::UInt16	read16();
+	Poco::UInt32	read32();
 
 	int				available();
 	Poco::UInt8*	current();
@@ -47,7 +47,7 @@ public:
 
 	void			reset(int newPos=0);
 	void			shrink(int rest);
-	void			skip(int size);
+	void			next(int size);
 private:
 	MemoryInputStream _memory;
 	
@@ -65,10 +65,10 @@ inline void PacketReader::readRaw(int size,std::string& value) {
 
 
 inline void PacketReader::readString8(std::string& value) {
-	readRaw(next8(),value);
+	readRaw(read8(),value);
 }
 inline void PacketReader::readString16(std::string& value) {
-	readRaw(next16(),value);
+	readRaw(read16(),value);
 }
 
 inline int PacketReader::available() {
@@ -83,8 +83,8 @@ inline void PacketReader::reset(int newPos) {
 	_memory.reset(newPos);
 }
 
-inline void PacketReader::skip(int size) {
-	return _memory.skip(size);
+inline void PacketReader::next(int size) {
+	return _memory.next(size);
 }
 
 inline Poco::UInt8* PacketReader::current() {

@@ -48,8 +48,9 @@ public:
 	Poco::UInt32	id() const;
 	Poco::UInt32	farId() const;
 	const Peer& 	peer() const;
-	bool			die();
+	bool			die() const;
 	virtual void	manage();
+	void			fail();
 
 	void	p2pHandshake(const Peer& peer);
 
@@ -60,8 +61,6 @@ protected:
 	PacketWriter&	writer();
 	void			send(bool symetric=false);
 
-	void				fail();
-
 	Poco::UInt32			_farId; // Protected for Middle session
 	PacketWriter			_packetOut; // Protected for Middle session
 	Poco::Timestamp			_recvTimestamp; // Protected for Middle session
@@ -69,16 +68,16 @@ protected:
 	bool					_die; // Protected for Middle session
 
 private:
-	
-	
-
+	void				setFailed();
+	void				keepAlive();
 	Flow*				createFlow(Poco::UInt8 id);
-	Flow&				flow(Poco::UInt8 id);
+	Flow&				flow(Poco::UInt8 id,bool canCreate=false);
 	
 
-	void				keepaliveHandler();
+	bool						_failed;
+	Poco::UInt8					_timesFailed;
+	Poco::UInt8					_timesKeepalive;
 
-	Poco::Timestamp				_timeUpdate;
 	ServerData&					_data;
 
 	std::map<Poco::UInt8,Flow*> _flows;	
@@ -111,7 +110,7 @@ inline Poco::UInt32 Session::farId() const {
 	return _farId;
 }
 
-inline bool Session::die() {
+inline bool Session::die() const {
 	return _die;
 }
 

@@ -26,12 +26,13 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-PacketWriter::PacketWriter(const UInt8* buffer,int size) : _memory((char*)buffer,size),BinaryWriter(_memory,BinaryWriter::NETWORK_BYTE_ORDER),_pOther(NULL) {
-
+PacketWriter::PacketWriter(const UInt8* buffer,int size,int skip) : _memory((char*)buffer,size),BinaryWriter(_memory,BinaryWriter::NETWORK_BYTE_ORDER),_pOther(NULL),_skip(skip) {
+	this->next(skip);
 }
 
 // Consctruction by copy
-PacketWriter::PacketWriter(PacketWriter& other) : _pOther(&other),_memory(other._memory),BinaryWriter(_memory,BinaryWriter::NETWORK_BYTE_ORDER) {
+PacketWriter::PacketWriter(PacketWriter& other,int skip) : _pOther(&other),_memory(other._memory),BinaryWriter(_memory,BinaryWriter::NETWORK_BYTE_ORDER),_skip(skip) {
+	this->next(skip);
 }
 
 PacketWriter::~PacketWriter() {
@@ -61,7 +62,7 @@ void PacketWriter::clear(int pos) {
 }
 
 void PacketWriter::flush() {
-	if(_pOther && _memory.written()>_pOther->_memory.written())
+	if(_pOther && (_memory.written()-_skip)>_pOther->_memory.written())
 		_pOther->_memory.written(_memory.written());
 	BinaryWriter::flush();
 }

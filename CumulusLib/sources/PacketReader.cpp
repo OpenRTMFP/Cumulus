@@ -32,7 +32,7 @@ PacketReader::PacketReader(PacketReader& other) : _memory(other._memory),BinaryR
 }
 
 // Consctruction by copy
-PacketReader::PacketReader(PacketWriter& writer) : _memory((char*)writer.begin(),writer.size()),BinaryReader(_memory,BinaryReader::NETWORK_BYTE_ORDER) {
+PacketReader::PacketReader(PacketWriter& writer) : _memory((char*)writer.begin(),writer.length()),BinaryReader(_memory,BinaryReader::NETWORK_BYTE_ORDER) {
 }
 
 
@@ -51,19 +51,19 @@ void PacketReader::shrink(int rest) {
 	_memory.resize(position()+rest);
 }
 
-UInt8 PacketReader::next8() {
+UInt8 PacketReader::read8() {
 	UInt8 c;
 	(*this) >> c;
 	return c;
 }
 
-UInt16 PacketReader::next16() {
+UInt16 PacketReader::read16() {
 	UInt16 c;
 	(*this) >> c;
 	return c;
 }
 
-UInt32 PacketReader::next32() {
+UInt32 PacketReader::read32() {
 	UInt32 c;
 	(*this) >> c;
 	return c;

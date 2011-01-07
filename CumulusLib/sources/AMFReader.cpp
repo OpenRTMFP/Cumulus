@@ -33,7 +33,7 @@ AMFReader::~AMFReader() {
 }
 
 void AMFReader::read(string& value) {
-	UInt8 c = _reader.next8();
+	UInt8 c = _reader.read8();
 	if(c!=0x02) {
 		ERROR("byte '%02x' is not a AMF String marker",c);
 		return;
@@ -42,7 +42,7 @@ void AMFReader::read(string& value) {
 }
 
 double AMFReader::readNumber() {
-	UInt8 c = _reader.next8();
+	UInt8 c = _reader.read8();
 	if(c!=0x00) {
 		ERROR("byte '%02x' is not a AMF number marker",c);
 		return 0;
@@ -54,7 +54,7 @@ double AMFReader::readNumber() {
 
 
 void AMFReader::readNull() {
-	UInt8 c = _reader.next8();
+	UInt8 c = _reader.read8();
 	if(c!=0x05)
 		ERROR("byte '%02x' is not a AMF Null marker",c);
 }

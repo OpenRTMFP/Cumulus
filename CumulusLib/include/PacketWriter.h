@@ -27,8 +27,8 @@ namespace Cumulus {
 
 class PacketWriter: public Poco::BinaryWriter {
 public:
-	PacketWriter(const Poco::UInt8* buffer,int size);
-	PacketWriter(PacketWriter&);
+	PacketWriter(const Poco::UInt8* buffer,int size,int skip=0);
+	PacketWriter(PacketWriter&,int skip=0);
 	virtual ~PacketWriter();
 
 	void writeRaw(const Poco::UInt8* value,int size);
@@ -45,16 +45,17 @@ public:
 	void writeAddress(const Poco::Net::SocketAddress& address);
 
 	Poco::UInt8*	begin();
-	int				size();
+	int				length();
 	int				position();
 	
 	void	clear(int pos=0);
 	void	reset(int newPos=0);
 	void	clip(int offset);
-	void	skip(int size);
+	void	next(int size);
 	void	flush();
 	
 private:
+	int					_skip;
 	MemoryOutputStream	_memory;
 	PacketWriter*		_pOther;
 };
@@ -81,7 +82,7 @@ inline void PacketWriter::write32(Poco::UInt32 value) {
 	(*this) << value;
 }
 
-inline int PacketWriter::size() {
+inline int PacketWriter::length() {
 	return _memory.written();
 }
 inline int PacketWriter::position() {
@@ -93,8 +94,8 @@ inline void PacketWriter::reset(int newPos) {
 inline void PacketWriter::clip(int offset) {
 	_memory.clip(offset);
 }
-inline void PacketWriter::skip(int size) {
-	return _memory.skip(size);
+inline void PacketWriter::next(int size) {
+	return _memory.next(size);
 }
 
 inline Poco::UInt8* PacketWriter::begin() {

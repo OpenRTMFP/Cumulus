@@ -21,7 +21,6 @@
 #include "PacketReader.h"
 #include "ServerData.h"
 #include "Poco/Net/SocketAddress.h"
-#include <map>
 
 namespace Cumulus {
 
@@ -29,29 +28,38 @@ class Response;
 class Flow
 {
 public:
-	Flow(Poco::UInt8 id,Peer& peer,ServerData& data);
+	Flow(Peer& peer,ServerData& data);
 	virtual ~Flow();
 
-	int request(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	bool request(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 
-	void acknowledgment(Poco::UInt8 stage,bool ack);
-	bool responseNotAck(PacketWriter& response);
+	void acknowledgment(Poco::UInt8 stage);
+	bool lastResponse(PacketWriter& response);
+	bool consumed();
+	void stageCompleted(Poco::UInt8 stage);
+	virtual bool isNull();
 
-	const Poco::UInt8	id;
 	Peer&				peer;
-	Poco::UInt8			stage() const;
+	Poco::UInt8			stage();
 	ServerData&			data;
 	
 	
 private:
-	virtual int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response)=0;
+	virtual bool requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response)=0;
+	virtual Poco::UInt8 maxStage()=0;
 
-	Poco::UInt8						_stage;
-	std::map<Poco::UInt8,Response*> _responses;
+	Poco::UInt8			_stage;
+	Poco::UInt64		_consumed;
+	Response*			_pLastResponse;
+	Poco::UInt8			_buffer[MAX_SIZE_MSG];
 };
 
-inline Poco::UInt8 Flow::stage() const {
+inline Poco::UInt8 Flow::stage() {
 	return _stage;
+}
+
+inline bool Flow::isNull() {
+	return false;
 }
 
 } // namespace Cumulus

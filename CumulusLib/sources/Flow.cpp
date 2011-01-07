@@ -17,6 +17,8 @@
 
 #include "Flow.h"
 #include "Util.h"
+#include "string.h"
+#include "Logs.h"
 
 using namespace std;
 using namespace Poco;
@@ -26,66 +28,108 @@ namespace Cumulus {
 
 class Response {
 public:
-	Response(UInt8 id,PacketWriter& response) : _size(response.size()),acknowledgment(id!=0x10) { // Only request (0x10) must be acquitted
-		memcpy(_response,response.begin(),_size);
+	Response(Poco::UInt8 stage,const UInt8* data,UInt16 size,UInt8* buffer) : _size(size),stage(stage),_buffer(buffer),_time(0),_cycle(-1) {
+		memcpy(buffer,data,size);
 	}
 	
 	~Response() {
 	}
 
-	void response(PacketWriter& response) {
-		response.writeRaw(_response,_size);
+	bool response(PacketWriter& response) {
+		++_time;
+		if(_time>=_cycle) {
+			_time=0;
+			++_cycle;
+			if(_cycle==7)
+				throw exception("Send message failed");
+			DEBUG("Repeat message, try %x",_cycle+1);
+			response.write8(0x10);
+			response.write16(_size);
+			response.writeRaw(_buffer,_size);
+			return true;
+		}
+		return false;
 	}
 
-	bool		acknowledgment;
+	UInt8		stage;
 	
 private:
-	UInt8		_response[MAX_SIZE_MSG];
+	Int8		_cycle;
+	UInt8		_time;
 	int			_size;
+	UInt8*		_buffer;
 };
 
 
-Flow::Flow(UInt8 id,Peer& peer,ServerData& data) : id(id),_stage(0),peer(peer),data(data) {
+Flow::Flow(Peer& peer,ServerData& data) : _stage(0),peer(peer),data(data),_pLastResponse(NULL),_consumed(0) {
 }
 
 Flow::~Flow() {
-	// delete responses
-	map<Poco::UInt8,Response*>::const_iterator it;
-	for(it=_responses.begin();it!=_responses.end();++it)
-		delete it->second;
-	_responses.clear();
+	// delete last response
+	if(_pLastResponse)
+		delete _pLastResponse;
 }
 
-bool Flow::responseNotAck(PacketWriter& response) {
-	map<Poco::UInt8,Response*>::const_iterator it;
-	Response* pResponse=NULL;
-	UInt8 minStage=0xff;
-	for(it=_responses.begin();it!=_responses.end();++it) {
-		if(!it->second->acknowledgment && it->first<minStage)
-			pResponse = it->second;
+bool Flow::consumed() {
+	UInt8 stage = 0;
+	UInt64 consumed = _consumed;
+	while(stage<maxStage()) {
+		if(!(consumed&0x01))
+			return false;
+		consumed>>=1;
+		++stage;
 	}
-	if(!pResponse)
-		return false;
-	pResponse->response(response);
 	return true;
 }
 
-int Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
-	int idResponse = requestHandler(stage,request,response);
-	if(idResponse>=0)
-		_stage = stage; // progress stage on response or not volontary response
-
-	// Mem the last response (for the correspondant stage flow)
-	if(_responses.find(stage)!=_responses.end())
-		delete _responses[stage];
-	_responses[stage] = new Response(idResponse,response);
-	
-	return idResponse;
+void Flow::stageCompleted(UInt8 stage) {
+	_stage = stage; // progress stage
+	_consumed |= (((UInt64)1)<<((UInt64)stage-1));
 }
 
-void Flow::acknowledgment(Poco::UInt8 stage,bool ack) {
-	if(_responses.find(stage)!=_responses.end())
-		_responses[stage]->acknowledgment = ack;
+bool Flow::lastResponse(PacketWriter& response) {
+	if(!_pLastResponse)
+		return false;
+	bool result = false;
+	try {
+		result = _pLastResponse->response(response);
+	} catch(const exception&) {
+		delete _pLastResponse;
+		_pLastResponse = NULL;
+		throw;
+	}
+	return result;
+}
+
+bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
+	// We can considerate that a request stage+1 pays as a ack for requete stage
+	if(stage>0)
+		stageCompleted(stage-1);
+
+	int pos = response.position()-4; // 4 for firstFlag, idFlow, stage and second Flag write in Session.cpp
+	bool answer = requestHandler(stage,request,response);
+	if(!answer) {
+		stageCompleted(stage); // stage complete because there is no response
+		return false;
+	}
+
+	// Mem the last response (for the correspondant stage flow)
+	if(_pLastResponse)
+		delete _pLastResponse;
+	_pLastResponse = new Response(stage,response.begin()+pos,response.length()-pos,_buffer);
+	
+	return true;
+}
+
+void Flow::acknowledgment(Poco::UInt8 stage) {
+	if(!_pLastResponse)
+		return;
+	// Ack!
+	if(_pLastResponse->stage == stage) {
+		delete _pLastResponse;
+		_pLastResponse = NULL;
+		stageCompleted(stage);
+	}
 }	
 
 } // namespace Cumulus

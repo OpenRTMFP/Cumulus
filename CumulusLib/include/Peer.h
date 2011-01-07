@@ -24,9 +24,10 @@
 
 namespace Cumulus {
 
-
+class Group;
 class Peer {
 	friend class Group;
+	friend class Session;
 public:
 	Peer();
 	virtual ~Peer();
@@ -41,25 +42,20 @@ public:
 	const std::vector<Poco::Net::SocketAddress> privateAddress;
 
 	void addPrivateAddress(const Poco::Net::SocketAddress& address);
-
-	bool isIn(Group& group,std::list<Group*>::const_iterator& it=std::list<Group*>::const_iterator());
+	void setPing(Poco::UInt16 ping);
+	Poco::UInt16 getPing();
+	bool isIn(Group& group);
 
 private:
+	void unsubscribeGroups();
+	bool isIn(Group& group,std::list<Group*>::iterator& it);
+
 	std::list<Group*>	_groups;
+	Poco::UInt16		_ping;
 };
 
-inline bool Peer::operator==(const Peer& other) const {
-	return memcmp(id,other.id,32)==0;
-}
-inline bool Peer::operator==(const Poco::UInt8* id) const {
-	return memcmp(this->id,id,32)==0;
-}
-
-inline bool Peer::operator!=(const Peer& other) const {
-	return memcmp(id,other.id,32)!=0;
-}
-inline bool Peer::operator!=(const Poco::UInt8* id) const {
-	return memcmp(this->id,id,32)!=0;
+inline Poco::UInt16 Peer::getPing() {
+	return _ping;
 }
 
 

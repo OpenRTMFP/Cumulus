@@ -57,11 +57,12 @@ private:
 	
 	PacketWriter&		requester();
 	void				packetHandler(PacketReader& packet);
-	void				sendToCirrus(Poco::UInt32 id);
+	void				sendToCirrus();
 
 	AESEngine*				_pMiddleAesDecrypt;
 	AESEngine*				_pMiddleAesEncrypt;
 	
+	std::string					_middleUrl;
 	Poco::UInt32				_middleId;
 	Peer						_middlePeer;
 	std::string					_middleCertificat;

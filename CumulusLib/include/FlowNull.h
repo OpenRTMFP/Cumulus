@@ -24,15 +24,23 @@ namespace Cumulus {
 
 class FlowNull : public Flow {
 public:
-	FlowNull(Poco::UInt8 id,Peer& peer,ServerData& data);
+	FlowNull(Peer& peer,ServerData& data);
 	virtual ~FlowNull();
-
+	bool isNull();
 private:
-	int requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	bool		requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	Poco::UInt8 maxStage();
 };
 
-inline int FlowNull::requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response) {
-	return 0;
+inline bool FlowNull::requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response) {
+	return false;
+}
+
+inline Poco::UInt8 FlowNull::maxStage() {
+	return 0x00;
+}
+inline bool FlowNull::isNull() {
+	return true;
 }
 
 } // namespace Cumulus

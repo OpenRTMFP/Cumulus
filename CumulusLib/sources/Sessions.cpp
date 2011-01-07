@@ -31,10 +31,17 @@ Sessions::Sessions() {
 }
 
 Sessions::~Sessions() {
+	clear();
+}
+
+void Sessions::clear() {
 	// delete sessions
 	map<UInt32,Session*>::const_iterator it;
-	for(it=_sessions.begin();it!=_sessions.end();++it)
+	for(it=_sessions.begin();it!=_sessions.end();++it) {
+			// send kill signal
+		it->second->fail();
 		delete it->second;
+	}
 	_sessions.clear();
 }
 
@@ -72,7 +79,7 @@ void Sessions::manage() {
 	if(!_timeLastManage.isElapsed(_freqManage))
 		return;
 	_timeLastManage.update();
-	map<UInt32,Session*>::const_iterator it=_sessions.begin();
+	map<UInt32,Session*>::iterator it=_sessions.begin();
 	while(it!=_sessions.end()) {
 		it->second->manage();
 		if(it->second->die()) {
@@ -81,7 +88,7 @@ void Sessions::manage() {
 			_sessions.erase(it++);
 			continue;
 		}
-		it++;
+		++it;
 	}
 }
 

@@ -20,6 +20,10 @@
 #include "Cumulus.h"
 #include "Logger.h"
 
+#ifdef CUMULUS_EXPORTS
+	#define CUMULUS_LOGS
+#endif
+
 namespace Cumulus {
 
 class CUMULUS_API Logs
@@ -31,7 +35,7 @@ public:
 	static void			Middle(bool activate);
 
 
-#if defined(CUMULUS_EXPORTS)
+#ifdef CUMULUS_LOGS
 	static Logger*				GetLogger();
 	static bool					Dump();
 	static bool					Middle();
@@ -62,7 +66,7 @@ inline void Logs::Middle(bool activate) {
 }
 
 
-#if defined(CUMULUS_EXPORTS)
+#ifdef CUMULUS_LOGS
 
 	inline bool Logs::Dump() {
 		return s_dump;
@@ -72,12 +76,12 @@ inline void Logs::Middle(bool activate) {
 		return s_middle;
 	}
 
-	inline Poco::UInt8 Logs::Level() {
-		return s_level;
-	}
-
 	inline const std::string& Logs::DumpFile() {
 		return s_file;
+	}
+
+	inline Poco::UInt8 Logs::Level() {
+		return s_level;
 	}
 
 	inline Logger* Logs::GetLogger() {

@@ -9,7 +9,7 @@ We remind you that Cumulus is licensed under the [GNU General Public License], s
 
 Status
 ------------------------------------
-Cumulus is in development, we work to make it stable, but much work remains to be done. For this moment only few scenarios work.
+Cumulus is in development, much work remains to be done.
 If you are a developer **help us** to evolve and enhance Cumulus, else you can always make a **donation** ([us]|[eu]) for that we spent more time on it, in fact it's not technical skills that hinder us but lack of time.
 Also with the intention to understand better the exchange between a official RTMFP server and a Flash client, we have created a [worketable] to facilitate sharing of information exchanged and its presentation.
 
@@ -20,20 +20,30 @@ Usage
 
 CumulusService executable includes the following argument launch options, to a developement usage:
 
-- **help**,
-displays help information about command-line usage.
+- **registerService**,
+register the application as a service.
 
-- **cirrus=url**,
-cirrus url to activate a "man-in-the-middle" mode in bypassing flash packets to the official cirrus server of your choice.
+- **unregisterService**,
+unregister the application as a service.
+
+- **displayName**,
+specify a display name for the service (only with /registerService).
+
+- **startup=automatic|manual**,
+specify the startup mode for the service (only with /registerService).
+
+- **cirrus=address[,dump]**,
+cirrus address to activate a 'man-in-the-middle' developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers. You may add (after a comma) an option to include middle packets process for your dumping (only with /dump).
+Example: 'p2p.rtmfp.net:10007,1'.
 
 - **dump[=file]**,
-enables packet traces in the console. Optionnal *file* argument also allows a file dumping. Often used with *cirrus=url* option to observe flash/cirrus exchange.
-
-- **middle**,
-enables middle traces if dump option is activated. Otherwise it does nothing.
+enables packet traces in the console. Optionnal 'file' argument also allows a file dumping. Used often with 'cirrus=address[,dump]' option to observe flash/cirrus exchange.
 
 - **log=level**,
 log level argument beetween 0 and 8 : none, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (note), all logs until info level are displayed.
+
+- **help**,
+displays help information about command-line usage.
 
 Command-line way is preferred during development and test usage. To statically configure the service the better practice is a optionnal configuration file to the installation directory.
 The possible configurations are:
@@ -42,10 +52,10 @@ The possible configurations are:
 equals 1935 by default (RTMFP server default port), it's the port used by CumulusService to listen incoming RTMFP requests.
 
 - **keepAliveServer**,
-time in milliseconds for periodically sending packets keep-alive with server, 15000 ms by default.
+time in seconds for periodically sending packets keep-alive with server, 15s by default (valid value is from 5s to 255s).
 
 - **keepAlivePeer**,
-time in milliseconds for periodically sending packets keep-alive between peers, 10000 ms by default.
+time in seconds for periodically sending packets keep-alive between peers, 10s by default (valid value is from 5s to 255s).
 
 The configuration file must have *CumulusService* as base name and can be a *ini*, *xml*, or *properties* file type, as you like (personnal choice of preferred style).
 
@@ -53,23 +63,23 @@ The configuration file must have *CumulusService* as base name and can be a *ini
 
     ;Cumulus server configurations
     port = 1985 
-	keepAlivePeer = 10000
-	keepAliveServer = 15000
+	keepAlivePeer = 10
+	keepAliveServer = 15
 
 **CumulusService.xml**
 
     <config>
       <port>1985</port>
-	  <keepAlivePeer>10000</port>
-	  <keepAliveServer>15000</port>
+	  <keepAlivePeer>10</port>
+	  <keepAliveServer>15</port>
     </config>
 
 **CumulusService.properties**
 
     # Cumulus server port
     port=1985
-	keepAlivePeer=10000
-	keepAliveServer=15000
+	keepAlivePeer=10
+	keepAliveServer=15
 
 If this configuration file doesn't exist, default values will be used.
 
@@ -91,7 +101,7 @@ A brief overview:
 	
 ### Flash side
 
-If your Cumulus instance is stared in local, Flash client can connect it by a classical NetConnection:
+If your Cumulus instance is started in local, Flash client can connect it by a classical NetConnection:
 
     _netConnection.connect("rtmfp://localhost/");
 
@@ -122,11 +132,22 @@ Cumulus has the following dependencies:
 **Windows**
 
 Visual Studio 2008 file solutions and projects are included.
-It seeks the external librairies in "External/lib" folder and external includes in "External/include" folder at the root project.
+It finds the external librairies in "External/lib" folder and external includes in "External/include" folder at the root project.
+So you must put Poco and OpenSSL includes/libs in these folders.
 
 **Linux/Unix**
 
-Cumulus has not makefile for this time, Cumulus code is thought to be crossplaform, and it should be easy to create the necessary makefiles.
+If your linux system includes a package manager you can install fastly OpenSSL and Poco dependencies, packages to install are called "libssl-dev" and "libpoco-dev".
+	
+CumulusLib building manipulation are:
+
+	make
+	make clean
+
+CumulusService works in a same way:
+
+	make
+	make clean
 
 Thanks
 ------------------------------------
@@ -141,21 +162,3 @@ Special thanks to Key2 and Andrei of [C++ RMTP Server] who by their preliminary 
 [worketable]: http://openrtmfp.github.com/Cumulus/ "Cumulus Worketable"
 [us]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A "Donation US"
 [eu]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=QPWT9V67YWSGG "Donation EU"
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

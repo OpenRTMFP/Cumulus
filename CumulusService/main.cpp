@@ -18,6 +18,7 @@
 #include "RTMFPServer.h"
 #include "Logs.h"
 
+#include "Poco/StringTokenizer.h"
 #include "Poco/File.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
@@ -25,6 +26,7 @@
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Net;
 using namespace Poco::Util;
 using namespace Cumulus;
 
@@ -33,11 +35,13 @@ char * g_logPriorities[] = { "FATAL","CRITIC" ,"ERROR","WARN","NOTE","INFO","DEB
 
 class CumulusService: public ServerApplication , private Cumulus::Logger {
 public:
-	CumulusService(): _helpRequested(false) {
+	CumulusService(): _helpRequested(false),_pCirrus(NULL) {
 		Logs::SetLogger(*this);
 	}
 	
 	~CumulusService() {
+		if(_pCirrus)
+			delete _pCirrus;
 	}
 
 protected:
@@ -52,28 +56,24 @@ protected:
 
 	void defineOptions(OptionSet& options) {
 		ServerApplication::defineOptions(options);
-		
+
 		options.addOption(
-			Option("help", "h", "displays help information about command-line usage")
-				.required(false)
+			Option("cirrus", "c", "Cirrus address to activate a 'man-in-the-middle' developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers. You may add (after a comma) an option to include middle packets process for your dumping (only with /dump).\nExample: 'p2p.rtmfp.net:10007,1'.",false,"address[,dump]",true)
 				.repeatable(false));
 
 		options.addOption(
-			Option("cirrus", "c", "cirrus url to activate a 'man-in-the-middle' mode in bypassing flash packets to the official cirrus server of your choice",false,"url",true)
+			Option("dump", "d", "Enables packet traces in the console. Optionnal 'file' argument also allows a file dumping. Used often with 'cirrus=address[,dump]' option to observe flash/cirrus exchange.",false,"file",false)
 				.repeatable(false));
 
 		options.addOption(
-			Option("dump", "d", "enables packet traces in the console. Optionnal 'file' argument also allows a file dumping. Often used with 'cirrus=url' option to observe flash/cirrus exchange",false,"file",false)
-				.repeatable(false));
-
-		options.addOption(
-			Option("middle", "m", "enables middle traces if dump option is activated. Otherwise it does nothing.",false)
-				.repeatable(false));
-
-		options.addOption(
-			Option("log", "l", "log level argument, must be beetween 0 and 8 : nothing, fatal, critic, error, warn, note, info, debug, trace")
+			Option("log", "l", "Log level argument, must be beetween 0 and 8 : nothing, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (note), all logs until info level are displayed.")
 				.required(false)
 				.argument("level")
+				.repeatable(false));
+
+		options.addOption(
+			Option("help", "h", "Displays help information about command-line usage.")
+				.required(false)
 				.repeatable(false));
 	}
 
@@ -82,9 +82,24 @@ protected:
 
 		if (name == "help")
 			_helpRequested = true;
-		else if (name == "cirrus")
-			_cirrusUrl = value;
-		else if (name == "dump")
+		else if (name == "cirrus") {
+			string address;
+			StringTokenizer split(value,",",StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+			if(split.count()>0)
+				address = split[0];
+			if(split.count()>1 && split[1]!="0")
+				Logs::Middle(true);
+			try {
+				if(address.empty())
+					throw Exception("cirrus address must be indicated");
+				if(_pCirrus)
+					delete _pCirrus;
+				_pCirrus = new SocketAddress(address);
+				INFO("Mode 'man in the middle' : the exchange will bypass to '%s'",address.c_str());
+			} catch(Exception& ex) {
+				ERROR("Mode 'man in the middle' error : %s",ex.displayText().c_str());
+			}
+		} else if (name == "dump")
 			Logs::Dump(true,value);
 		else if (name == "middle")
 			Logs::Middle(true);
@@ -109,8 +124,8 @@ protected:
 			displayHelp();
 		}
 		else {
-			RTMFPServer server(config().getInt("keepAliveServer",15000),config().getInt("keepAlivePeer",10000));
-			server.start(config().getInt("port", RTMFP_DEFAULT_PORT),_cirrusUrl);
+			RTMFPServer server(config().getInt("keepAliveServer",15),config().getInt("keepAlivePeer",10));
+			server.start(config().getInt("port", RTMFP_DEFAULT_PORT),_pCirrus);
 			// wait for CTRL-C or kill
 			waitForTerminationRequest();
 			// Stop the HTTPServer
@@ -120,8 +135,8 @@ protected:
 	}
 	
 private:
-	bool	_helpRequested;
-	string	_cirrusUrl;
+	bool			_helpRequested;
+	SocketAddress*	_pCirrus;
 };
 
 

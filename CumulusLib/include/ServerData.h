@@ -25,7 +25,7 @@ namespace Cumulus {
 class CUMULUS_API ServerData
 {
 public:
-	ServerData(Poco::UInt16 keepAliveServer,Poco::UInt16 keepAlivePeer);
+	ServerData(Poco::UInt8 keepAliveServer,Poco::UInt8 keepAlivePeer);
 	virtual ~ServerData();
 
 	Group& group(const std::vector<Poco::UInt8>& id);

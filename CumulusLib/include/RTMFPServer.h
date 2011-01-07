@@ -35,16 +35,16 @@ namespace Cumulus {
 
 class CUMULUS_API RTMFPServer : public Poco::Runnable,private Gateway {
 public:
-	RTMFPServer(Poco::UInt16 keepAliveServer=15000,Poco::UInt16 keepAlivePeer=10000);
+	RTMFPServer(Poco::UInt8 keepAliveServer=15,Poco::UInt8 keepAlivePeer=10);
 	virtual ~RTMFPServer();
 
-	void start();
-	void start(Poco::UInt16 port,const std::string& cirrusUrl="");
+	void start(Poco::UInt16 port=RTMFP_DEFAULT_PORT,const Poco::Net::SocketAddress* pCirrus=NULL);
+	void start(const Poco::Net::SocketAddress* pCirrus);
 	void stop();
 	bool running();
 
 private:
-	Session* findSession(PacketReader& reader,const Poco::Net::SocketAddress& sender);
+	Session* findSession(Poco::UInt32 id,const Poco::Net::SocketAddress& sender);
 	void	 run();
 	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Peer& peer,const Poco::UInt8* peerIdWanted);
 	Poco::UInt32	createSession(Poco::UInt32 farId,const Peer& peer,const std::string& url,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey);
@@ -62,8 +62,8 @@ private:
 	Cirrus*						_pCirrus;
 };
 
-inline void RTMFPServer::start() {
-	start(RTMFP_DEFAULT_PORT);
+inline void RTMFPServer::start(const Poco::Net::SocketAddress* pCirrus) {
+	start(RTMFP_DEFAULT_PORT,pCirrus);
 }
 
 inline bool RTMFPServer::running() {

@@ -30,7 +30,8 @@ class Handshake : public Session {
 public:
 	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& socket,ServerData& data);
 	~Handshake();
-
+	
+	void clear();
 private:
 	void		packetHandler(PacketReader& packet);
 	Poco::UInt8	handshakeHandler(Poco::UInt8 id,PacketReader& request,PacketWriter& response);

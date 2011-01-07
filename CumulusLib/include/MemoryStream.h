@@ -37,7 +37,7 @@ public:
 
 	virtual int sync();
 	
-	void			skip(std::streamsize size);
+	void			next(std::streamsize size);
 	std::streamsize written(std::streamsize size=-1);
 	std::streamsize size();
 	void			resize(std::streamsize newSize);
@@ -58,7 +58,7 @@ private:
 
 /// inlines
 
-inline void MemoryStreamBuf::skip(std::streamsize size) {
+inline void MemoryStreamBuf::next(std::streamsize size) {
 	pbump(size);
 	gbump(size);
 }
@@ -98,7 +98,7 @@ public:
 	void			resize(std::streamsize newSize);
 	void			clip(std::streampos pos);
 	char*			begin();
-	void			skip(std::streamsize size);
+	void			next(std::streamsize size);
 		
 private:
 	MemoryStreamBuf _buf;
@@ -114,8 +114,8 @@ inline void MemoryIOS::resize(std::streamsize newSize) {
 inline void MemoryIOS::clip(std::streampos pos) {
 	rdbuf()->clip(pos);
 }
-inline void MemoryIOS::skip(std::streamsize size) {
-	rdbuf()->skip(size);
+inline void MemoryIOS::next(std::streamsize size) {
+	rdbuf()->next(size);
 }
 inline MemoryStreamBuf* MemoryIOS::rdbuf() {
 	return &_buf;

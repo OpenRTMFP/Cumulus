@@ -17,6 +17,8 @@
 
 #include "Peer.h"
 #include "Group.h"
+#include "string.h"
+#include "Logs.h"
 
 using namespace std;
 using namespace Poco;
@@ -24,14 +26,33 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Peer::Peer():id() {
+Peer::Peer():id(), _ping(0) {
 }
 
 Peer::~Peer() {
+	unsubscribeGroups();
+}
+
+void Peer::unsubscribeGroups() {
 	list<Group*>::const_iterator it=_groups.begin();
 	while(it!=_groups.end()) {
 		(*it)->removePeer(*this);
 		it = _groups.begin();
+	}
+}
+
+void Peer::setPing(UInt16 ping) {
+	// Don't considerate a localhost peer
+	if(address.host().isLoopback()) {
+		DEBUG("Peer with a loopback address skipped for a bestpeer record");
+		return;
+	}
+	list<Group*>::const_iterator it;
+	_ping = ping;
+	for(it=_groups.begin();it!=_groups.end();++it) {
+		Group* pGroup = *it;
+		if(pGroup->_pBestPeer!=this && (!pGroup->_pBestPeer || ping<pGroup->_pBestPeer->getPing()))
+			pGroup->_pBestPeer = this;
 	}
 }
 
@@ -46,12 +67,31 @@ void Peer::addPrivateAddress(const SocketAddress& address) {
 	((vector<SocketAddress>&)privateAddress).push_back(address);
 }
 
-bool Peer::isIn(Group& group,list<Group*>::const_iterator& it) {
+bool Peer::isIn(Group& group) {
+	list<Group*>::iterator it;
+	return isIn(group,it);
+}
+
+bool Peer::isIn(Group& group,list<Group*>::iterator& it) {
 	for(it=_groups.begin();it!=_groups.end();++it) {
 		if(group == **it)
 			return true;
 	}
 	return false;
+}
+
+bool Peer::operator==(const Peer& other) const {
+	return memcmp(id,other.id,32)==0;
+}
+bool Peer::operator==(const Poco::UInt8* id) const {
+	return memcmp(this->id,id,32)==0;
+}
+
+bool Peer::operator!=(const Peer& other) const {
+	return memcmp(id,other.id,32)!=0;
+}
+bool Peer::operator!=(const Poco::UInt8* id) const {
+	return memcmp(this->id,id,32)!=0;
 }
 
 

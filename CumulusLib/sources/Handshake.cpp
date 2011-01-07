@@ -22,6 +22,7 @@
 #include "Poco/RandomStream.h"
 #include "Poco/HexBinaryEncoder.h"
 #include <openssl/evp.h>
+#include "string.h"
 
 using namespace std;
 using namespace Poco;
@@ -49,38 +50,40 @@ Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerData& data) :
 
 
 Handshake::~Handshake() {
+	clear();
+}
+
+void Handshake::clear() {
 	// delete cookies // TODO quand effacer les vieux cookies jamais utilisé?
 	map<string,Cookie*>::const_iterator it;
 	for(it=_cookies.begin();it!=_cookies.end();++it)
 		delete it->second;
 	_cookies.clear();
-	
 }
 
 void Handshake::packetHandler(PacketReader& packet) {
 
-	UInt8 marker = packet.next8();
+	UInt8 marker = packet.read8();
 	if(marker!=0x0b) {
 		ERROR("Marker handshake wronk : must be '0B' and not '%02x'",marker);
 		return;
 	}
 	
-	UInt16 time = packet.next16();
-	UInt8 id = packet.next8();
-	packet.shrink(packet.next16()); // length
+	UInt16 time = packet.read16();
+	UInt8 id = packet.read8();
+	packet.shrink(packet.read16()); // length
 
 	PacketWriter& packetOut = writer();
 	UInt8 idResponse=0;
 	{
-		PacketWriter response(packetOut);
-		response.skip(3);
+		PacketWriter response(packetOut,3);
 		idResponse = handshakeHandler(id,packet,response);
 		if(idResponse==0)
 			return;
 	}
 
 	packetOut << (UInt8)idResponse;
-	packetOut << (UInt16)(packetOut.size()-packetOut.position()-2);
+	packetOut << (UInt16)(packetOut.length()-packetOut.position()-2);
 
 	send(true);
 	// reset farid to 0!
@@ -94,11 +97,11 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 	switch(id){
 		case 0x30: {
 			
-			request.next8(); // passer un caractere (boite dans boite)
-			UInt8 epdLen = request.next8()-1;
+			request.read8(); // passer un caractere (boite dans boite)
+			UInt8 epdLen = request.read8()-1;
 
 			
-			UInt8 type = request.next8();
+			UInt8 type = request.read8();
 
 			string epd;
 			request.readRaw(epdLen,epd);
@@ -136,9 +139,9 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			break;
 		}
 		case 0x38: {
-			_farId = request.next32();
+			_farId = request.read32();
 			string cookie;
-			request.readRaw(request.next8(),cookie);
+			request.readRaw(request.read8(),cookie);
 
 			map<string,Cookie*>::iterator itCookie = _cookies.find(cookie.c_str());
 			if(itCookie==_cookies.end()) {
@@ -146,7 +149,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				return 0;
 			}
 
-			request.next8(); // why 0x81?
+			request.read8(); // why 0x81?
 
 			// signature
 			string farSignature;

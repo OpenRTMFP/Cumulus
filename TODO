@@ -1,0 +1,3 @@
+- In the case where you create a NetStream object with "NetConnectionOther.nearId" as second constructor parameter 
+it starts a UDP Hole punching process with the RTMFP server instance which contains the peer id,
+ so how calculate the peer id from "NetConnectionOther.nearId".

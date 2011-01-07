@@ -84,8 +84,10 @@ void MemoryStreamBuf::clip(streampos offset) {
 	setp(_pBuffer,_pBuffer + _bufferSize);
 	pbump(ppos);
 
-	if(_written>=_bufferSize)
-		_written = _bufferSize-1;
+	if(_written<offset)
+		_written=0;
+	else
+		_written-=offset;
 }
 
 streamsize MemoryStreamBuf::written(streamsize size) {

@@ -19,7 +19,6 @@
 #include "AMFReader.h"
 #include "AMFWriter.h"
 #include "Logs.h"
-#include "Poco/HexBinaryDecoder.h"
 
 using namespace std;
 using namespace Poco;
@@ -28,45 +27,64 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-FlowGroup::FlowGroup(Poco::UInt8 id,Peer& peer,ServerData& data) : Flow(id,peer,data) {
+FlowGroup::FlowGroup(Peer& peer,ServerData& data) : Flow(peer,data),_pGroup(NULL),_memberRemoved(false) {
 }
 
 FlowGroup::~FlowGroup() {
 }
 
-int FlowGroup::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
+UInt8 FlowGroup::maxStage() {
+	return 0x02;
+}
+
+bool FlowGroup::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
 	char buff[MAX_SIZE_MSG];
 	AMFReader reader(request);
 	AMFWriter writer(response);
 
 	switch(stage){
 		case 0x01: {
+			if(_memberRemoved) {
+				WARN("Group member removed, no group subscription possible after that");
+				return false;
+			}
 			request.readRaw(buff,6);
-			request.skip(3);
+			request.next(3);
 
 			UInt32 size = request.read7BitValue();
 
 			vector<UInt8> groupId(size);
 			request.readRaw(&groupId[0],size);
 
-			Group& group = data.group(groupId);
+			_pGroup = &data.group(groupId);
 
-			Peer* pPeer = group.onePeer();
-			group.addPeer(peer);
+			Peer* pPeer = _pGroup->bestPeer();
+			_pGroup->addPeer(peer);
 			if(!pPeer)
-				return 0;
+				return false;
 
 			response.writeRaw(buff,6);
 			response.writeRaw("\x03\x00\x0b",3);
 			response.writeRaw(pPeer->id,32);
 
-			return 0x10;
+			return true;
+		}
+		case 0x02: {
+			// delete member of group
+			if(_memberRemoved) {
+				WARN("Group member already removed");
+			} else {
+				if(_pGroup)
+					_pGroup->removePeer(peer);
+				_memberRemoved=true;
+			}
+			return false;
 		}
 		default:
-			ERROR("Unkown FlowNetStream stage '%02x'",stage);
+			ERROR("Unkown FlowGroup stage '%02x'",stage);
 	}
 
-	return 0;
+	return false;
 }
 
 } // namespace Cumulus
