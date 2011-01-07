@@ -16,6 +16,7 @@
 */
 
 #include "Group.h"
+#include "string.h"
 
 using namespace std;
 using namespace Poco;
@@ -29,6 +30,12 @@ Group::~Group() {
 }
 
 
+bool Group::operator==(const std::vector<Poco::UInt8>& id) const {
+	return _id.size()==id.size() && memcmp(&id[0],&_id[0],id.size())==0;
+}
+bool Group::operator!=(const std::vector<Poco::UInt8>& id) const {
+	return _id.size()!=id.size() || memcmp(&id[0],&_id[0],id.size())!=0;
+}
 
 void Group::addPeer(Peer& peer) {
 	if(!peer.isIn(*this)) {
@@ -38,10 +45,10 @@ void Group::addPeer(Peer& peer) {
 }
 
 void Group::removePeer(Peer& peer) {
-	list<Group*>::const_iterator itG;
+	list<Group*>::iterator itG;
 	if(peer.isIn(*this,itG)) {
 		peer._groups.erase(itG);
-		list<Peer*>::const_iterator it;
+		list<Peer*>::iterator it;
 		for(it =_peers.begin();it != _peers.end();++it) {
 			if((**it) == peer) {
 				_peers.erase(it);

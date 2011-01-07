@@ -53,15 +53,9 @@ inline Peer* Group::onePeer() {
 inline bool Group::operator==(const Group& other) const {
 	return other==_id;
 }
-inline bool Group::operator==(const std::vector<Poco::UInt8>& id) const {
-	return _id.size()==id.size() && memcmp(&id[0],&_id[0],id.size())==0;
-}
 
 inline bool Group::operator!=(const Group& other) const {
 	return other!=_id;
-}
-inline bool Group::operator!=(const std::vector<Poco::UInt8>& id) const {
-	return _id.size()!=id.size() || memcmp(&id[0],&_id[0],id.size())!=0;
 }
 
 

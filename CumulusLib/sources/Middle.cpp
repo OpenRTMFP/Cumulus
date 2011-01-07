@@ -207,7 +207,7 @@ PacketWriter& Middle::requester() {
 void Middle::packetHandler(PacketReader& packet) {
 	if(!_pMiddleAesEncrypt) {
 		DEBUG("500ms sleeping to wait cirrus handshaking");
-		Sleep(500); // to wait the cirrus handshake response
+		Thread::sleep(500); // to wait the cirrus handshake response
 		manage();
 	}
 
@@ -412,7 +412,8 @@ void Middle::manage() {
 
 		UInt8 type = packet.next8();
 		UInt16 size = packet.next16();
-		cirrusHandshakeHandler(type,PacketReader(packet.current(),size));
+		PacketReader content(packet.current(),size);
+		cirrusHandshakeHandler(type,content);
 		return;
 	}
 

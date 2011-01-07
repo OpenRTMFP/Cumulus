@@ -126,7 +126,16 @@ It seeks the external librairies in "External/lib" folder and external includes 
 
 **Linux/Unix**
 
-Cumulus has not makefile for this time, Cumulus code is thought to be crossplaform, and it should be easy to create the necessary makefiles.
+CumulusLib building manipulation are:
+
+	make
+	make install
+	make uninstall
+	make clean
+
+CumulusService builds simply with:
+
+	make
 
 Thanks
 ------------------------------------

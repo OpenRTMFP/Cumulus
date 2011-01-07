@@ -22,6 +22,7 @@
 #include "Util.h"
 #include "Logs.h"
 #include "Poco/RandomStream.h"
+#include "string.h"
 
 
 using namespace std;
@@ -161,7 +162,7 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const string& ur
 		Middle* pMiddle = new Middle(id,farId,peer,url,decryptKey,encryptKey,_socket,_data,*_pCirrus);
 		_sessions.add(pMiddle);
 		DEBUG("500ms sleeping to wait cirrus handshaking");
-		Sleep(500); // to wait the cirrus handshake
+		Thread::sleep(500); // to wait the cirrus handshake
 		pMiddle->manage();
 	} else
 		_sessions.add(new Session(id,farId,peer,url,decryptKey,encryptKey,_socket,_data));
@@ -216,7 +217,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const P
 
 		pMiddle->pPeerWanted = &pSessionWanted->peer();
 		request.writeRaw(tag);
-		
+
 		pMiddle->sendHandshakeToCirrus(0x30);
 		// no response here!
 	}

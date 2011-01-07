@@ -17,6 +17,7 @@
 
 #include "Flow.h"
 #include "Util.h"
+#include "string.h"
 
 using namespace std;
 using namespace Poco;

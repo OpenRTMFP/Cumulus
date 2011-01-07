@@ -17,6 +17,7 @@
 
 #include "Peer.h"
 #include "Group.h"
+#include "string.h"
 
 using namespace std;
 using namespace Poco;
@@ -46,12 +47,31 @@ void Peer::addPrivateAddress(const SocketAddress& address) {
 	((vector<SocketAddress>&)privateAddress).push_back(address);
 }
 
-bool Peer::isIn(Group& group,list<Group*>::const_iterator& it) {
+bool Peer::isIn(Group& group) {
+	list<Group*>::iterator it;
+	return isIn(group,it);
+}
+
+bool Peer::isIn(Group& group,list<Group*>::iterator& it) {
 	for(it=_groups.begin();it!=_groups.end();++it) {
 		if(group == **it)
 			return true;
 	}
 	return false;
+}
+
+bool Peer::operator==(const Peer& other) const {
+	return memcmp(id,other.id,32)==0;
+}
+bool Peer::operator==(const Poco::UInt8* id) const {
+	return memcmp(this->id,id,32)==0;
+}
+
+bool Peer::operator!=(const Peer& other) const {
+	return memcmp(id,other.id,32)!=0;
+}
+bool Peer::operator!=(const Poco::UInt8* id) const {
+	return memcmp(this->id,id,32)!=0;
 }
 
 

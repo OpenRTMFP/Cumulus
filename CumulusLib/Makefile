@@ -1,26 +1,26 @@
 # source files.
-LIBSRC = AESEngine.cpp AMFReader.cpp AMFWriter.cpp BLOB.cpp Cirrus.cpp Cookie.cpp Cumulus.cpp Database.cpp Flow.cpp FlowNetConnection.cpp FlowNetStream.cpp FlowNull.cpp Gateway.cpp Handshake.cpp Logs.cpp MemoryStream.cpp Middle.cpp PacketReader.cpp PacketWriter.cpp RTMFP.cpp RTMFPServer.cpp ServerData.cpp Session.cpp Sessions.cpp Util.cpp
+OBJECTS = AESEngine AMFReader AMFWriter Cirrus Cookie Cumulus Flow FlowConnection FlowGroup FlowNull Gateway Group Handshake Logs MemoryStream Middle PacketReader PacketWriter Peer RTMFP RTMFPServer ServerData Session Sessions Util
 
 CC=g++
-AR=ar
 LIB=libCumulus.so
-LIBDEST=./
-SOURCE_DIR=./sources/
+SOURCES=./sources/
 CFLAGS=-g -D CUMULUS_EXPORTS
-INCLUDES = -I./sources/ -I./include/  
-LIBS = -L/usr/lib -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lPocoData -lPocoSQLite -lssl
-LIBOBJ=$(LIBSRC:%.cpp=%.o)
+INCLUDES = -I./include/
+OBJECT = $(OBJECTS:%=%.o)
 
-$(LIBOBJ): 
-	@echo compiling $(@:%.o=%.cpp)
-	@$(CC) -fpic $(CFLAGS) $(INCLUDES) $(LIBS) -c -o $@ $(SOURCE_DIR)$(@:%.o=%.cpp)
-
-$(LIB): $(LIBOBJ)
+main: $(OBJECT)
 	@echo creating dynamic lib $(LIB)
-	@$(CC) -shared $(LIBS) $(LIBOBJ) -o $(LIB)
+	@$(CC) -shared $(OBJECTS:%=%.o) -o $(LIB)
+
+$(OBJECT): 
+	@echo compiling $(@:%.o=%.cpp)
+	@$(CC) -fpic $(CFLAGS) $(INCLUDES) -c -o $@ $(SOURCES)$(@:%.o=%.cpp)
 
 clean:
-	rm -f $(LIBOBJ) $(LIB)
+	rm -f $(OBJECTS:%=%.o) $(LIB)
 
 install:
 	cp $(LIB) /usr/lib/$(LIB)
+
+uninstall:
+	rm -f $(LIB) /usr/lib/$(LIB)

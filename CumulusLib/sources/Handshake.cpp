@@ -22,6 +22,7 @@
 #include "Poco/RandomStream.h"
 #include "Poco/HexBinaryEncoder.h"
 #include <openssl/evp.h>
+#include "string.h"
 
 using namespace std;
 using namespace Poco;
