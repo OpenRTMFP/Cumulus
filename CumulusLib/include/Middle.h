@@ -49,6 +49,7 @@ public:
 	const Peer*			pPeerWanted;
 
 	void				manage();
+	void				fail();
 	
 private:
 	

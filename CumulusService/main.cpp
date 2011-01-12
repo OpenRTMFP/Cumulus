@@ -94,7 +94,8 @@ protected:
 					throw Exception("cirrus address must be indicated");
 				if(_pCirrus)
 					delete _pCirrus;
-				_pCirrus = new SocketAddress(address);
+				URI uri("rtmfp://"+address);
+				_pCirrus = new SocketAddress(uri.getHost(),uri.getPort());
 				INFO("Mode 'man in the middle' : the exchange will bypass to '%s'",address.c_str());
 			} catch(Exception& ex) {
 				ERROR("Mode 'man in the middle' error : %s",ex.displayText().c_str());

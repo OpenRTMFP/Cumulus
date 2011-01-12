@@ -431,6 +431,16 @@ void Middle::manage() {
 
 }
 
+void Middle::fail() {
+	Session::fail();
+	PacketWriter& request = requester();
+	request.write8(0x4a);
+	request << RTMFP::TimeNow();
+	request.write8(0x4c);
+	request.write16(0);
+	sendToCirrus();
+}
+
 
 
 } // namespace Cumulus

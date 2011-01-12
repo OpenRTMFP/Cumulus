@@ -19,7 +19,6 @@
 #include "Logs.h"
 #include "Util.h"
 #include "Middle.h"
-#include "Poco/URI.h"
 #include "Poco/HexBinaryEncoder.h"
 
 

@@ -51,7 +51,7 @@ public:
 	const Peer& 	peer() const;
 	bool			die() const;
 	virtual void	manage();
-	void			fail();
+	virtual void	fail();
 
 	void	p2pHandshake(const Peer& peer);
 
