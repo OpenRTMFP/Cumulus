@@ -41,7 +41,7 @@ public:
 			_time=0;
 			++_cycle;
 			if(_cycle==7)
-				throw exception("Send message failed");
+				throw Exception("Send message failed");
 			DEBUG("Repeat message, try %x",_cycle+1);
 			response.write8(0x10);
 			response.write16(_size);
@@ -93,7 +93,7 @@ bool Flow::lastResponse(PacketWriter& response) {
 	bool result = false;
 	try {
 		result = _pLastResponse->response(response);
-	} catch(const exception&) {
+	} catch(const Exception&) {
 		delete _pLastResponse;
 		_pLastResponse = NULL;
 		throw;

@@ -25,6 +25,7 @@
 #include "Flow.h"
 #include "Poco/Timestamp.h"
 #include "Poco/Net/DatagramSocket.h"
+#include <map>
 
 namespace Cumulus {
 
