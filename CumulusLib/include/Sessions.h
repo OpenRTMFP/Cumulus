@@ -19,6 +19,7 @@
 
 #include "Cumulus.h"
 #include "Session.h"
+#include <cstddef>
 
 namespace Cumulus {
 

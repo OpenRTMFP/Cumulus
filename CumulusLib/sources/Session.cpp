@@ -85,7 +85,7 @@ void Session::manage() {
 		try {
 			if(flow.lastResponse(response))
 				send();
-		} catch(const exception& ex) {
+		} catch(const Exception& ex) {
 			WARN("Resend last response : %s",ex.what());
 			fail();
 			return;
