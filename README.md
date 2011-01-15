@@ -111,8 +111,23 @@ A brief overview:
     #include "RTMFPServer.h"
 
     using namespace Cumulus;
-    ...
-    RTMFPServer server;
+	
+	class ClientHandler: private ClientHandler {
+	public:
+		ClientHandler(){}
+		bool onConnection(const Client& client) {
+			...
+		}
+		void onFailed(const Client& client,const std::string& msg) {
+			...
+		}
+		void onDisconnection(const Client& client) {
+			...
+		}
+	};
+	
+	ClientHandler clientHandler;
+    RTMFPServer server(clientHandler);
     server.start();
     ...
     server.stop();
@@ -153,6 +168,11 @@ Cumulus has the following dependencies:
 Visual Studio 2008 file solutions and projects are included.
 It finds the external librairies in "External/lib" folder and external includes in "External/include" folder at the root project.
 So you must put Poco and OpenSSL includes/libs in these folders.
+You can find OpenSSL binaries for windows on [Win32OpenSSL].
+Poco builds with Visual Studio interpreter command line (see its readme file about buildwin.cmd),
+but this is a example for Visual Studio 2010 which build quickly (just in static mode and without Poco samples):
+
+	buildwin 100 build static_mt both Win32 nosamples devenv
 
 **Linux/Unix**
 	
@@ -177,5 +197,6 @@ Special thanks to Key2 and Andrei of [C++ RMTP Server] who by their preliminary 
 [OpenSSL]: http://www.openssl.org/ "www.openssl.org"
 [Poco]: http://pocoproject.org/ "pocoproject.org" 
 [worketable]: http://openrtmfp.github.com/Cumulus/ "Cumulus Worketable"
+[Win32OpenSSL]: [http://www.slproweb.com/products/Win32OpenSSL.html] "www.slproweb.com"
 [us]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A "Donation US"
 [eu]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=QPWT9V67YWSGG "Donation EU"
