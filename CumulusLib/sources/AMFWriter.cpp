@@ -16,9 +16,11 @@
 */
 
 #include "AMFWriter.h"
+#include "Logs.h"
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Util;
 
 namespace Cumulus {
 
@@ -31,19 +33,63 @@ AMFWriter::~AMFWriter() {
 
 }
 
-void AMFWriter::write(double value){
-	_writer.write8(0x00); // marker
+void AMFWriter::writeBool(bool value){
+	_writer.write8(AMF_BOOLEAN); // marker
 	_writer << value;
 }
 
 void AMFWriter::write(const string& value) {
-	_writer.write8(0x02); // marker
+	if(value.empty()) {
+		_writer.write8(AMF_UNDEFINED);
+		return;
+	}
+	_writer.write8(AMF_STRING); // marker
 	_writer.writeString16(value);
 }
 
+void AMFWriter::writeNumber(double value){
+	_writer.write8(AMF_NUMBER); // marker
+	_writer << value;
+}
+
+
+
+void AMFWriter::writeObject(const AMFObject& amfObject) {
+	beginObject();
+	AbstractConfiguration::Keys keys;
+	amfObject.keys(keys);
+	AbstractConfiguration::Keys::const_iterator it;
+	for(it=keys.begin();it!=keys.end();++it) {
+		string name = *it;
+		_writer.writeString16(name);
+		int type = amfObject.getInt(name+".type",-1);
+		switch(type) {
+			case AMF_BOOLEAN:
+				writeBool(amfObject.getBool(name));
+				break;
+			case AMF_STRING:
+				write(amfObject.getString(name));
+				break;
+			case AMF_NUMBER:
+				writeNumber(amfObject.getDouble(name));
+				break;
+			case AMF_UNDEFINED:
+				write("");
+				break;
+			case AMF_NULL:
+				writeNull();
+				break;
+			default:
+				ERROR("Unknown AMF '%d' type",type);
+		}
+	}
+	endObject();
+}
+
+
 void AMFWriter::writeObjectProperty(const string& name,double value) {
 	_writer.writeString16(name);
-	write(value);
+	writeNumber(value);
 }
 
 void AMFWriter::writeObjectProperty(const string& name,const string& value) {
@@ -54,7 +100,7 @@ void AMFWriter::writeObjectProperty(const string& name,const string& value) {
 void AMFWriter::endObject() {
 	// mark end
 	_writer.write16(0); 
-	_writer.write8(0x09);
+	_writer.write8(AMF_END_OBJECT);
 }
 
 

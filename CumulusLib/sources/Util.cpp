@@ -16,7 +16,9 @@
 */
 
 #include "Util.h"
+#include "Poco/URI.h"
 #include "Poco/FileStream.h"
+#include <sstream>
 
 using namespace std;
 using namespace Poco;
@@ -28,6 +30,45 @@ Util::Util() {
 
 Util::~Util() {
 }
+
+void Util::UnpackUrl(const string& url,string& path,map<string,string>& parameters) {
+	URI uri(url);
+	path.assign(uri.getPath());
+	string query = uri.getRawQuery();
+
+	istringstream istr(query);
+	static const int eof = std::char_traits<char>::eof();
+
+	int ch = istr.get();
+	while (ch != eof)
+	{
+		string name;
+		string value;
+		while (ch != eof && ch != '=' && ch != '&')
+		{
+			if (ch == '+') ch = ' ';
+			name += (char) ch;
+			ch = istr.get();
+		}
+		if (ch == '=')
+		{
+			ch = istr.get();
+			while (ch != eof && ch != '&')
+			{
+				if (ch == '+') ch = ' ';
+				value += (char) ch;
+				ch = istr.get();
+			}
+		}
+		string decodedName;
+		string decodedValue;
+		URI::decode(name, decodedName);
+		URI::decode(value, decodedValue);
+		parameters[decodedName] = decodedValue;
+		if (ch == '&') ch = istr.get();
+	}
+}
+
 
 void Util::Dump(PacketReader& packet,const string& fileName) {
 	Dump(packet.current(),packet.available(),fileName);

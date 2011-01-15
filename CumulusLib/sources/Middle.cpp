@@ -20,7 +20,10 @@
 #include "Util.h"
 #include "RTMFP.h"
 #include "Cirrus.h"
+#include "AMFWriter.h"
+#include "AMFReader.h"
 #include "Poco/RandomStream.h"
+#include "Poco/HexBinaryEncoder.h"
 #include <openssl/evp.h>
 
 using namespace std;
@@ -32,13 +35,14 @@ namespace Cumulus {
 Middle::Middle(UInt32 id,
 				UInt32 farId,
 				const Peer& peer,
-				const string& url,
 				const UInt8* decryptKey,
 				const UInt8* encryptKey,
 				DatagramSocket& socket,
 				ServerData& data,
-				Cirrus& cirrus) : Session(id,farId,peer,url,decryptKey,encryptKey,socket,data),_middleCertificat("\x02\x1D\x02\x41\x0E",5),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),
-					_cirrus(cirrus),_middleId(0),pPeerWanted(NULL),_firstResponse(false),_middleUrl("rtmfp://") {
+				Cirrus& cirrus) : Session(id,farId,peer,decryptKey,encryptKey,socket,data),_middleCertificat("\x02\x1D\x02\x41\x0E",5),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),
+					_cirrus(cirrus),_middleId(0),pPeerWanted(NULL),_firstResponse(false),_queryUrl("rtmfp://"+cirrus.address().toString()+peer.path) {
+
+	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.parameters);
 
 	// connection to cirrus
 	_socket.connect(_cirrus.address());
@@ -51,16 +55,14 @@ Middle::Middle(UInt32 id,
 	_middleCertificat.append(rand,sizeof(rand));
 	_middleCertificat.append("\x03\x1A\x02\x0A\x02\x1E\x02",7);
 
-	_middleUrl.append(cirrus.address().toString()+URI(url).getPathAndQuery());
-
 	////  HANDSHAKE CIRRUS  /////
 
 	PacketWriter& packet = handshaker();
 
-	packet.write8(_middleUrl.size()+2);
-	packet.write8(_middleUrl.size()+1);
+	packet.write8(_queryUrl.size()+2);
+	packet.write8(_queryUrl.size()+1);
 	packet.write8(0x0A);
-	packet.writeRaw(_middleUrl);
+	packet.writeRaw(_queryUrl);
 	packet.writeRandom(16); // tag
 
 	sendHandshakeToCirrus(0x30);
@@ -151,8 +153,9 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 					   printf("%u.%u.%u.%u:%hu\n",a,b,c,d,content.read16());
 				   }
 				}
-				 _die = true; // In this redirection request case, the session has never existed!
-				 fail(); // to prevent the other side
+				
+				Session::fail("Redirection 'man in the middle' request"); // to prevent the other side
+				kill(); // In this redirection request case, the cirrus session has never existed!
 			}
 
 			break;
@@ -243,39 +246,34 @@ void Middle::packetHandler(PacketReader& packet) {
 				UInt8 stage = content.read8();out.write8(stage);
 
 				if(idFlow==0x02 && stage==0x01) {
-					// Replace http address
+					/// Replace NetConnection infos
+
 					out.writeRaw(content.current(),14);content.next(14);
-					int temp = content.read16();out.write16(temp);
-					out.writeRaw(content.current(),temp);content.next(temp);
 
-					out.writeRaw(content.current(),10);content.next(10); // double
+					// first string
+					string tmp;
+					content.readString16(tmp);out.writeString16(tmp);
 
-					temp = content.read16();out.write16(temp);++temp; // app
-						out.writeRaw(content.current(),temp);content.next(temp);
-						temp = content.read16();out.write16(temp);
-						out.writeRaw(content.current(),temp);content.next(temp);
-
-					temp = content.read16();out.write16(temp);++temp; // flashVer
-						out.writeRaw(content.current(),temp);content.next(temp);
-						temp = content.read16();out.write16(temp);
-						out.writeRaw(content.current(),temp);content.next(temp);
-
-					temp = content.read16();out.write16(temp); // swfUrl
-						out.writeRaw(content.current(),temp);content.next(temp);
-						out.write8(content.read8());
-
-					temp = content.read16();out.write16(temp);++temp; // tcUrl
-						out.writeRaw(content.current(),temp);content.next(temp);
-
-					string oldUrl;
-					content.readString16(oldUrl);
-					out.writeString16(_middleUrl); // new url
-					newSize += _middleUrl.size()-oldUrl.size();
+					AMFWriter writer(out);
+					AMFReader reader(content);
+					writer.writeNumber(reader.readNumber()); // double
+					
+					AMFObject obj;
+					reader.readObject(obj);
+					
+					/// Replace tcUrl
+					if(obj.has("tcUrl")) {
+						string oldUrl = obj.getString("tcUrl");
+						obj.setString("tcUrl",_queryUrl);
+						newSize += _queryUrl.size()-oldUrl.size();
+					}
+					
+					writer.writeObject(obj);
 
 				}
 
 			}  else if(type == 0x4C) {
-				_die = true;
+				 kill();
 			}
 			out.writeRaw(content.current(),content.available());
 		}
@@ -338,14 +336,28 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 			UInt8 idFlow = content.read8();packetOut.write8(idFlow);
 			UInt8 stage = content.read8();packetOut.write8(stage);
 			if(stage==0x01 && ((marker==0x4e && idFlow==0x03) || (marker==0x8e && idFlow==0x05))) {
-				// replace "middleId" by "peerId"
-				packetOut.writeRaw(content.current(),10);content.next(10);
+				/// Replace "middleId" by "peerId"
 
-				Peer middlePeer;
-				content.readRaw((UInt8*)middlePeer.id,32);
+				UInt8 tmp[10];
+				content.readRaw(tmp,10);
+				
+				UInt8 middlePeerIdWanted[32];
+				content.readRaw(middlePeerIdWanted,32);
 
-				const Peer& peer = _cirrus.findPeer(middlePeer);
-				packetOut.writeRaw(peer.id,32);
+				const Middle* pMiddleWanted = _cirrus.findMiddle(middlePeerIdWanted);
+
+				if(!pMiddleWanted) {
+					packetOut.clear(packetOut.position()-6);
+					content.next(content.available());
+
+					char printMiddlePeerIdWanted[65];
+					MemoryOutputStream mos(printMiddlePeerIdWanted,65);
+					HexBinaryEncoder(mos).write((char*)middlePeerIdWanted,32); mos.put('\0');
+					ERROR("Middle peer unfound : '%s'",printMiddlePeerIdWanted);
+				} else {
+					packetOut.writeRaw(tmp,10);
+					packetOut.writeRaw(pMiddleWanted->peer().id,32);
+				}
 
 			}
 		} else if(type == 0x0F) {
@@ -370,7 +382,7 @@ void Middle::manage() {
 	if(die())
 		return;
 
-	if (!_socket.poll(_span, Socket::SELECT_READ))
+	if (_socket.available()==0)
 		return;
 
 	int len = 0;

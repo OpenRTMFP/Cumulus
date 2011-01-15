@@ -18,42 +18,31 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketWriter.h"
-#include "AMFObject.h"
+#include "Poco/URI.h"
+#include <map>
 
 namespace Cumulus {
 
 
-class AMFWriter {
+class CUMULUS_API Client {
 public:
-	AMFWriter(PacketWriter& writer);
-	~AMFWriter();
+	Client();
+	virtual ~Client();
 
-	// slower
-	void writeObject(const AMFObject& amfObject);
+	bool operator==(const Client& other) const;
+	bool operator==(const Poco::UInt8* id) const;
+	bool operator!=(const Client& other) const;
+	bool operator!=(const Poco::UInt8* id) const;
 
-	// faster
-	void beginObject();
-	void writeObjectProperty(const std::string& name,double value);
-	void writeObjectProperty(const std::string& name,const std::string& value);
-	void endObject();
+	const Poco::UInt8							id[32];
 
-	void writeNumber(double value);
-	void write(const std::string& value);
-	void writeBool(bool value);
-	void writeNull();
-	
-private:
-	PacketWriter& _writer;
+	const Poco::URI								swfUrl;
+	const Poco::URI								pageUrl;
+
+	// Query URL content
+	const std::string							path;
+	const std::map<std::string,std::string>		parameters;
 };
-
-inline void AMFWriter::beginObject() {
-	_writer.write8(0x03); // mark deb
-}
-
-inline void AMFWriter::writeNull() {
-	_writer.write8(AMF_NULL); // marker
-}
 
 
 } // namespace Cumulus

@@ -22,16 +22,17 @@
 #include "Sessions.h"
 
 
+
 namespace Cumulus {
 
-
+class Middle;
 class Cirrus
 {
 public:
 	Cirrus(const Poco::Net::SocketAddress& address,Sessions& sessions);
 	virtual ~Cirrus();
 
-	const Peer&						findPeer(const Peer& middlePeer);
+	const Middle*					findMiddle(const Poco::UInt8* peerId);
 	const Poco::Net::SocketAddress&	address();
 
 private:

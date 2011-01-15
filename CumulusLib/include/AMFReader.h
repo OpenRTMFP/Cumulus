@@ -19,6 +19,7 @@
 
 #include "Cumulus.h"
 #include "PacketReader.h"
+#include "AMFObject.h"
 
 namespace Cumulus {
 
@@ -28,6 +29,7 @@ public:
 	AMFReader(PacketReader& reader);
 	~AMFReader();
 
+	void	readObject(AMFObject& amfObject);
 	void	read(std::string& value);
 	double	readNumber();
 	void	readNull();

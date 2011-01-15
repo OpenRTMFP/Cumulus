@@ -30,7 +30,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerData& data) : Session(0,0,Peer(),"",RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket,data),
+Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerData& data) : Session(0,0,Peer(),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket,data),
 	_gateway(gateway),_signature("\x03\x1a\x00\x00\x02\x1e\x00\x81\x02\x0d\x02",11) {
 	
 	memcpy(_certificat,"\x01\x0A\x41\x0E",4);
@@ -115,7 +115,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			if(type == 0x0f)
 				return _gateway.p2pHandshake(tag,response,peer(),(const UInt8*)epd.c_str());
 
-			if(type == 0x0a){ // TODO vérifier ça!
+			if(type == 0x0a){
 				/// Handshake
 	
 				// RESPONSE 38
@@ -178,7 +178,8 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			RTMFP::ComputeAsymetricKeys(sharedSecret,pubKey,_signature,farCertificat,requestKey,responseKey);
 
 			// RESPONSE
-			response << _gateway.createSession(_farId,peer(),itCookie->second->url,requestKey,responseKey);
+			Util::UnpackUrl(itCookie->second->queryUrl,(string&)peer().path,(map<string,string>&)peer().parameters);
+			response << _gateway.createSession(_farId,peer(),requestKey,responseKey);
 			response.write8(0x81);
 			response.writeString8(_signature);
 			response.writeRaw((char*)pubKey,sizeof(pubKey));

@@ -21,6 +21,9 @@
 #include "FlowConnection.h"
 #include "FlowGroup.h"
 #include "FlowNull.h"
+#include "Poco/URI.h"
+
+#define FLOW_CONNECTION 0x02
 
 using namespace std;
 using namespace Poco;
@@ -31,13 +34,13 @@ namespace Cumulus {
 Session::Session(UInt32 id,
 				 UInt32 farId,
 				 const Peer& peer,
-				 const string& url,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey,
 				 DatagramSocket& socket,
-				 ServerData& data) : 
-	_id(id),_farId(farId),_socket(socket),
-	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_url(url),_data(data),_peer(peer),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG),_timesKeepalive(0) {
+				 ServerData& data,
+				 ClientHandler* pClientHandler) : 
+	_id(id),_farId(farId),_socket(socket),_pClientHandler(pClientHandler),
+	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_data(data),_peer(peer),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG),_timesKeepalive(0),_connectionHandling(false) {
 
 }
 
@@ -48,6 +51,15 @@ Session::~Session() {
 	for(it=_flows.begin();it!=_flows.end();++it)
 		delete it->second;
 	_flows.clear();
+	kill();
+}
+
+void Session::kill() {
+	if(_die)
+		return;
+	if(_connectionHandling)
+		_pClientHandler->onDisconnection(_peer);
+	_die=true;
 }
 
 PacketWriter& Session::writer() {
@@ -61,13 +73,13 @@ void Session::manage() {
 
 	// After 6 mn we considerate than the session has failed
 	if(_recvTimestamp.isElapsed(360000000))
-		setFailed();
+		setFailed("Timeout no client message");
 	// to accelerate the deletion of peer ghost (mainly for netgroup efficient)
-	if(!_failed && _recvTimestamp.isElapsed(_data.keepAliveServer+10000))
+	if(!_failed && _recvTimestamp.isElapsed(_data.keepAliveServer*1000+10000000))
 		keepAlive();
 
 	if(_failed) {
-		fail();
+		fail(); // send fail message in hoping to trigger the death message
 		return;
 	}
 	
@@ -86,8 +98,7 @@ void Session::manage() {
 			if(flow.lastResponse(response))
 				send();
 		} catch(const Exception& ex) {
-			WARN("Resend last response : %s",ex.what());
-			fail();
+			fail(ex.what());
 			return;
 		}
 		++it;
@@ -95,34 +106,43 @@ void Session::manage() {
 }
 
 void Session::keepAlive() {
+	DEBUG("Keepalive server");
 	if(_timesKeepalive==10) {
-		setFailed();
+		setFailed("Timeout keepalive attempts");
 		return;
 	}
 	++_timesKeepalive;
 	PacketWriter& packet = writer();
 	packet.write8(0x01);
 	packet.write16(0x00);
+	send();
 }
 
-void Session::setFailed() {
+void Session::setFailed(const string& msg) {
 	if(_failed)
 		return;
 	_failed=true;
+	if(_connectionHandling)
+		_pClientHandler->onFailed(_peer,msg);
 	_peer.unsubscribeGroups();
-	ERROR("Session failed on the server side");
+	WARN("Session failed on the server side : %s",msg.c_str());
 }
 
 void Session::fail() {
+	if(_die)
+		WARN("Fail perhaps useless because session is already dead");
+	if(!_failed) {
+		WARN("Here flag failed should be put (with setFailed method), fail() method just allows the fail packet senging");
+		_failed=true;
+	}
 	++_timesFailed;
-	setFailed();
 	PacketWriter& packet = writer();
 	packet.write8(0x0C);
 	packet.write16(0x00);
 	send();
 	// After 6 mn we can considerated than the session is died!
 	if(_timesFailed==10 || _recvTimestamp.isElapsed(360000000))
-		_die = true;
+		kill();
 }
 
 Flow& Session::flow(Poco::UInt8 id,bool canCreate) {
@@ -144,7 +164,7 @@ void Session::p2pHandshake(const Peer& peer) {
 		content.write8(33);
 
 		content.write8(0x0F);
-		content.writeRaw(_peer.id,32);
+		content.writeRaw(peer.id,32);
 
 		content.write8(0x02);
 		content.writeAddress(peer.address);
@@ -243,13 +263,12 @@ void Session::packetHandler(PacketReader& packet) {
 
 			switch(type) {
 				case 0x0c :
-					setFailed();
-					ERROR("Session failed on the client side");
+					setFailed("Session failed on the client side");
 					break;
 
 				case 0x4c :
 					/// Session death!
-					_die = true;
+					kill();
 					break;
 
 				/// KeepAlive
@@ -342,11 +361,21 @@ void Session::packetHandler(PacketReader& packet) {
 					if(flow(idFlow,true).request(stage,request,response))
 						idResponse = 0x10;
 
+					// Check if the client is authorized
+					if(!_connectionHandling && idFlow==FLOW_CONNECTION && _pClientHandler) {
+						_connectionHandling = _pClientHandler->onConnection(_peer);
+						if(!_connectionHandling)
+							setFailed("Client unauthorized");
+					}
+
 					break;
 				default :
 					ERROR("Request type '%02x' unknown",type);
 			}
 
+			// No response for a failed session!
+			if(_failed)
+				idResponse=0;
 			if(idResponse<=0)
 				response.clear();
 		}
@@ -360,7 +389,7 @@ void Session::packetHandler(PacketReader& packet) {
 			packetOut.write16(len);
 			packetOut.next(len);
 		}
-		
+
 		// Next
 		packet.next(size);
 		type = packet.available()>0 ? packet.read8() : 0xFF;
@@ -372,9 +401,9 @@ void Session::packetHandler(PacketReader& packet) {
 
 // Don't must return a null value!
 Flow* Session::createFlow(UInt8 id) {
-	if(id==0x02) // NetConnection
+	if(id==FLOW_CONNECTION) // NetConnection
 		return new FlowConnection(_peer,_data);	
-	else if(id>=0x03) // NetGroup
+	else if(id>FLOW_CONNECTION) // NetGroup
 		return new FlowGroup(_peer,_data);
 	else if(id>0)
 		ERROR("Flow id '%02x' unknown",id);	

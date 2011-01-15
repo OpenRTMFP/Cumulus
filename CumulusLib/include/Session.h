@@ -23,58 +23,56 @@
 #include "AESEngine.h"
 #include "RTMFP.h"
 #include "Flow.h"
+#include "ClientHandler.h"
 #include "Poco/Timestamp.h"
 #include "Poco/Net/DatagramSocket.h"
-#include <map>
 
 namespace Cumulus {
 
-class Session
-{
+class Session {
 public:
 
 	Session(Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
-			const std::string& url,
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
 			Poco::Net::DatagramSocket& socket,
-			ServerData& data);
+			ServerData& data,
+			ClientHandler* pClientHandler=NULL);
 
 	virtual ~Session();
 
 	virtual void	packetHandler(PacketReader& packet);
 
-	Poco::UInt32	id() const;
-	Poco::UInt32	farId() const;
-	const Peer& 	peer() const;
-	bool			die() const;
-	virtual void	manage();
-	virtual void	fail();
+	Poco::UInt32		id() const;
+	Poco::UInt32		farId() const;
+	const Peer& 		peer() const;
+	bool				die() const;
+	virtual void		manage();
 
 	void	p2pHandshake(const Peer& peer);
-
 	bool	decode(PacketReader& packet);
-
-protected:
 	
+	void	fail(const std::string& msg);
+protected:
+
 	PacketWriter&	writer();
 	void			send(bool symetric=false);
+	void			setFailed(const std::string& msg);
+	virtual void	fail();
+	void			kill();
 
 	Poco::UInt32			_farId; // Protected for Middle session
 	PacketWriter			_packetOut; // Protected for Middle session
 	Poco::Timestamp			_recvTimestamp; // Protected for Middle session
 	Poco::UInt16			_timeSent; // Protected for Middle session
-	bool					_die; // Protected for Middle session
 
 private:
-	void				setFailed();
 	void				keepAlive();
 	Flow*				createFlow(Poco::UInt8 id);
 	Flow&				flow(Poco::UInt8 id,bool canCreate=false);
 	
-
 	bool						_failed;
 	Poco::UInt8					_timesFailed;
 	Poco::UInt8					_timesKeepalive;
@@ -83,17 +81,24 @@ private:
 
 	std::map<Poco::UInt8,Flow*> _flows;	
 
-	std::string					_url;
 	Poco::UInt32				_id;
 
 	Poco::Net::DatagramSocket&	_socket;
 	AESEngine					_aesDecrypt;
 	AESEngine					_aesEncrypt;
 
+	bool						_connectionHandling;
+	ClientHandler*				_pClientHandler;
+	bool						_die;
 	Peer						_peer;
 	Poco::UInt8					_buffer[MAX_SIZE_MSG];
 };
 
+
+inline void Session::fail(const std::string& msg) {
+	setFailed(msg);
+	fail();
+}
 
 inline bool Session::decode(PacketReader& packet) {
 	return RTMFP::Decode(_aesDecrypt,packet);

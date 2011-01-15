@@ -60,7 +60,7 @@ bool FlowGroup::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& r
 
 			Peer* pPeer = _pGroup->bestPeer();
 			_pGroup->addPeer(peer);
-			if(!pPeer)
+			if(!pPeer || (peer == *pPeer))
 				return false;
 
 			response.writeRaw(buff,6);

@@ -34,8 +34,7 @@ public:
 	const Poco::UInt16 keepAliveServer;
 
 private:
-	std::list<Group*>				_groups;
-	
+	std::list<Group*>	_groups;
 };
 
 } // namespace Cumulus

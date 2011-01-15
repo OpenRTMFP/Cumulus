@@ -18,6 +18,8 @@
 #include "Cumulus.h"
 #include "PacketReader.h"
 #include "PacketWriter.h"
+#include <map>
+
 
 namespace Cumulus {
 
@@ -30,6 +32,7 @@ public:
 	static void Dump(PacketReader& packet,const std::string& fileName="");
 	static void Dump(PacketWriter& packet,const std::string& fileName="");
 	static void Dump(PacketWriter& packet,Poco::UInt16 offset,const std::string& fileName="");
+	static void UnpackUrl(const std::string& url,std::string& path,std::map<std::string,std::string>& parameters);
 };
 
 } // namespace Cumulus

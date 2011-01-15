@@ -17,8 +17,9 @@
 
 #include "Peer.h"
 #include "Group.h"
-#include "string.h"
 #include "Logs.h"
+#include "Util.h"
+#include "string.h"
 
 using namespace std;
 using namespace Poco;
@@ -26,7 +27,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Peer::Peer():id(), _ping(0) {
+Peer::Peer():_ping(0) {
 }
 
 Peer::~Peer() {
@@ -79,21 +80,6 @@ bool Peer::isIn(Group& group,list<Group*>::iterator& it) {
 	}
 	return false;
 }
-
-bool Peer::operator==(const Peer& other) const {
-	return memcmp(id,other.id,32)==0;
-}
-bool Peer::operator==(const Poco::UInt8* id) const {
-	return memcmp(this->id,id,32)==0;
-}
-
-bool Peer::operator!=(const Peer& other) const {
-	return memcmp(id,other.id,32)!=0;
-}
-bool Peer::operator!=(const Poco::UInt8* id) const {
-	return memcmp(this->id,id,32)!=0;
-}
-
 
 
 } // namespace Cumulus

@@ -17,9 +17,8 @@
 
 #include "RTMFPServer.h"
 #include "Logs.h"
-
+#include "Auth.h"
 #include "Poco/StringTokenizer.h"
-#include "Poco/File.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
 #include <iostream>
@@ -33,7 +32,8 @@ using namespace Cumulus;
 char * g_logPriorities[] = { "FATAL","CRITIC" ,"ERROR","WARN","NOTE","INFO","DEBUG","TRACE" };
 // TODO on linux : warning: deprecated conversion from string constant to ‘char*’
 
-class CumulusService: public ServerApplication , private Cumulus::Logger {
+
+class CumulusService: public ServerApplication , private Cumulus::Logger, private Cumulus::ClientHandler {
 public:
 	CumulusService(): _helpRequested(false),_pCirrus(NULL) {
 		Logs::SetLogger(*this);
@@ -48,6 +48,8 @@ protected:
 	void initialize(Application& self) {
 		loadConfiguration(); // load default configuration files, if present
 		ServerApplication::initialize(self);
+		_auth.authIsWhitelist=config().getBool("auth.whitelist",false);
+		_auth.load("auth");
 	}
 		
 	void uninitialize() {
@@ -120,12 +122,23 @@ protected:
 		printf("%s  %s[%ld] %s\n",g_logPriorities[priority-1],Path(filePath).getBaseName().c_str(),line,text);
 	}
 
+	bool onConnection(const Client& client) {
+		return _auth.check(client);
+	}
+	void onFailed(const Client& client,const std::string& msg) {
+		
+	}
+	void onDisconnection(const Client& client) {
+
+	}
+
 	int main(const std::vector<std::string>& args) {
 		if (_helpRequested) {
 			displayHelp();
 		}
 		else {
-			RTMFPServer server(config().getInt("keepAliveServer",15),config().getInt("keepAlivePeer",10));
+			/// Cumulus Service
+			RTMFPServer server(*this,config().getInt("keepAliveServer",15),config().getInt("keepAlivePeer",10));
 			server.start(config().getInt("port", RTMFP_DEFAULT_PORT),_pCirrus);
 			// wait for CTRL-C or kill
 			waitForTerminationRequest();
@@ -138,9 +151,8 @@ protected:
 private:
 	bool			_helpRequested;
 	SocketAddress*	_pCirrus;
+	Auth			_auth;
 };
-
-
 
 
 int main(int argc, char* argv[]) {

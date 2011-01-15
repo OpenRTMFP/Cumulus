@@ -1,11 +1,20 @@
+OBJECTS = main Auth
+
 CC=g++
 EXEC=CumulusService
+INCLUDES=-I./../CumulusLib/include/
+SOURCES=./sources/
 CFLAGS=-D CUMULUS_EXPORTS
 LIBS = -lCumulus -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lssl
+OBJECT = $(OBJECTS:%=%.o)
 
-main: 
-	@echo compiling main.cpp
-	@$(CC) $(CFLAGS) -B./../CumulusLib/ $(LIBS) -o $(EXEC) main.cpp
+main: $(OBJECT)
+	@echo creating CumulusService executable $(EXEC)
+	@$(CC) $(CFLAGS) $(LIBS) -o $(EXEC) $(OBJECT)
+
+$(OBJECT): 
+	@echo compiling $(@:%.o=%.cpp)
+	@$(CC) $(CFLAGS) $(INCLUDES) -c -o $(@) $(SOURCES)$(@:%.o=%.cpp)
 
 clean:
-	rm -f $(EXEC)
+	rm -f $(OBJECT) $(EXEC)
