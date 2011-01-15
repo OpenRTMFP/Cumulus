@@ -59,6 +59,7 @@ time in seconds for periodically sending packets keep-alive between peers, 10s b
 
 - **auth.whitelist**,
 boolean value to interpret the *auth* file as a whitelist (true) or a blacklist (false, value by default).
+
 *auth* file must be without extension and put in the executable program folder. It's the file rules for newcomer acceptance or rejection.
 It contains host client followed by path page (separated by a comma).
 
@@ -146,6 +147,7 @@ Cumulus has the following dependencies:
 - [Poco] in its Basic edition is required.
 
 ### Building
+
 **Windows**
 
 Visual Studio 2008 file solutions and projects are included.
@@ -153,8 +155,6 @@ It finds the external librairies in "External/lib" folder and external includes 
 So you must put Poco and OpenSSL includes/libs in these folders.
 
 **Linux/Unix**
-
-If your linux system includes a package manager you can install fastly OpenSSL and Poco dependencies, packages to install are called "libssl-dev" and "libpoco-dev".
 	
 CumulusLib building manipulation are:
 
