@@ -88,8 +88,6 @@
 //
 // Memory Leak
 //
-void		SetThreadName(const char* szThreadName);
-std::string GetThreadName();
 
 #if defined(_WIN32) && defined(_DEBUG)
 	#include <map> // A cause d'un pb avec le nouveau new debug!
@@ -97,6 +95,10 @@ std::string GetThreadName();
 	#define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
 	void CUMULUS_API setFilterDebugHook(void);
 #endif
+
+
+void CUMULUS_API SetThreadName(const char* szThreadName);
+std::string CUMULUS_API GetThreadName();
 
 
 
