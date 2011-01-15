@@ -15,45 +15,41 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
-
-#include "Cumulus.h"
-#include "PacketWriter.h"
 #include "AMFObject.h"
+
+using namespace std;
 
 namespace Cumulus {
 
-
-class AMFWriter {
-public:
-	AMFWriter(PacketWriter& writer);
-	~AMFWriter();
-
-	// slower
-	void writeObject(const AMFObject& amfObject);
-
-	// faster
-	void beginObject();
-	void writeObjectProperty(const std::string& name,double value);
-	void writeObjectProperty(const std::string& name,const std::string& value);
-	void endObject();
-
-	void writeNumber(double value);
-	void write(const std::string& value);
-	void writeBool(bool value);
-	void writeNull();
+AMFObject::AMFObject() {
 	
-private:
-	PacketWriter& _writer;
-};
-
-inline void AMFWriter::beginObject() {
-	_writer.write8(0x03); // mark deb
 }
 
-inline void AMFWriter::writeNull() {
-	_writer.write8(AMF_NULL); // marker
+
+AMFObject::~AMFObject() {
 }
+
+void AMFObject::setString(const string& key, const string& value) {
+	MapConfiguration::setInt(key+".type",value.empty() ? AMF_UNDEFINED : AMF_STRING);
+	MapConfiguration::setString(key,value);
+}
+
+void AMFObject::setInt(const string& key, int value) {
+	MapConfiguration::setInt(key+".type",AMF_NUMBER);
+	MapConfiguration::setInt(key,value);
+}
+
+void AMFObject::setDouble(const string& key, double value) {
+	MapConfiguration::setInt(key+".type",AMF_NUMBER);
+	MapConfiguration::setDouble(key,value);
+}
+
+void AMFObject::setBool(const string& key, bool value) {
+	MapConfiguration::setInt(key+".type",AMF_BOOLEAN);
+	MapConfiguration::setBool(key,value);
+}
+
+
 
 
 } // namespace Cumulus

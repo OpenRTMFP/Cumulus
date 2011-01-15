@@ -18,6 +18,7 @@
 #pragma once
 
 #include "Cumulus.h"
+#include "Client.h"
 #include "Poco/Net/SocketAddress.h"
 #include <vector>
 #include <list>
@@ -25,19 +26,13 @@
 namespace Cumulus {
 
 class Group;
-class Peer {
+class Peer : public Client {
 	friend class Group;
 	friend class Session;
 public:
 	Peer();
 	virtual ~Peer();
 
-	bool operator==(const Peer& other) const;
-	bool operator==(const Poco::UInt8* id) const;
-	bool operator!=(const Peer& other) const;
-	bool operator!=(const Poco::UInt8* id) const;
-
-	const Poco::UInt8							id[32];
 	const Poco::Net::SocketAddress				address;
 	const std::vector<Poco::Net::SocketAddress> privateAddress;
 

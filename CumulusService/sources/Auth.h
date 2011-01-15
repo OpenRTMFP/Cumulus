@@ -15,21 +15,21 @@
 	This file is a part of Cumulus.
 */
 
-#include "Cookie.h"
+#pragma once
 
+#include "Client.h"
 
-using namespace std;
+class Line;
+class Auth {
+public:
+	Auth();
+	virtual ~Auth();
 
-namespace Cumulus {
+	bool  authIsWhitelist;
 
-Cookie::Cookie(const string& queryUrl) : queryUrl(queryUrl) {
-	
-}
+	void load(const std::string& file);
+	bool check(const Cumulus::Client& client);
 
-
-Cookie::~Cookie() {
-}
-
-
-
-} // namespace Cumulus
+private:
+	std::vector<Line*>	_lines;	
+};

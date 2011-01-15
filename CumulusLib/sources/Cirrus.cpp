@@ -19,7 +19,6 @@
 #include "Logs.h"
 #include "Util.h"
 #include "Middle.h"
-#include "Poco/HexBinaryEncoder.h"
 
 
 using namespace std;
@@ -38,18 +37,14 @@ Cirrus::~Cirrus() {
 }
 
 
-const Peer& Cirrus::findPeer(const Peer& middlePeer) {
+const Middle* Cirrus::findMiddle(const UInt8* peerId) {
 	Sessions::Iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
 		Middle* pMiddle = (Middle*)it->second;
-		if(pMiddle->middlePeer() == middlePeer)
-			return pMiddle->peer();
+		if(pMiddle->middlePeer() == peerId)
+			return pMiddle;
 	}
-	char printMiddlePeerId[65];
-	MemoryOutputStream mos(printMiddlePeerId,65);
-	HexBinaryEncoder(mos).write((char*)middlePeer.id,32); mos.put('\0');
-	ERROR("No peer find for midde peer '%s'",printMiddlePeerId);
-	return middlePeer;
+	return NULL;
 }
 
 

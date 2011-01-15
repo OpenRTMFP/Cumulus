@@ -18,42 +18,30 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketWriter.h"
-#include "AMFObject.h"
+#include "Poco/Util/MapConfiguration.h"
+
+#define AMF_NUMBER			0x00
+#define AMF_BOOLEAN			0x01
+#define AMF_STRING			0x02
+#define AMF_BEGIN_OBJECT	0x03
+#define AMF_NULL			0x05
+#define AMF_UNDEFINED		0x06
+#define AMF_END_OBJECT		0x09
 
 namespace Cumulus {
 
 
-class AMFWriter {
+class AMFObject : public Poco::Util::MapConfiguration {
 public:
-	AMFWriter(PacketWriter& writer);
-	~AMFWriter();
+	AMFObject();
+	virtual ~AMFObject();
 
-	// slower
-	void writeObject(const AMFObject& amfObject);
+	void setString(const std::string& key, const std::string& value);
+	void setInt(const std::string& key, int value);
+	void setDouble(const std::string& key, double value);
+	void setBool(const std::string& key, bool value);
 
-	// faster
-	void beginObject();
-	void writeObjectProperty(const std::string& name,double value);
-	void writeObjectProperty(const std::string& name,const std::string& value);
-	void endObject();
-
-	void writeNumber(double value);
-	void write(const std::string& value);
-	void writeBool(bool value);
-	void writeNull();
-	
-private:
-	PacketWriter& _writer;
 };
-
-inline void AMFWriter::beginObject() {
-	_writer.write8(0x03); // mark deb
-}
-
-inline void AMFWriter::writeNull() {
-	_writer.write8(AMF_NULL); // marker
-}
 
 
 } // namespace Cumulus

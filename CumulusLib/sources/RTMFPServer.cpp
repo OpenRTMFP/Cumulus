@@ -32,7 +32,15 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer) {
+RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _pClientHandler(NULL),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer) {
+#ifndef _WIN32
+//	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
+//	RAND_seed(rnd_seed, sizeof(rnd_seed));
+#endif
+}
+
+
+RTMFPServer::RTMFPServer(ClientHandler& clientHandler,UInt8 keepAliveServer,UInt8 keepAlivePeer) : _pClientHandler(&clientHandler),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -150,20 +158,20 @@ void RTMFPServer::run() {
 }
 
 
-UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const string& url,const UInt8* decryptKey,const UInt8* encryptKey) {
+UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* decryptKey,const UInt8* encryptKey) {
 	UInt32 id = 0;
 	RandomInputStream ris;
 	while(id==0 || _sessions.find(id))
 		ris.read((char*)(&id),4);
 
 	if(_pCirrus) {
-		Middle* pMiddle = new Middle(id,farId,peer,url,decryptKey,encryptKey,_socket,_data,*_pCirrus);
+		Middle* pMiddle = new Middle(id,farId,peer,decryptKey,encryptKey,_socket,_data,*_pCirrus);
 		_sessions.add(pMiddle);
 		DEBUG("500ms sleeping to wait cirrus handshaking");
 		Thread::sleep(500); // to wait the cirrus handshake
 		pMiddle->manage();
 	} else
-		_sessions.add(new Session(id,farId,peer,url,decryptKey,encryptKey,_socket,_data));
+		_sessions.add(new Session(id,farId,peer,decryptKey,encryptKey,_socket,_data,_pClientHandler));
 
 	return id;
 }

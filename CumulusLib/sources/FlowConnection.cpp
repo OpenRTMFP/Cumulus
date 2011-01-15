@@ -20,6 +20,7 @@
 #include "AMFWriter.h"
 #include "Logs.h"
 
+
 using namespace std;
 using namespace Poco;
 using namespace Poco::Net;
@@ -44,14 +45,24 @@ bool FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWrit
 	AMFWriter writer(response);
 
 	switch(stage){
-		case 0x01:
+		case 0x01: {
 			request.readRaw(buff,6);
 			response.writeRaw(buff,6);
 			response.writeRaw("\x02\x0a\x02",3);
 			request.readRaw(buff,6);
+
+			string tmp;
+			reader.read(tmp);
+			reader.readNumber();
+			// fill peer infos!
+			AMFObject obj;
+			reader.readObject(obj);
+			((URI&)peer.swfUrl) = obj.getString("swfUrl","");
+			((URI&)peer.pageUrl) = obj.getString("pageUrl","");
+
 			response.writeRaw(buff,6);
 			writer.write("_result");
-			writer.write(1);
+			writer.writeNumber(1);
 			writer.writeNull();
 
 			writer.beginObject();
@@ -62,6 +73,7 @@ bool FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWrit
 			writer.endObject();
 
 			return true;
+		}
 		case 0x02: {
 
 			request.readRaw(buff,6); // unknown, 11 00 00 03 96 00

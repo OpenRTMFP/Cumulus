@@ -31,7 +31,6 @@ public:
 	Middle(Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
-			const std::string& url,
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
 			Poco::Net::DatagramSocket& socket,
@@ -55,7 +54,6 @@ private:
 	
 
 	void				cirrusHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
-	
 	PacketWriter&		requester();
 	void				packetHandler(PacketReader& packet);
 	void				sendToCirrus();
@@ -63,7 +61,7 @@ private:
 	AESEngine*				_pMiddleAesDecrypt;
 	AESEngine*				_pMiddleAesEncrypt;
 	
-	std::string					_middleUrl;
+	std::string					_queryUrl;
 	Poco::UInt32				_middleId;
 	Peer						_middlePeer;
 	std::string					_middleCertificat;
@@ -78,11 +76,9 @@ private:
 
 };
 
-
 inline const Peer& Middle::middlePeer() {
 	return _middlePeer;
 }
-
 
 
 } // namespace Cumulus

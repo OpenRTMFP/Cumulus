@@ -23,13 +23,12 @@
 namespace Cumulus {
 
 
-class Cookie
-{
+class Cookie {
 public:
-	Cookie(const std::string& url);
+	Cookie(const std::string& queryUrl);
 	virtual ~Cookie();
 
-	const std::string url;
+	const std::string queryUrl;
 
 };
 

@@ -18,42 +18,23 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketWriter.h"
-#include "AMFObject.h"
+#include <map>
+
 
 namespace Cumulus {
 
 
-class AMFWriter {
+class CUMULUS_API ClientHandler
+{
 public:
-	AMFWriter(PacketWriter& writer);
-	~AMFWriter();
 
-	// slower
-	void writeObject(const AMFObject& amfObject);
+	virtual bool onConnection(const Client& client)=0;
+	virtual void onFailed(const Client& client,const std::string& msg)=0;
+	virtual void onDisconnection(const Client& client)=0;
 
-	// faster
-	void beginObject();
-	void writeObjectProperty(const std::string& name,double value);
-	void writeObjectProperty(const std::string& name,const std::string& value);
-	void endObject();
-
-	void writeNumber(double value);
-	void write(const std::string& value);
-	void writeBool(bool value);
-	void writeNull();
-	
 private:
-	PacketWriter& _writer;
+
 };
-
-inline void AMFWriter::beginObject() {
-	_writer.write8(0x03); // mark deb
-}
-
-inline void AMFWriter::writeNull() {
-	_writer.write8(AMF_NULL); // marker
-}
 
 
 } // namespace Cumulus

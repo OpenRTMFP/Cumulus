@@ -18,7 +18,7 @@ Usage
 
 ### CumulusService
 
-CumulusService executable includes the following argument launch options, to a developement usage:
+CumulusService executable includes the following argument launch options, for developement and installation usage:
 
 - **registerService**,
 register the application as a service.
@@ -33,11 +33,11 @@ specify a display name for the service (only with /registerService).
 specify the startup mode for the service (only with /registerService).
 
 - **cirrus=address[,dump]**,
-cirrus address to activate a 'man-in-the-middle' developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers. You may add (after a comma) an option to include middle packets process for your dumping (only with /dump).
-Example: 'p2p.rtmfp.net:10007,1'.
+cirrus address to activate a "man-in-the-middle" developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers. You may add (after a comma) an option to include middle packets process for your dumping (only with /dump).
+Example: "p2p.rtmfp.net:10007,1".
 
 - **dump[=file]**,
-enables packet traces in the console. Optionnal 'file' argument also allows a file dumping. Used often with 'cirrus=address[,dump]' option to observe flash/cirrus exchange.
+enables packet traces in the console. Optionnal *file* argument also allows a file dumping. Used often with *cirrus=address[,dump]* option to observe flash/cirrus exchange.
 
 - **log=level**,
 log level argument beetween 0 and 8 : none, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (note), all logs until info level are displayed.
@@ -57,6 +57,19 @@ time in seconds for periodically sending packets keep-alive with server, 15s by 
 - **keepAlivePeer**,
 time in seconds for periodically sending packets keep-alive between peers, 10s by default (valid value is from 5s to 255s).
 
+- **auth.whitelist**,
+boolean value to interpret the *auth* file as a whitelist (true) or a blacklist (false, value by default).
+*auth* file must be without extension and put in the executable program folder. It's the file rules for newcomer acceptance or rejection.
+It contains host client followed by path page (separated by a comma).
+
+	#host, 		  path
+	www.site.fr 					# match all pages of "www.site.fr"
+	www.site.fr, /home/index.html 	# match only the "/home/flower.html" page of "www.site.fr"
+	www.site.fr, /home/flower.swf 	# match the "http://www.site.fr/home/flower.swf" usage on any web pages (even from a other host that "www.site.fr")
+	
+If it's configured as a "blacklist", a client which matchs a line will be rejected.
+If it's configured as a "whitelist", a newcomer which math a line is accepted.
+
 The configuration file must have *CumulusService* as base name and can be a *ini*, *xml*, or *properties* file type, as you like (personnal choice of preferred style).
 
 **CumulusService.ini**
@@ -65,6 +78,8 @@ The configuration file must have *CumulusService* as base name and can be a *ini
     port = 1985 
 	keepAlivePeer = 10
 	keepAliveServer = 15
+	[auth]
+	whitelist = true
 
 **CumulusService.xml**
 
@@ -72,6 +87,7 @@ The configuration file must have *CumulusService* as base name and can be a *ini
       <port>1985</port>
 	  <keepAlivePeer>10</port>
 	  <keepAliveServer>15</port>
+	  <auth whitelist="true" />
     </config>
 
 **CumulusService.properties**
@@ -80,12 +96,13 @@ The configuration file must have *CumulusService* as base name and can be a *ini
     port=1985
 	keepAlivePeer=10
 	keepAliveServer=15
+	auth.whitelist=true
 
 If this configuration file doesn't exist, default values will be used.
 
 ### CumulusLib
 
-CumulusService is almost a empty project, it includes just a main.cpp file which uses all CumulusLib API.
+CumulusService is almost a empty project, and all CumulusLib usage is included in main.cpp file.
 Looks its file content is still the best way to learn to play with ;-)
 
 A brief overview:

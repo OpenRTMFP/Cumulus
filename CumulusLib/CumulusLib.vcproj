@@ -349,6 +349,14 @@
 				Name="Streams"
 				>
 				<File
+					RelativePath=".\sources\AMFObject.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\AMFObject.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\AMFReader.cpp"
 					>
 				</File>
@@ -418,6 +426,18 @@
 				</File>
 				<File
 					RelativePath=".\include\AESEngine.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Client.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Client.h"
+					>
+				</File>
+				<File
+					RelativePath=".\include\ClientHandler.h"
 					>
 				</File>
 				<File

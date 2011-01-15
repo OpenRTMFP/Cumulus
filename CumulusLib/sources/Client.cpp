@@ -15,19 +15,32 @@
 	This file is a part of Cumulus.
 */
 
-#include "Cookie.h"
+#include "Client.h"
+#include "string.h"
 
-
-using namespace std;
+using namespace Poco;
 
 namespace Cumulus {
 
-Cookie::Cookie(const string& queryUrl) : queryUrl(queryUrl) {
+Client::Client():id() {
 	
 }
 
+Client::~Client() {
+}
 
-Cookie::~Cookie() {
+bool Client::operator==(const Client& other) const {
+	return memcmp(id,other.id,32)==0;
+}
+bool Client::operator==(const UInt8* id) const {
+	return memcmp(this->id,id,32)==0;
+}
+
+bool Client::operator!=(const Client& other) const {
+	return memcmp(id,other.id,32)!=0;
+}
+bool Client::operator!=(const UInt8* id) const {
+	return memcmp(this->id,id,32)!=0;
 }
 
 

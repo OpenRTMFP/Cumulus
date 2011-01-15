@@ -34,7 +34,7 @@ AMFReader::~AMFReader() {
 
 void AMFReader::read(string& value) {
 	UInt8 c = _reader.read8();
-	if(c!=0x02) {
+	if(c!=AMF_STRING) {
 		ERROR("byte '%02x' is not a AMF String marker",c);
 		return;
 	}
@@ -43,7 +43,7 @@ void AMFReader::read(string& value) {
 
 double AMFReader::readNumber() {
 	UInt8 c = _reader.read8();
-	if(c!=0x00) {
+	if(c!=AMF_NUMBER) {
 		ERROR("byte '%02x' is not a AMF number marker",c);
 		return 0;
 	}
@@ -55,8 +55,56 @@ double AMFReader::readNumber() {
 
 void AMFReader::readNull() {
 	UInt8 c = _reader.read8();
-	if(c!=0x05)
+	if(c!=AMF_NULL)
 		ERROR("byte '%02x' is not a AMF Null marker",c);
+}
+
+void AMFReader::readObject(AMFObject& amfObject) {
+	UInt8 marker = _reader.read8();
+	if(marker!=AMF_BEGIN_OBJECT) {
+		ERROR("byte '%02x' is not a AMF begin-object marker",marker);
+		return;
+	}
+	string name;
+	_reader.readString16(name);
+	while(!name.empty()) {
+		marker = _reader.read8();
+		switch(marker) {
+			case AMF_BOOLEAN: {
+				bool value;
+				_reader >> value;
+				amfObject.setBool(name,value);
+				break;
+			}
+			case AMF_STRING: {
+				string value;
+				_reader.readString16(value);
+				amfObject.setString(name,value);
+				break;
+			}
+			case AMF_NUMBER: {
+				double value;
+				_reader >> value;
+				amfObject.setDouble(name,value);
+				break;
+			}
+			case AMF_UNDEFINED:
+				amfObject.setString(name,"");
+				break;
+			default:
+				ERROR("Unknown AMF '%02x' marker",marker);
+			case AMF_NULL:
+				amfObject.setInt(name,NULL);
+				amfObject.setInt(name+".type",AMF_NULL);
+				break;
+		}
+		_reader.readString16(name);
+	}
+	marker = _reader.read8();
+	if(marker!=AMF_END_OBJECT) {
+		ERROR("byte '%02x' is not a AMF end-object marker",marker);
+		return;
+	}
 }
 
 
