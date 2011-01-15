@@ -90,7 +90,8 @@ void RTMFPServer::start(UInt16 port,const SocketAddress* pCirrus) {
 void RTMFPServer::stop() {
 	ScopedLock<FastMutex> lock(_mutex);
 	_terminate = true;
-	_mainThread.join();
+	if(_mainThread.isRunning())
+		_mainThread.join();
 	if(_pCirrus) {
 		delete _pCirrus;
 		_pCirrus = NULL;
