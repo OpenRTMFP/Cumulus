@@ -33,8 +33,8 @@ specify a display name for the service (only with /registerService).
 specify the startup mode for the service (only with /registerService).
 
 - **cirrus=address[,dump]**,
-cirrus address to activate a "man-in-the-middle" developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers. You may add (after a comma) an option to include middle packets process for your dumping (only with /dump).
-Example: "p2p.rtmfp.net:10007,1".
+cirrus address to activate a "man-in-the-middle" developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers.
+You may add (after a comma) an option to include middle packets process for your dumping (only with *dump* argument), "p2p.rtmfp.net:10007,1" for example.
 
 - **dump[=file]**,
 enables packet traces in the console. Optionnal *file* argument also allows a file dumping. Used often with *cirrus=address[,dump]* option to observe flash/cirrus exchange.
@@ -59,13 +59,14 @@ time in seconds for periodically sending packets keep-alive between peers, 10s b
 
 - **auth.whitelist**,
 boolean value to interpret the *auth* file as a whitelist (true) or a blacklist (false, value by default).
+
 *auth* file must be without extension and put in the executable program folder. It's the file rules for newcomer acceptance or rejection.
 It contains host client followed by path page (separated by a comma).
 
     #host, 		  path
     www.site.fr 					# match all pages of "www.site.fr"
     www.site.fr, /home/index.html 	# match only the "/home/flower.html" page of "www.site.fr"
-    www.site.fr, /home/flower.swf 	# match the "http://www.site.fr/home/flower.swf" usage on any web pages (even from a other host that "www.site.fr")
+    www.site.fr, /home/flower.swf   # match the "http://www.site.fr/home/flower.swf" usage on any web pages and host
 	
 If it's configured as a "blacklist", a client which matchs a line will be rejected.
 If it's configured as a "whitelist", a newcomer which math a line is accepted.
@@ -146,6 +147,7 @@ Cumulus has the following dependencies:
 - [Poco] in its Basic edition is required.
 
 ### Building
+
 **Windows**
 
 Visual Studio 2008 file solutions and projects are included.
@@ -153,8 +155,6 @@ It finds the external librairies in "External/lib" folder and external includes 
 So you must put Poco and OpenSSL includes/libs in these folders.
 
 **Linux/Unix**
-
-If your linux system includes a package manager you can install fastly OpenSSL and Poco dependencies, packages to install are called "libssl-dev" and "libpoco-dev".
 	
 CumulusLib building manipulation are:
 
