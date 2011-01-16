@@ -28,7 +28,7 @@ class CUMULUS_API ClientHandler
 {
 public:
 
-	virtual bool onConnection(const Client& client)=0;
+	virtual bool onConnection(Client& client)=0;
 	virtual void onFailed(const Client& client,const std::string& msg)=0;
 	virtual void onDisconnection(const Client& client)=0;
 

@@ -122,8 +122,11 @@ protected:
 		printf("%s  %s[%ld] %s\n",g_logPriorities[priority-1],Path(filePath).getBaseName().c_str(),line,text);
 	}
 
-	bool onConnection(const Client& client) {
-		return _auth.check(client);
+	bool onConnection(Client& client) {
+		// Here you can read custom client http parameters in reading "client.parameters".
+		// Also you can send custom data for the client in writing in "client.data",
+		// on flash side you could read that on "data" property from NetStatusEvent::NET_STATUS event of NetConnection object
+		return _auth.check(client); //Acceptance
 	}
 	void onFailed(const Client& client,const std::string& msg) {
 		

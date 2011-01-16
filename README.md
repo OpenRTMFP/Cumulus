@@ -75,7 +75,6 @@ The configuration file must have *CumulusService* as base name and can be a *ini
 
 **CumulusService.ini**
 
-    ;Cumulus server configurations
     port = 1985 
 	keepAlivePeer = 10
 	keepAliveServer = 15
@@ -93,19 +92,40 @@ The configuration file must have *CumulusService* as base name and can be a *ini
 
 **CumulusService.properties**
 
-    # Cumulus server port
-    port=1985
-	keepAlivePeer=10
-	keepAliveServer=15
-	auth.whitelist=true
+    port = 1985
+	keepAlivePeer = 10
+	keepAliveServer = 15
+	auth.whitelist = true
 
 If this configuration file doesn't exist, default values will be used.
+
+### Flash side
+
+If your Cumulus instance is started in local, Flash client can connect it by a classical NetConnection:
+
+    _netConnection.connect("rtmfp://localhost/");
+
+Here the port has its default value 1935. If you configure a different port on CumulusService you must indicate this port in the URL (after localhost, of course).
+
+In "man-in-the-middle" mode (see command-line argument *cirrus* in usage part) you must indacted on side flash your Cirrus key developer.
+	
+	_netConnection.connect("rtmfp://localhost/KEY");
+	
+Of course "KEY" must be replaced by your Cirrus development key.
+
+NetStatusEvent.NET_STATUS event from NetConnection object includes a *data* property 
+
+If NetStatusEvent.NET_STATUS event from NetConnection object has failed, it may be due to:
+- Client has no permissions
+
+__notice:__ The *ipMulticastMemberUpdatesEnabled* NetGroup mode is not supporter for this moment.
 
 ### CumulusLib
 
 CumulusService is almost a empty project, and all CumulusLib usage is included in main.cpp file.
 Looks its file content is still the best way to learn to play with ;-)
 
+Quickly you can handle connection/fail/disconnection client, and exchange custom data with him. Also you can accepted or rejected a newcomer client.
 A brief overview:
 
     #include "RTMFPServer.h"
@@ -115,8 +135,15 @@ A brief overview:
 	class ClientHandler: private ClientHandler {
 	public:
 		ClientHandler(){}
-		bool onConnection(const Client& client) {
+		bool onConnection(Client& client) {
+			// Here you can read custom client http parameters in reading "client.parameters"
+			map<string,string>::const_iterator it = client.parameters.find("name");
+			string name = it==client.parameters.end() ? "unknown" : it->second;
+			// Also you can send custom data for the client in writing in "client.data",
+			// on flash side you could read that on "data" property from NetStatusEvent::NET_STATUS event of NetConnection object
+			client.data = "Hello " + name;
 			...
+			return connectionAccepted;
 		}
 		void onFailed(const Client& client,const std::string& msg) {
 			...
@@ -132,21 +159,6 @@ A brief overview:
     ...
     server.stop();
 	
-### Flash side
-
-If your Cumulus instance is started in local, Flash client can connect it by a classical NetConnection:
-
-    _netConnection.connect("rtmfp://localhost/");
-
-Here the port has its default value 1935. If you configure a different port on CumulusService you must indicate this port in the URL (after localhost, of course).
-
-In "man-in-the-middle" mode (see command-line argument *cirrus* in usage part) you must indacted on side flash your Cirrus key developer.
-	
-	_netConnection.connect("rtmfp://localhost/KEY");
-	
-Of course "KEY" must be replaced by your Cirrus development key.
-
-__notice:__ The *ipMulticastMemberUpdatesEnabled* NetGroup mode is not supporter for this moment.
 
 Build
 ------------------------------------

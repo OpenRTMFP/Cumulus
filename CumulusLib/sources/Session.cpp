@@ -40,7 +40,7 @@ Session::Session(UInt32 id,
 				 ServerData& data,
 				 ClientHandler* pClientHandler) : 
 	_id(id),_farId(farId),_socket(socket),_pClientHandler(pClientHandler),
-	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_data(data),_peer(peer),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG),_timesKeepalive(0),_connectionHandling(false) {
+	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_data(data),_peer(peer),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG),_timesKeepalive(0),_clientAccepted(false) {
 
 }
 
@@ -52,13 +52,17 @@ Session::~Session() {
 		delete it->second;
 	_flows.clear();
 	kill();
+	if(_pClientHandler)
+		WARN("onDisconnect handler has not been called on the session '%u'",_id);
 }
 
 void Session::kill() {
 	if(_die)
 		return;
-	if(_connectionHandling)
+	if(_clientAccepted && _pClientHandler) {
 		_pClientHandler->onDisconnection(_peer);
+		_pClientHandler = NULL;
+	}
 	_die=true;
 }
 
@@ -122,7 +126,7 @@ void Session::setFailed(const string& msg) {
 	if(_failed)
 		return;
 	_failed=true;
-	if(_connectionHandling)
+	if(_pClientHandler && _clientAccepted)
 		_pClientHandler->onFailed(_peer,msg);
 	_peer.unsubscribeGroups();
 	WARN("Session failed on the server side : %s",msg.c_str());
@@ -356,17 +360,19 @@ void Session::packetHandler(PacketReader& packet) {
 					response.write8(0x01); // Send always a 0x01 flag here means that we considerate that
 					// the possible previus stage message is ack, even if it's wrong, because we can considerate
 					// to keep things simple that a request is a acknowledgment for its response
+					
+					// We must process just one time the connection flow! If the client has not received our response
+					// it will be resent by repeat flow process (because it's not yet ack)
+					if(_clientAccepted && idFlow==FLOW_CONNECTION)
+						break;
 
 					// Process request
-					if(flow(idFlow,true).request(stage,request,response))
+					if(flow(idFlow,true).request(stage,request,response)) {
 						idResponse = 0x10;
-
-					// Check if the client is authorized
-					if(!_connectionHandling && idFlow==FLOW_CONNECTION && _pClientHandler) {
-						_connectionHandling = _pClientHandler->onConnection(_peer);
-						if(!_connectionHandling)
-							setFailed("Client unauthorized");
-					}
+						if(idFlow==FLOW_CONNECTION)
+							_clientAccepted = true;
+					} else if(idFlow==FLOW_CONNECTION)
+						setFailed("Client rejected");
 
 					break;
 				default :

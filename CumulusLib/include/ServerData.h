@@ -19,22 +19,29 @@
 
 #include "Cumulus.h"
 #include "Group.h"
+#include "ClientHandler.h"
 
 namespace Cumulus {
 
 class CUMULUS_API ServerData
 {
 public:
-	ServerData(Poco::UInt8 keepAliveServer,Poco::UInt8 keepAlivePeer);
+	ServerData(Poco::UInt8 keepAliveServer,Poco::UInt8 keepAlivePeer,ClientHandler* pClientHandler=NULL);
 	virtual ~ServerData();
 
-	Group& group(const std::vector<Poco::UInt8>& id);
+	Group&	group(const std::vector<Poco::UInt8>& id);
+	bool	auth(Client& client);
 
 	const Poco::UInt16 keepAlivePeer;
 	const Poco::UInt16 keepAliveServer;
 
 private:
+	ClientHandler*		_pClientHandler;
 	std::list<Group*>	_groups;
 };
+
+inline bool ServerData::auth(Client& client) {
+	return !_pClientHandler || _pClientHandler->onConnection(client);
+}
 
 } // namespace Cumulus

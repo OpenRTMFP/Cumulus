@@ -23,7 +23,7 @@
 #include "AESEngine.h"
 #include "RTMFP.h"
 #include "Flow.h"
-#include "ClientHandler.h"
+//#include "ClientHandler.h"
 #include "Poco/Timestamp.h"
 #include "Poco/Net/DatagramSocket.h"
 
@@ -87,7 +87,7 @@ private:
 	AESEngine					_aesDecrypt;
 	AESEngine					_aesEncrypt;
 
-	bool						_connectionHandling;
+	bool						_clientAccepted;
 	ClientHandler*				_pClientHandler;
 	bool						_die;
 	Peer						_peer;

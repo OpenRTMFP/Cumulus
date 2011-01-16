@@ -39,6 +39,8 @@ public:
 	const Poco::URI								swfUrl;
 	const Poco::URI								pageUrl;
 
+	std::string									data;
+
 	// Query URL content
 	const std::string							path;
 	const std::map<std::string,std::string>		parameters;

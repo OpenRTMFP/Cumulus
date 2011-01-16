@@ -60,6 +60,10 @@ bool FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWrit
 			((URI&)peer.swfUrl) = obj.getString("swfUrl","");
 			((URI&)peer.pageUrl) = obj.getString("pageUrl","");
 
+			// Check if the client is authorized
+			if(!data.auth(peer))
+				return false;
+
 			response.writeRaw(buff,6);
 			writer.write("_result");
 			writer.writeNumber(1);
@@ -67,7 +71,7 @@ bool FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWrit
 
 			writer.beginObject();
 			writer.writeObjectProperty("objectEncoding",3);
-			writer.writeObjectProperty("description","Connection succeeded");
+			writer.writeObjectProperty("data",peer.data);
 			writer.writeObjectProperty("level","status");
 			writer.writeObjectProperty("code","NetConnection.Connect.Success");
 			writer.endObject();

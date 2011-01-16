@@ -40,7 +40,7 @@ RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _pClientHa
 }
 
 
-RTMFPServer::RTMFPServer(ClientHandler& clientHandler,UInt8 keepAliveServer,UInt8 keepAlivePeer) : _pClientHandler(&clientHandler),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer) {
+RTMFPServer::RTMFPServer(ClientHandler& clientHandler,UInt8 keepAliveServer,UInt8 keepAlivePeer) : _pClientHandler(&clientHandler),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_data),_data(keepAliveServer,keepAlivePeer,&clientHandler) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
