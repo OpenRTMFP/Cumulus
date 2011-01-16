@@ -17,8 +17,9 @@
 
 #include "Flow.h"
 #include "Util.h"
-#include "string.h"
 #include "Logs.h"
+#include "Poco/Timestamp.h"
+#include "string.h"
 
 using namespace std;
 using namespace Poco;
@@ -36,6 +37,9 @@ public:
 	}
 
 	bool response(PacketWriter& response) {
+		// Wait at least 1.5 sec before to begin the repeat cycle
+		if(_time==0 && !_timeCreation.isElapsed(1500000))
+			return false;
 		++_time;
 		if(_time>=_cycle) {
 			_time=0;
@@ -54,6 +58,7 @@ public:
 	UInt8		stage;
 	
 private:
+	Timestamp	_timeCreation;
 	Int8		_cycle;
 	UInt8		_time;
 	int			_size;
