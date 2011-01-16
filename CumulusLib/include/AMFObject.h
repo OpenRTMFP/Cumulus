@@ -41,7 +41,13 @@ public:
 	void setDouble(const std::string& key, double value);
 	void setBool(const std::string& key, bool value);
 
+	bool has(const std::string& key) const;
+
 };
+
+inline bool AMFObject::has(const std::string& key) const {
+	return hasProperty(key);
+}
 
 
 } // namespace Cumulus
