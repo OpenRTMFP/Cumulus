@@ -175,7 +175,10 @@ but this is a example for Visual Studio 2010 which build quickly (just in static
 	buildwin 100 build static_mt both Win32 nosamples devenv
 
 **Linux/Unix**
-	
+
+If your linux system includes a package manager you can install fastly OpenSSL and Poco dependencies,
+package names are *libssl-dev* and *libpoco-dev*.
+
 CumulusLib building manipulation are:
 
 	make
