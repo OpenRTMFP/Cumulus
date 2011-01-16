@@ -51,7 +51,7 @@ public:
 	bool				die() const;
 	virtual void		manage();
 
-	void	p2pHandshake(const Peer& peer);
+	void	p2pHandshake(const Peer& peer,const std::string& tag);
 	bool	decode(PacketReader& packet);
 	
 	void	fail(const std::string& msg);

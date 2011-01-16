@@ -20,7 +20,6 @@
 #include "Util.h"
 #include "Middle.h"
 #include "Poco/RandomStream.h"
-#include "Poco/HexBinaryEncoder.h"
 #include <openssl/evp.h>
 #include "string.h"
 
@@ -41,11 +40,7 @@ Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerData& data) :
 	Poco::UInt8 flashFarId[32];
 	EVP_Digest(_certificat,sizeof(_certificat),flashFarId,NULL,EVP_sha256(),NULL);
 
-	char printFarId[65];
-	MemoryOutputStream mos(printFarId,65);
-	HexBinaryEncoder(mos).write((char*)flashFarId,32);
-	mos.put('\0');
-	INFO("Flash far id of this cumulus server : %s",printFarId);
+	INFO("Flash far id of this cumulus server : %s",Util::FormatHex(flashFarId,32).c_str());
 }
 
 

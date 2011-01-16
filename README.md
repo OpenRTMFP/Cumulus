@@ -169,8 +169,8 @@ Visual Studio 2008 file solutions and projects are included.
 It finds the external librairies in "External/lib" folder and external includes in "External/include" folder at the root project.
 So you must put Poco and OpenSSL includes/libs in these folders.
 You can find OpenSSL binaries for windows on [Win32OpenSSL].
-Poco builds with Visual Studio interpreter command line (see its readme file about buildwin.cmd),
-but this is a example for Visual Studio 2010 which build quickly (just in static mode and without Poco samples):
+Poco builds with Visual Studio interpreter command line (see its readme file about *buildwin.cmd*),
+but this is a example for Visual Studio 2010 which build quickly (just in static mode and without Poco samples) :
 
 	buildwin 100 build static_mt both Win32 nosamples devenv
 

@@ -18,7 +18,6 @@
 #include "Sessions.h"
 #include "Logs.h"
 #include "Poco/RandomStream.h"
-#include "Poco/HexBinaryEncoder.h"
 
 using namespace std;
 using namespace Poco;
@@ -48,7 +47,7 @@ void Sessions::clear() {
 Session* Sessions::add(Session* pSession) {
 	Session* pSessionOther = find(pSession->id());
 	if(pSessionOther && pSessionOther != pSession) {
-		ERROR("A session exists yet with the same id '%u'",pSession->id());
+		ERROR("A session exists already with the same id '%u'",pSession->id());
 		return NULL;
 	}
 	NOTE("Session %u created",pSession->id());
@@ -61,11 +60,6 @@ Session* Sessions::find(const Poco::UInt8* peerId) {
 		if(it->second->peer() == peerId)
 			return it->second;
 	}
-	char printPeerId[65];
-	MemoryOutputStream mos(printPeerId,65);
-	HexBinaryEncoder(mos).write((char*)peerId,32);
-	mos.put('\0');
-	WARN("Unknown session for a peerId of '%s'",printPeerId);
 	return NULL;
 }
 

@@ -181,26 +181,8 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const Peer& peer,const UInt8* peerIdWanted) {
 
 	Session* pSessionWanted = _sessions.find(peerIdWanted);
-	if(!pSessionWanted) {
-		ERROR("UDP Hole punching error : session wanted not found");
-		return 0;
-	}
 
-	pSessionWanted->p2pHandshake(peer);
-
-	/// Udp hole punching
-	if(!_pCirrus) {
-		// Normal mode
-		response.write8(0x01);
-		response.writeAddress(pSessionWanted->peer().address);
-		vector<SocketAddress>::const_iterator it;
-		for(it=pSessionWanted->peer().privateAddress.begin();it!=pSessionWanted->peer().privateAddress.end();++it) {
-			response.write8(0x01);
-			response.writeAddress(*it);
-		}
-
-		return 0x71;
-	} else {
+	if(_pCirrus) {
 		// Just to make working the man in the middle mode !
 
 		// find the flash client equivalence
@@ -220,13 +202,37 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const P
 		request.write8(0x22);request.write8(0x21);
 		request.write8(0x0F);
 
-		request.writeRaw(((Middle*)pSessionWanted)->middlePeer().id,32);
+		if(pSessionWanted) {
+			request.writeRaw(((Middle*)pSessionWanted)->middlePeer().id,32);
+			pMiddle->pPeerWanted = &pSessionWanted->peer();
+		} else
+			request.writeRaw(peerIdWanted,32);
 
-		pMiddle->pPeerWanted = &pSessionWanted->peer();
 		request.writeRaw(tag);
 
 		pMiddle->sendHandshakeToCirrus(0x30);
 		// no response here!
+	}
+
+	if(!pSessionWanted) {
+		DEBUG("UDP Hole punching : session wanted not found, must be dead");
+		return 0;
+	}
+
+	pSessionWanted->p2pHandshake(peer,tag);
+
+	/// Udp hole punching
+	if(!_pCirrus) {
+		// Normal mode
+		response.write8(0x01);
+		response.writeAddress(pSessionWanted->peer().address);
+		vector<SocketAddress>::const_iterator it;
+		for(it=pSessionWanted->peer().privateAddress.begin();it!=pSessionWanted->peer().privateAddress.end();++it) {
+			response.write8(0x01);
+			response.writeAddress(*it);
+		}
+
+		return 0x71;
 	}
 	
 	return 0;

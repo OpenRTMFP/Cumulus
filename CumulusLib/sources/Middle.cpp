@@ -23,7 +23,6 @@
 #include "AMFWriter.h"
 #include "AMFReader.h"
 #include "Poco/RandomStream.h"
-#include "Poco/HexBinaryEncoder.h"
 #include <openssl/evp.h>
 
 using namespace std;
@@ -349,11 +348,7 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 				if(!pMiddleWanted) {
 					packetOut.clear(packetOut.position()-6);
 					content.next(content.available());
-
-					char printMiddlePeerIdWanted[65];
-					MemoryOutputStream mos(printMiddlePeerIdWanted,65);
-					HexBinaryEncoder(mos).write((char*)middlePeerIdWanted,32); mos.put('\0');
-					ERROR("Middle peer unfound : '%s'",printMiddlePeerIdWanted);
+					ERROR("Middle peer unfound : '%s'",Util::FormatHex(middlePeerIdWanted,32).c_str());
 				} else {
 					packetOut.writeRaw(tmp,10);
 					packetOut.writeRaw(pMiddleWanted->peer().id,32);
@@ -364,6 +359,7 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 			// Stop the P2PHANDSHAKE CIRRUS PACKET!
 			packetOut.clear(packetOut.position()-3);
 			content.next(content.available());
+			NOTE("UDP Hole punching cirrus packet annihilated")
 		}
 
 		packetOut.writeRaw(content.current(),content.available());

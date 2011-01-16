@@ -18,6 +18,7 @@
 #include "Util.h"
 #include "Poco/URI.h"
 #include "Poco/FileStream.h"
+#include "Poco/HexBinaryEncoder.h"
 #include <sstream>
 
 using namespace std;
@@ -30,6 +31,14 @@ Util::Util() {
 
 Util::~Util() {
 }
+
+string Util::FormatHex(const UInt8* data,unsigned size) {
+	ostringstream oss;
+	HexBinaryEncoder(oss).write((char*)data,size);
+	return oss.str();
+	//WARN("Unknown session for a peerId of '%s'",printPeerId);
+}
+
 
 void Util::UnpackUrl(const string& url,string& path,map<string,string>& parameters) {
 	URI uri(url);

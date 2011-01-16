@@ -154,7 +154,7 @@ Flow& Session::flow(Poco::UInt8 id,bool canCreate) {
 	return *_flows[id];
 }
 
-void Session::p2pHandshake(const Peer& peer) {
+void Session::p2pHandshake(const Peer& peer,const std::string& tag) {
 	DEBUG("Peer newcomer address send to peer '%u' connected",id());
 	PacketWriter& packetOut = writer();
 	packetOut.write8(0x0F);
@@ -164,12 +164,12 @@ void Session::p2pHandshake(const Peer& peer) {
 		content.write8(33);
 
 		content.write8(0x0F);
-		content.writeRaw(peer.id,32);
+		content.writeRaw(_peer.id,32);
 
 		content.write8(0x02);
 		content.writeAddress(peer.address);
 
-		content.writeRandom(16); // tag
+		content.writeRaw(tag);
 	}
 
 	packetOut.write16(packetOut.length()-packetOut.position()-2);
