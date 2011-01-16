@@ -141,7 +141,7 @@ void RTMFPServer::run() {
 		}
 	
 		if(Logs::Dump()) {
-			printf("Request:\n");
+			cout << "Request:" << endl;
 			Util::Dump(packet,Logs::DumpFile());
 		}
 

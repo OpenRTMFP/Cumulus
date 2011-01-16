@@ -149,7 +149,8 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 				while(content.available()) {
 				   if(content.read8()==0x01) {
 					   UInt8 a=content.read8(),b=content.read8(),c=content.read8(),d=content.read8();
-					   printf("%u.%u.%u.%u:%hu\n",a,b,c,d,content.read16());
+					   printf("%u.%u.%u.%u:%hu",a,b,c,d,content.read16());
+					   cout << endl;
 				   }
 				}
 				
@@ -194,7 +195,7 @@ void Middle::sendHandshakeToCirrus(UInt8 type) {
 	_packetOut.write16(_packetOut.length()-_packetOut.position()-2);
 
 	if(Logs::Dump() && Logs::Middle()) {
-		printf("Middle to Cirrus : handshake\n");
+		cout << "Middle to Cirrus handshaking:" << endl;
 		Util::Dump(_packetOut,6,Logs::DumpFile());
 	}
 
@@ -296,7 +297,7 @@ void Middle::sendToCirrus() {
 	}
 
 	if(Logs::Dump() && Logs::Middle()) {
-		printf("Middle to Cirrus\n");
+		cout << "Middle to Cirrus:" << endl;
 		Util::Dump(_packetOut,6,Logs::DumpFile());
 	}
 
@@ -405,7 +406,7 @@ void Middle::manage() {
 		}
 
 		if(Logs::Dump() && Logs::Middle()) {
-			printf("Cirrus to Middle : handshake\n");
+			cout << "Cirrus to Middle handshaking:" << endl;
 			Util::Dump(packet,Logs::DumpFile());
 		}
 
@@ -431,7 +432,7 @@ void Middle::manage() {
 
 	DEBUG("Cirrus to middle : session d'identification '%u'",id);
 	if(Logs::Dump() && Logs::Middle()) {
-		printf("Cirrus to Middle :\n");
+		cout << "Cirrus to Middle:" << endl;
 		Util::Dump(packet,Logs::DumpFile());
 	}
 

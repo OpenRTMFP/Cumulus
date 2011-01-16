@@ -113,9 +113,9 @@ void Util::Dump(const UInt8* data,int size,const string& fileName) {
 			++c;
 		}
 		i += 16;
-		printf("\n");
+		cout << endl;
 	}
-	printf("\n");
+	cout << endl;
 	if(!fileName.empty()) {
 		FileOutputStream fos(fileName,std::ios::app | std::ios::out);
 		fos.write((char*)data,size);

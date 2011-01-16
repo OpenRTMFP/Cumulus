@@ -199,7 +199,7 @@ void Session::send(bool symetric) {
 		_packetOut.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
 
 	if(Logs::Dump()) {
-		printf("Response:\n");
+		cout << "Response:" << endl;
 		Util::Dump(_packetOut,6,Logs::DumpFile());
 	}
 

@@ -119,7 +119,8 @@ protected:
 	}
 
 	void logHandler(Thread::TID threadId,const std::string& threadName,Priority priority,const char *filePath,long line, const char *text) {
-		printf("%s  %s[%ld] %s\n",g_logPriorities[priority-1],Path(filePath).getBaseName().c_str(),line,text);
+		printf("%s  %s[%ld] %s",g_logPriorities[priority-1],Path(filePath).getBaseName().c_str(),line,text);
+		cout << endl;
 	}
 
 	bool onConnection(Client& client) {
