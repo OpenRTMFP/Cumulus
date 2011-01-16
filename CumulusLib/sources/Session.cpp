@@ -334,7 +334,7 @@ void Session::packetHandler(PacketReader& packet) {
 					flag = request.read8(); // Unknown, is 0x80 or 0x00
 					idFlow= request.read8();
 					stage = request.read8()-1;
-				case 0x11 :
+				case 0x11 : {
 					++stage;
 					if(request.read8()==0x02) {
 						// It happens when the previus stage is not ack,
@@ -363,18 +363,20 @@ void Session::packetHandler(PacketReader& packet) {
 					
 					// We must process just one time the connection flow! If the client has not received our response
 					// it will be resent by repeat flow process (because it's not yet ack)
-					if(_clientAccepted && idFlow==FLOW_CONNECTION)
+					bool connecting= idFlow==FLOW_CONNECTION && stage==1;
+					if(_clientAccepted && connecting)
 						break;
 
 					// Process request
 					if(flow(idFlow,true).request(stage,request,response)) {
 						idResponse = 0x10;
-						if(idFlow==FLOW_CONNECTION)
+						if(connecting)
 							_clientAccepted = true;
-					} else if(idFlow==FLOW_CONNECTION)
+					} else if(connecting)
 						setFailed("Client rejected");
 
 					break;
+				}
 				default :
 					ERROR("Request type '%02x' unknown",type);
 			}
