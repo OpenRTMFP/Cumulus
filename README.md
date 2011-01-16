@@ -113,9 +113,9 @@ In "man-in-the-middle" mode (see command-line argument *cirrus* in usage part) y
 	
 Of course "KEY" must be replaced by your Cirrus development key.
 
-NetStatusEvent.NET_STATUS event from NetConnection object includes a *data* property 
+If *NetStatusEvent.NET_STATUS* event from *NetConnection* object has failed, it may be due to:
 
-If NetStatusEvent.NET_STATUS event from NetConnection object has failed, it may be due to:
+- Bad server address
 - Client has no permissions
 
 __notice:__ The *ipMulticastMemberUpdatesEnabled* NetGroup mode is not supporter for this moment.
