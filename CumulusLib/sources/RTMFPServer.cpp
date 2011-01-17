@@ -56,7 +56,7 @@ Session* RTMFPServer::findSession(UInt32 id,const SocketAddress& sender) {
 	// Id session can't be egal to 0 (it's reserved to Handshake)
 	if(id==0) {
 		DEBUG("Handshaking");
-		((SocketAddress&)_handshake.peer().address) = sender;
+		((vector<SocketAddress>&)_handshake.peer().allAddress)[0] = sender;
 		return &_handshake;
 	}
 	Session* pSession = _sessions.find(id);
@@ -178,31 +178,36 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 }
 
 
-UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const Peer& peer,const UInt8* peerIdWanted) {
+UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const SocketAddress& address,const UInt8* peerIdWanted) {
+
+
+	// find the flash client equivalence
+	Session* pSession = NULL;
+	Sessions::Iterator it;
+	for(it=_sessions.begin();it!=_sessions.end();++it) {
+		pSession = it->second;
+		if(memcmp(pSession->peer().address().addr(),address.addr(),sizeof(struct sockaddr))==0)
+			break;
+	}
+	if(it==_sessions.end())
+		pSession=NULL;
 
 	if(_pCirrus) {
 		// Just to make working the man in the middle mode !
 
-		// find the flash client equivalence
-		Middle* pMiddle = NULL;
-		Sessions::Iterator it;
-		for(it=_sessions.begin();it!=_sessions.end();++it) {
-			pMiddle = (Middle*)it->second;
-			if(memcmp(pMiddle->peer().address.addr(),peer.address.addr(),sizeof(struct sockaddr))==0)
-				break;
-		}
-		if(it==_sessions.end()) {
+		
+		if(!pSession) {
 			ERROR("UDP Hole punching error : middle equivalence not found for session wanted");
 			return 0;
 		}
 
-		PacketWriter& request = pMiddle->handshaker();
+		PacketWriter& request = ((Middle*)pSession)->handshaker();
 		request.write8(0x22);request.write8(0x21);
 		request.write8(0x0F);
 		request.writeRaw(peerIdWanted,32);
 		request.writeRaw(tag);
 
-		pMiddle->sendHandshakeToCirrus(0x30);
+		((Middle*)pSession)->sendHandshakeToCirrus(0x30);
 		// no response here!
 		return 0;
 	}
@@ -211,17 +216,21 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const P
 	if(!pSessionWanted) {
 		DEBUG("UDP Hole punching : session wanted not found, must be dead");
 		return 0;
+	} else if(pSessionWanted->failed()) {
+		DEBUG("UDP Hole punching : session wanted is deleting");
+		return 0;
 	}
 	
 	/// Udp hole punching normal process
-	pSessionWanted->p2pHandshake(peer,tag);
+	if(pSession)
+		pSessionWanted->p2pHandshake(pSession->peer().allAddress,tag);
+	else
+		pSessionWanted->p2pHandshake(address,tag);
 
-	response.write8(0x02);
-	response.writeAddress(pSessionWanted->peer().address);
-	vector<SocketAddress>::const_iterator it;
-	for(it=pSessionWanted->peer().privateAddress.begin();it!=pSessionWanted->peer().privateAddress.end();++it) {
-		response.write8(0x01);
-		response.writeAddress(*it);
+	vector<SocketAddress>::const_iterator it2;
+	for(it2=pSessionWanted->peer().allAddress.begin();it2!=pSessionWanted->peer().allAddress.end();++it2) {
+		response.write8(it2==pSessionWanted->peer().allAddress.begin() ? 0x02 : 0x01);
+		response.writeAddress(*it2);
 	}
 	
 	return 0x71;

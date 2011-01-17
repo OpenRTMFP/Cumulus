@@ -44,7 +44,7 @@ void Peer::unsubscribeGroups() {
 
 void Peer::setPing(UInt16 ping) {
 	// Don't considerate a localhost peer
-	if(address.host().isLoopback()) {
+	if(address().host().isLoopback()) {
 		DEBUG("Peer with a loopback address skipped for a bestpeer record");
 		return;
 	}
@@ -58,14 +58,12 @@ void Peer::setPing(UInt16 ping) {
 }
 
 void Peer::addPrivateAddress(const SocketAddress& address) {
-	if(memcmp(this->address.addr(),address.addr(),sizeof(struct sockaddr))==0)
-		return;
 	vector<SocketAddress>::const_iterator it;
-	for(it=privateAddress.begin();it!=privateAddress.end();++it) {
+	for(it=allAddress.begin();it!=allAddress.end();++it) {
 		if(memcmp(it->addr(),address.addr(),sizeof(struct sockaddr))==0)
 			return;
 	}
-	((vector<SocketAddress>&)privateAddress).push_back(address);
+	((vector<SocketAddress>&)allAddress).push_back(address);
 }
 
 bool Peer::isIn(Group& group) {

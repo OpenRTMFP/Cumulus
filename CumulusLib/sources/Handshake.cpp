@@ -108,7 +108,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			// UDP hole punching
 
 			if(type == 0x0f)
-				return _gateway.p2pHandshake(tag,response,peer(),(const UInt8*)epd.c_str());
+				return _gateway.p2pHandshake(tag,response,peer().address(),(const UInt8*)epd.c_str());
 
 			if(type == 0x0a){
 				/// Handshake

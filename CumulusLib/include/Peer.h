@@ -33,8 +33,8 @@ public:
 	Peer();
 	virtual ~Peer();
 
-	const Poco::Net::SocketAddress				address;
-	const std::vector<Poco::Net::SocketAddress> privateAddress;
+	const Poco::Net::SocketAddress&				address() const;
+	const std::vector<Poco::Net::SocketAddress> allAddress;
 
 	void addPrivateAddress(const Poco::Net::SocketAddress& address);
 	void setPing(Poco::UInt16 ping);
@@ -45,12 +45,17 @@ private:
 	void unsubscribeGroups();
 	bool isIn(Group& group,std::list<Group*>::iterator& it);
 
-	std::list<Group*>	_groups;
-	Poco::UInt16		_ping;
+	std::list<Group*>			_groups;
+	Poco::UInt16				_ping;
+	Poco::Net::SocketAddress	_emptyAddress;
 };
 
 inline Poco::UInt16 Peer::getPing() {
 	return _ping;
+}
+
+inline const Poco::Net::SocketAddress& Peer::address() const {
+	return allAddress.size()>0 ? allAddress[0] : _emptyAddress;
 }
 
 

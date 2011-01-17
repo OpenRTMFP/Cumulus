@@ -47,7 +47,7 @@ public:
 private:
 	Session* findSession(Poco::UInt32 id,const Poco::Net::SocketAddress& sender);
 	void	 run();
-	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Peer& peer,const Poco::UInt8* peerIdWanted);
+	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);
 	Poco::UInt32	createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey);
 
 	Handshake					_handshake;

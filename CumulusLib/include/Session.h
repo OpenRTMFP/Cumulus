@@ -49,9 +49,11 @@ public:
 	Poco::UInt32		farId() const;
 	const Peer& 		peer() const;
 	bool				die() const;
+	bool				failed() const;
 	virtual void		manage();
 
-	void	p2pHandshake(const Peer& peer,const std::string& tag);
+	void	p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag);
+	void	p2pHandshake(const std::vector<Poco::Net::SocketAddress>& address,const std::string& tag);
 	bool	decode(PacketReader& packet);
 	
 	void	fail(const std::string& msg);
@@ -101,6 +103,11 @@ inline void Session::fail(const std::string& msg) {
 	setFailed(msg);
 	fail();
 }
+
+inline bool Session::failed() const {
+	return _failed;
+}
+
 
 inline bool Session::decode(PacketReader& packet) {
 	return RTMFP::Decode(_aesDecrypt,packet);

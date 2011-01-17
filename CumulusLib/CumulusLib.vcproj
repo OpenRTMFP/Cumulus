@@ -509,10 +509,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\Gateway.cpp"
-					>
-				</File>
-				<File
 					RelativePath=".\include\Gateway.h"
 					>
 				</File>

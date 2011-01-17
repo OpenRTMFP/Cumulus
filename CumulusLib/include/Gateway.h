@@ -27,10 +27,10 @@ namespace Cumulus {
 class Gateway
 {
 public:
-	Gateway();
-	virtual ~Gateway();
+	Gateway(){}
+	virtual ~Gateway(){}
 
-	virtual Poco::UInt8 p2pHandshake(const std::string& tag,PacketWriter& response,const Peer& peer,const Poco::UInt8* peerIdWanted)=0;
+	virtual Poco::UInt8 p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted)=0;
 	virtual Poco::UInt32 createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey)=0;
 };
 

@@ -131,7 +131,7 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 				response.write8(packet.read8());
 				// replace public ip
 				if(pPeerWanted) {
-					response.writeAddress(pPeerWanted->address);
+					response.writeAddress(pPeerWanted->address());
 					packet.next(6);
 					pPeerWanted = NULL;
 				}
@@ -361,8 +361,8 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 			if(memcmp(peerId,peer().id,32)!=0 && memcmp(peerId,_middlePeer.id,32)!=0)
 				WARN("The p2pHandshake cirrus packet doesn't match the peerId (or the middlePeerId)");
 			// Replace by the peer.id
-
 			packetOut.writeRaw(peer().id,32);
+			// TODO change the public address!
 		}
 
 		packetOut.writeRaw(content.current(),content.available());

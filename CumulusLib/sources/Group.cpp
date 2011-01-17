@@ -49,7 +49,7 @@ void Group::addPeer(Peer& peer) {
 		peer._groups.push_back(this);
 		_peers.push_back(&peer);
 		// Don't considerate a localhost peer
-		if(peer.address.host().isLoopback()) {
+		if(peer.address().host().isLoopback()) {
 			DEBUG("Peer with a loopback address skipped for a bestpeer record");
 			return;
 		}
