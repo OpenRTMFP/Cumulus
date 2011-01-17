@@ -23,6 +23,7 @@
 #include "AMFWriter.h"
 #include "AMFReader.h"
 #include "Poco/RandomStream.h"
+#include "string.h"
 #include <openssl/evp.h>
 
 using namespace std;
@@ -127,11 +128,11 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 				response.write8(0x71);
 				response.write16(packet.available()+tag.size()+1);
 				response.writeString8(tag);
-				response.write8(0x01);
+				response.write8(packet.read8());
 				// replace public ip
 				if(pPeerWanted) {
 					response.writeAddress(pPeerWanted->address);
-					packet.next(7);
+					packet.next(6);
 					pPeerWanted = NULL;
 				}
 				response.writeRaw(packet.current(),packet.available());
@@ -339,28 +340,29 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 				/// Replace "middleId" by "peerId"
 
 				UInt8 tmp[10];
-				content.readRaw(tmp,10);
+				content.readRaw(tmp,10);packetOut.writeRaw(tmp,10);
 				
 				UInt8 middlePeerIdWanted[32];
 				content.readRaw(middlePeerIdWanted,32);
 
 				const Middle* pMiddleWanted = _cirrus.findMiddle(middlePeerIdWanted);
 
-				if(!pMiddleWanted) {
-					packetOut.clear(packetOut.position()-6);
-					content.next(content.available());
-					ERROR("Middle peer unfound : '%s'",Util::FormatHex(middlePeerIdWanted,32).c_str());
-				} else {
-					packetOut.writeRaw(tmp,10);
+				if(!pMiddleWanted)
+					packetOut.writeRaw(middlePeerIdWanted,32);
+				else
 					packetOut.writeRaw(pMiddleWanted->peer().id,32);
-				}
 
 			}
 		} else if(type == 0x0F) {
-			// Stop the P2PHANDSHAKE CIRRUS PACKET!
-			packetOut.clear(packetOut.position()-3);
-			content.next(content.available());
-			NOTE("UDP Hole punching cirrus packet annihilated")
+			packetOut.writeRaw(content.current(),3);content.next(3);
+			UInt8 peerId[32];
+			content.readRaw(peerId,32);
+
+			if(memcmp(peerId,peer().id,32)!=0 && memcmp(peerId,_middlePeer.id,32)!=0)
+				WARN("The p2pHandshake cirrus packet doesn't match the peerId (or the middlePeerId)");
+			// Replace by the peer.id
+
+			packetOut.writeRaw(peer().id,32);
 		}
 
 		packetOut.writeRaw(content.current(),content.available());

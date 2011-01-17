@@ -4,3 +4,5 @@ it starts a UDP Hole punching process with the RTMFP server instance which conta
 - Error on Linux when I stops the service : System exception: cannot join thread
 - hair-pinning is also supported in RTMFP?
 - Man in the middle mode with a SWF distant client
+- The Session address may be changed during session live?
+- To support IPV6 address!

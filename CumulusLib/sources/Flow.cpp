@@ -113,17 +113,16 @@ bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
 
 	int pos = response.position()-4; // 4 for firstFlag, idFlow, stage and second Flag write in Session.cpp
 	bool answer = requestHandler(stage,request,response);
-	if(!answer) {
-		stageCompleted(stage); // stage complete because there is no response
-		return false;
-	}
 
-	// Mem the last response (for the correspondant stage flow)
 	if(_pLastResponse)
 		delete _pLastResponse;
-	_pLastResponse = new Response(stage,response.begin()+pos,response.length()-pos,_buffer);
-	
-	return true;
+
+	if(answer)
+		_pLastResponse = new Response(stage,response.begin()+pos,response.length()-pos,_buffer); // Mem the last response (for the correspondant stage flow)
+	else
+		stageCompleted(stage); // stage complete because there is no responsereturn false;
+
+	return answer;
 }
 
 void Flow::acknowledgment(Poco::UInt8 stage) {
