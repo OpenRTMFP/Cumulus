@@ -36,7 +36,6 @@ public:
 	void acknowledgment(Poco::UInt8 stage);
 	bool lastResponse(PacketWriter& response);
 	bool consumed();
-	void stageCompleted(Poco::UInt8 stage);
 	virtual bool isNull();
 
 	Peer&				peer;
@@ -47,6 +46,8 @@ public:
 private:
 	virtual bool requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response)=0;
 	virtual Poco::UInt8 maxStage()=0;
+
+	void stageCompleted(Poco::UInt8 stage);
 
 	Poco::UInt8			_stage;
 	Poco::UInt64		_consumed;

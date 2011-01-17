@@ -339,21 +339,17 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 				/// Replace "middleId" by "peerId"
 
 				UInt8 tmp[10];
-				content.readRaw(tmp,10);
+				content.readRaw(tmp,10);packetOut.writeRaw(tmp,10);
 				
 				UInt8 middlePeerIdWanted[32];
 				content.readRaw(middlePeerIdWanted,32);
 
 				const Middle* pMiddleWanted = _cirrus.findMiddle(middlePeerIdWanted);
 
-				if(!pMiddleWanted) {
-					packetOut.clear(packetOut.position()-6);
-					content.next(content.available());
-					ERROR("Middle peer unfound : '%s'",Util::FormatHex(middlePeerIdWanted,32).c_str());
-				} else {
-					packetOut.writeRaw(tmp,10);
+				if(!pMiddleWanted)
+					packetOut.writeRaw(middlePeerIdWanted,32);
+				else
 					packetOut.writeRaw(pMiddleWanted->peer().id,32);
-				}
 
 			}
 		} else if(type == 0x0F) {
