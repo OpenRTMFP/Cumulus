@@ -171,12 +171,10 @@ void Session::p2pHandshake(const Peer& peer,const std::string& tag) {
 		PacketWriter& packetOut = writer();
 		packetOut.write8(0x10);
 		packetOut.write16(0x2d);
-		packetOut.writeRaw("\x80\x03\x02\x02\x03\x00\x47\x43\x02\x0a\x03\x00\x0b",13);
+		packetOut.writeRaw("\x80\x03\x02\x01\x03\x00\x47\x43\x02\x0a\x03\x00\x0b",13);
 		packetOut.writeRaw(peer.id,32);
 		send();
-		return;
 	}
-
 
 	DEBUG("Peer newcomer address send to peer '%u' connected",id());
 	PacketWriter& packetOut = writer();
