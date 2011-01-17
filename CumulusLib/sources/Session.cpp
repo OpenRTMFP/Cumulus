@@ -158,29 +158,23 @@ Flow& Session::flow(Poco::UInt8 id,bool canCreate) {
 	return *_flows[id];
 }
 
-void Session::p2pHandshake(const SocketAddress& address,const std::string& tag) {
-	vector<SocketAddress> addr(1);
-	addr.push_back(address);
-	p2pHandshake(addr,tag);
-}
+void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,Session* pSession) {
 
-void Session::p2pHandshake(const vector<SocketAddress>& address,const std::string& tag) {
-
-	/*map<string,Int8>::iterator it = _p2pHandskakeAttempts.find(tag);
+	map<string,Int8>::iterator it = _p2pHandskakeAttempts.find(tag);
 	if(it==_p2pHandskakeAttempts.end())
 		it = _p2pHandskakeAttempts.insert(pair<string,Int8>(tag,3)).first;
 
 	if((it->second--)==-3) {
 		_p2pHandskakeAttempts.erase(it);
-	} else if(it->second==-1) {
+	} else if(it->second==-1 && pSession) {
 		DEBUG("Attempt UDP Hole punching on the other side");
 		PacketWriter& packetOut = writer();
 		packetOut.write8(0x10);
 		packetOut.write16(0x2d);
 		packetOut.writeRaw("\x80\x03\x02\x01\x03\x00\x47\x43\x02\x0a\x03\x00\x0b",13);
-		packetOut.writeRaw(peer.id,32);
+		packetOut.writeRaw(pSession->peer().id,32);
 		send();
-	}*/
+	}
 
 	DEBUG("Peer newcomer address send to peer '%u' connected",id());
 	PacketWriter& packetOut = writer();
@@ -193,16 +187,8 @@ void Session::p2pHandshake(const vector<SocketAddress>& address,const std::strin
 		content.write8(0x0F);
 		content.writeRaw(_peer.id,32);
 
-		// TODO error if size==0!
-		if(address.size()>0) {
-			content.write8(0x02);
-			content.writeAddress(address[0]);
-			vector<SocketAddress>::const_iterator it;
-			for(it=address.begin();it!=address.end();++it) {
-				content.write8(0x01);
-				content.writeAddress(*it);
-			}
-		}
+		content.write8(0x02);
+		content.writeAddress(address);
 		
 		content.writeRaw(tag);
 	}

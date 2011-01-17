@@ -52,8 +52,7 @@ public:
 	bool				failed() const;
 	virtual void		manage();
 
-	void	p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag);
-	void	p2pHandshake(const std::vector<Poco::Net::SocketAddress>& address,const std::string& tag);
+	void	p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag,Session* pSession);
 	bool	decode(PacketReader& packet);
 	
 	void	fail(const std::string& msg);

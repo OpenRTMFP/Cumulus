@@ -222,10 +222,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	}
 	
 	/// Udp hole punching normal process
-	if(pSession)
-		pSessionWanted->p2pHandshake(pSession->peer().allAddress,tag);
-	else
-		pSessionWanted->p2pHandshake(address,tag);
+	pSessionWanted->p2pHandshake(address,tag,pSession);
 
 	vector<SocketAddress>::const_iterator it2;
 	for(it2=pSessionWanted->peer().allAddress.begin();it2!=pSessionWanted->peer().allAddress.end();++it2) {
