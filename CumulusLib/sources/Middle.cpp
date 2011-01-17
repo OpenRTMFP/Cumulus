@@ -40,7 +40,7 @@ Middle::Middle(UInt32 id,
 				DatagramSocket& socket,
 				ServerData& data,
 				Cirrus& cirrus) : Session(id,farId,peer,decryptKey,encryptKey,socket,data),_middleCertificat("\x02\x1D\x02\x41\x0E",5),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),
-					_cirrus(cirrus),_middleId(0),pPeerWanted(NULL),_firstResponse(false),_queryUrl("rtmfp://"+cirrus.address().toString()+peer.path) {
+					_cirrus(cirrus),_middleId(0),pPeerWanted(NULL),_firstResponse(false),_queryUrl("rtmfp://"+cirrus.address().toString()+peer.path),_middlePeer(peer) {
 
 	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.parameters);
 

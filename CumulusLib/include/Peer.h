@@ -30,7 +30,7 @@ class Peer : public Client {
 	friend class Group;
 	friend class Session;
 public:
-	Peer();
+	Peer(const Poco::Net::SocketAddress& address);
 	virtual ~Peer();
 
 	const Poco::Net::SocketAddress&				address() const;
@@ -42,6 +42,7 @@ public:
 	bool isIn(Group& group);
 
 private:
+	Peer(){}
 	void unsubscribeGroups();
 	bool isIn(Group& group,std::list<Group*>::iterator& it);
 
