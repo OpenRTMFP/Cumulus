@@ -53,7 +53,7 @@ public:
 	virtual void		manage();
 
 	void	p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag,Session* pSession);
-	bool	decode(PacketReader& packet);
+	bool	decode(PacketReader& packet,const Poco::Net::SocketAddress& sender);
 	
 	void	fail(const std::string& msg);
 protected:
@@ -105,11 +105,6 @@ inline void Session::fail(const std::string& msg) {
 
 inline bool Session::failed() const {
 	return _failed;
-}
-
-
-inline bool Session::decode(PacketReader& packet) {
-	return RTMFP::Decode(_aesDecrypt,packet);
 }
 
 inline const Peer& Session::peer() const {

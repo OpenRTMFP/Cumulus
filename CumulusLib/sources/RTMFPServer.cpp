@@ -51,12 +51,11 @@ RTMFPServer::~RTMFPServer() {
 	stop();
 }
 
-Session* RTMFPServer::findSession(UInt32 id,const SocketAddress& sender) {
+Session* RTMFPServer::findSession(UInt32 id) {
  
 	// Id session can't be egal to 0 (it's reserved to Handshake)
 	if(id==0) {
 		DEBUG("Handshaking");
-		((vector<SocketAddress>&)_handshake.peer().allAddress)[0] = sender;
 		return &_handshake;
 	}
 	Session* pSession = _sessions.find(id);
@@ -130,12 +129,12 @@ void RTMFPServer::run() {
 		}
 
 		UInt32 idSession = RTMFP::Unpack(packet);
-		Session* pSession = this->findSession(idSession,sender);
+		Session* pSession = this->findSession(idSession);
 
 		if(!pSession)
 			continue;
 
-		if(!pSession->decode(packet)) {
+		if(!pSession->decode(packet,sender)) {
 			ERROR("Decrypt error");
 			continue;
 		}

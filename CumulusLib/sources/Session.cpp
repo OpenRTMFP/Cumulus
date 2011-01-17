@@ -56,6 +56,11 @@ Session::~Session() {
 		WARN("onDisconnect handler has not been called on the session '%u'",_id);
 }
 
+bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
+	((vector<SocketAddress>&)_peer.allAddress)[0] = sender;
+	return RTMFP::Decode(_aesDecrypt,packet);
+}
+
 void Session::kill() {
 	if(_die)
 		return;
@@ -166,6 +171,8 @@ void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,S
 
 	if((it->second--)==-3) {
 		_p2pHandskakeAttempts.erase(it);
+		// TODO if there are more peers in a group and connection fails to one,
+		// we also have the possibility to try another peer from the group second best
 	} else if(it->second==-1 && pSession) {
 		DEBUG("Attempt UDP Hole punching on the other side");
 		PacketWriter& packetOut = writer();
