@@ -159,6 +159,25 @@ Flow& Session::flow(Poco::UInt8 id,bool canCreate) {
 }
 
 void Session::p2pHandshake(const Peer& peer,const std::string& tag) {
+
+	map<string,Int8>::iterator it = _p2pHandskakeAttempts.find(tag);
+	if(it==_p2pHandskakeAttempts.end())
+		it = _p2pHandskakeAttempts.insert(pair<string,Int8>(tag,3)).first;
+
+	if((it->second--)==-3) {
+		_p2pHandskakeAttempts.erase(it);
+	} else if(it->second==-1) {
+		DEBUG("Attempt UDP Hole punching on the other side");
+		PacketWriter& packetOut = writer();
+		packetOut.write8(0x10);
+		packetOut.write16(0x2d);
+		packetOut.writeRaw("\x80\x03\x02\x02\x03\x00\x47\x43\x02\x0a\x03\x00\x0b",13);
+		packetOut.writeRaw(peer.id,32);
+		send();
+		return;
+	}
+
+
 	DEBUG("Peer newcomer address send to peer '%u' connected",id());
 	PacketWriter& packetOut = writer();
 	packetOut.write8(0x0F);

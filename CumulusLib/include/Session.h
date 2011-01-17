@@ -92,6 +92,8 @@ private:
 	bool						_die;
 	Peer						_peer;
 	Poco::UInt8					_buffer[MAX_SIZE_MSG];
+
+	std::map<std::string,Poco::Int8> _p2pHandskakeAttempts;
 };
 
 
