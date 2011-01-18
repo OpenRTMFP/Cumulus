@@ -77,14 +77,15 @@ void PacketWriter::writeRandom(UInt16 size) {
 void PacketWriter::writeAddress(const SocketAddress& address,bool publicFlag) {
 	UInt8 flag = publicFlag ? 0x02 : 0x01;
 	UInt8 i;
-	if(address.family() == IPAddress::IPv6) {
+	IPAddress host = address.host();
+	if(host.family() == IPAddress::IPv6) {
 		write8(flag&0x80);
-		const UInt16* words = reinterpret_cast<const UInt16*>(address.addr());
+		const UInt16* words = reinterpret_cast<const UInt16*>(host.addr());
 		for(i=0;i<4;++i)
 			write16(words[i]);
 	} else {
 		write8(flag);
-		const UInt8* bytes = reinterpret_cast<const UInt8*>(address.addr());
+		const UInt8* bytes = reinterpret_cast<const UInt8*>(host.addr());
 		for(i=0;i<4;++i)
 			write8(bytes[i]);
 	}
