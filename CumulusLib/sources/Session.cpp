@@ -194,8 +194,7 @@ void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,S
 		content.write8(0x0F);
 		content.writeRaw(_peer.id,32);
 
-		content.write8(0x02);
-		content.writeAddress(address);
+		content.writeAddress(address,true);
 		
 		content.writeRaw(tag);
 	}

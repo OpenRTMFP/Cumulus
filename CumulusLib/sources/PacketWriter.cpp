@@ -18,7 +18,7 @@
 #include "PacketWriter.h"
 #include "Logs.h"
 #include "Poco/RandomStream.h"
-#include "Poco/StringTokenizer.h"
+#include "Poco/Net/IPAddress.h"
 
 using namespace std;
 using namespace Poco;
@@ -74,11 +74,20 @@ void PacketWriter::writeRandom(UInt16 size) {
 	delete [] value;
 }
 
-void PacketWriter::writeAddress(const SocketAddress& address) {
-	StringTokenizer ips(address.host().toString(),".");
-	StringTokenizer::Iterator it;
-	for(it=ips.begin();it!=ips.end();++it)
-		write8(atoi(it->c_str()));
+void PacketWriter::writeAddress(const SocketAddress& address,bool publicFlag) {
+	UInt8 flag = publicFlag ? 0x02 : 0x01;
+	UInt8 i;
+	if(address.family() == IPAddress::IPv6) {
+		write8(flag&0x80);
+		const UInt16* words = reinterpret_cast<const UInt16*>(address.addr());
+		for(i=0;i<4;++i)
+			write16(words[i]);
+	} else {
+		write8(flag);
+		const UInt8* bytes = reinterpret_cast<const UInt8*>(address.addr());
+		for(i=0;i<4;++i)
+			write8(bytes[i]);
+	}
 	write16(address.port());
 }
 

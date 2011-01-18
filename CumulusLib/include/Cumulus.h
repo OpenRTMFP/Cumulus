@@ -24,7 +24,9 @@
 #if defined(STATIC) && !defined(POCO_STATIC)
 	#define POCO_STATIC
 #endif
-// TODO #define POCO_HAVE_IPv6
+#if defined(HAVE_IPv6)
+	#define POCO_HAVE_IPv6
+#endif
 
 
 #include "Poco/Foundation.h"

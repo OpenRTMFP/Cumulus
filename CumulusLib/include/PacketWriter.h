@@ -42,7 +42,7 @@ public:
 	void writeString8(const char* value,Poco::UInt8 size);
 	void writeString16(const char* value,Poco::UInt16 size);
 	void writeRandom(Poco::UInt16 size);
-	void writeAddress(const Poco::Net::SocketAddress& address);
+	void writeAddress(const Poco::Net::SocketAddress& address,bool publicFlag);
 
 	Poco::UInt8*	begin();
 	int				length();

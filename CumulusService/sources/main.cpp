@@ -141,7 +141,6 @@ protected:
 			displayHelp();
 		}
 		else {
-
 			/// Cumulus Service
 			RTMFPServer server(*this,config().getInt("keepAliveServer",15),config().getInt("keepAlivePeer",10));
 			server.start(config().getInt("port", RTMFP_DEFAULT_PORT),_pCirrus);

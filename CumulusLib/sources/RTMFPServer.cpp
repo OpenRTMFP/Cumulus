@@ -224,10 +224,8 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	pSessionWanted->p2pHandshake(address,tag,pSession);
 
 	vector<SocketAddress>::const_iterator it2;
-	for(it2=pSessionWanted->peer().allAddress.begin();it2!=pSessionWanted->peer().allAddress.end();++it2) {
-		response.write8(it2==pSessionWanted->peer().allAddress.begin() ? 0x02 : 0x01);
-		response.writeAddress(*it2);
-	}
+	for(it2=pSessionWanted->peer().allAddress.begin();it2!=pSessionWanted->peer().allAddress.end();++it2)
+		response.writeAddress(*it2,it2==pSessionWanted->peer().allAddress.begin());
 	
 	return 0x71;
 

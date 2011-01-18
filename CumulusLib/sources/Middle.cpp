@@ -128,11 +128,10 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 				response.write8(0x71);
 				response.write16(packet.available()+tag.size()+1);
 				response.writeString8(tag);
-				response.write8(packet.read8());
 				// replace public ip
 				if(pPeerWanted) {
-					response.writeAddress(pPeerWanted->address());
-					packet.next(6);
+					response.writeAddress(pPeerWanted->address(),true);
+					packet.next(packet.read8()&0x80 ? 16 : 4); // IP6 or IP4
 					pPeerWanted = NULL;
 				}
 				response.writeRaw(packet.current(),packet.available());
