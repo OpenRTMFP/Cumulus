@@ -36,7 +36,7 @@ Peer::~Peer() {
 }
 
 void Peer::unsubscribeGroups() {
-	list<Group*>::const_iterator it=_groups.begin();
+	list<Group*>::iterator it=_groups.begin();
 	while(it!=_groups.end()) {
 		(*it)->_peers.remove(*this);
 		_groups.erase(it);
