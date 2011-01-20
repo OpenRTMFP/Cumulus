@@ -23,7 +23,6 @@
 #include "AESEngine.h"
 #include "RTMFP.h"
 #include "Flow.h"
-//#include "ClientHandler.h"
 #include "Poco/Timestamp.h"
 #include "Poco/Net/DatagramSocket.h"
 
@@ -94,7 +93,7 @@ private:
 	Peer						_peer;
 	Poco::UInt8					_buffer[MAX_SIZE_MSG];
 
-	std::map<std::string,Poco::Int8> _p2pHandskakeAttempts;
+	std::map<std::string,Poco::UInt8>		_p2pHandshakeAttemps;
 };
 
 

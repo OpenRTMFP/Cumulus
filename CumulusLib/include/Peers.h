@@ -18,22 +18,30 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Flow.h"
+#include "Peer.h"
 
 namespace Cumulus {
 
-class FlowGroup : public Flow {
+
+class Peers {
 public:
-	FlowGroup(Peer& peer,ServerData& data);
-	virtual ~FlowGroup();
-
+	Peers();
+	virtual ~Peers();
+	
+	void add(const Peer& peer);
+	void remove(const Peer& peer);
+	void update(const Peer& peer,Poco::UInt16 oldPing);
+	void best(std::list<const Peer*>& peers,const Peer& askerPeer) const;
+	bool empty() const;
 private:
-	StageFlow requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
-
-	std::list<const Peer*>		_bestPeers;
-	Group*						_pGroup;
-	bool						_memberRemoved;
+	
+	std::list<const Peer*>							_localPeers;
+	std::map<Poco::UInt16,std::list<const Peer*>*>	_peers;
 };
+
+inline bool Peers::empty() const {
+	return _localPeers.size()==0 && _peers.size()==0;
+}
 
 
 } // namespace Cumulus

@@ -28,7 +28,6 @@ namespace Cumulus {
 class Group;
 class Peer : public Client {
 	friend class Group;
-	friend class Session;
 public:
 	Peer(const Poco::Net::SocketAddress& address);
 	virtual ~Peer();
@@ -38,12 +37,13 @@ public:
 
 	void addPrivateAddress(const Poco::Net::SocketAddress& address);
 	void setPing(Poco::UInt16 ping);
-	Poco::UInt16 getPing();
-	bool isIn(Group& group);
+	void unsubscribeGroups();
+
+	Poco::UInt16 getPing() const;
+	bool isIn(Group& group) const;
 
 private:
 	Peer(){}
-	void unsubscribeGroups();
 	bool isIn(Group& group,std::list<Group*>::iterator& it);
 
 	std::list<Group*>			_groups;
@@ -51,7 +51,7 @@ private:
 	Poco::Net::SocketAddress	_emptyAddress;
 };
 
-inline Poco::UInt16 Peer::getPing() {
+inline Poco::UInt16 Peer::getPing() const {
 	return _ping;
 }
 

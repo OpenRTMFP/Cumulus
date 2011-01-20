@@ -33,7 +33,6 @@ ServerData::~ServerData() {
 	list<Group*>::const_iterator it;
 	for(it=_groups.begin();it!=_groups.end();++it) {
 		pGroup=*it;
-		pGroup->clear();
 		delete pGroup;
 	}
 	_groups.clear();
@@ -47,7 +46,7 @@ Group& ServerData::group(const vector<UInt8>& id) {
 		if(pGroup->operator==(id))
 			return *pGroup;
 		// delete a possible empty group in same time
-		if(pGroup->nbPeers()==0) {
+		if(pGroup->empty()) {
 			delete pGroup;
 			_groups.erase(it++);
 			continue;

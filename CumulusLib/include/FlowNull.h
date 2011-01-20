@@ -28,17 +28,13 @@ public:
 	virtual ~FlowNull();
 	bool isNull();
 private:
-	bool		requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
-	Poco::UInt8 maxStage();
+	Flow::StageFlow		requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 };
 
-inline bool FlowNull::requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response) {
-	return false;
+inline Flow::StageFlow FlowNull::requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response) {
+	return STOP;
 }
 
-inline Poco::UInt8 FlowNull::maxStage() {
-	return 0x00;
-}
 inline bool FlowNull::isNull() {
 	return true;
 }

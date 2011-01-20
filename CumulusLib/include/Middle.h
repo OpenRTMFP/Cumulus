@@ -45,8 +45,6 @@ public:
 	PacketWriter&		handshaker();
 	void				sendHandshakeToCirrus(Poco::UInt8 type);
 
-	const Peer*			pPeerWanted;
-
 	void				manage();
 	void				fail();
 	

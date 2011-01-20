@@ -165,24 +165,6 @@ Flow& Session::flow(Poco::UInt8 id,bool canCreate) {
 
 void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,Session* pSession) {
 
-	map<string,Int8>::iterator it = _p2pHandskakeAttempts.find(tag);
-	if(it==_p2pHandskakeAttempts.end())
-		it = _p2pHandskakeAttempts.insert(pair<string,Int8>(tag,3)).first;
-
-	if((it->second--)==-3) {
-		_p2pHandskakeAttempts.erase(it);
-		// TODO if there are more peers in a group and connection fails to one,
-		// we also have the possibility to try another peer from the group second best
-	} else if(it->second==-1 && pSession) {
-		DEBUG("Attempt UDP Hole punching on the other side");
-		PacketWriter& packetOut = writer();
-		packetOut.write8(0x10);
-		packetOut.write16(0x2d);
-		packetOut.writeRaw("\x80\x03\x02\x01\x03\x00\x47\x43\x02\x0a\x03\x00\x0b",13);
-		packetOut.writeRaw(pSession->peer().id,32);
-		send();
-	}
-
 	DEBUG("Peer newcomer address send to peer '%u' connected",id());
 	PacketWriter& packetOut = writer();
 	packetOut.write8(0x0F);
@@ -194,8 +176,20 @@ void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,S
 		content.write8(0x0F);
 		content.writeRaw(_peer.id,32);
 
-		content.writeAddress(address,true);
-		
+
+		if(pSession) {
+			map<string,UInt8>::iterator it =	_p2pHandshakeAttemps.find(tag);
+			if(it==_p2pHandshakeAttemps.end())
+				it = _p2pHandshakeAttemps.insert(pair<string,UInt8>(tag,0)).first;
+			
+			content.writeAddress(pSession->peer().allAddress[it->second],it->second==0);
+			++it->second;
+			if(pSession->peer().allAddress.size()==it->second)
+				it->second=0;
+		} else
+			content.writeAddress(address,true);
+
+
 		content.writeRaw(tag);
 	}
 
@@ -281,7 +275,7 @@ void Session::packetHandler(PacketReader& packet) {
 	// Can have nested queries
 	while(type!=0xFF) {
 		UInt16 size = packet.read16();
-		int idResponse = 0;
+		UInt8 idResponse = 0;
 
 		{
 			PacketReader request(packet.current(),size);
@@ -367,6 +361,9 @@ void Session::packetHandler(PacketReader& packet) {
 						request.next(7);
 					}
 
+					answer = true;
+					idResponse = 0x10;
+
 					// Write Acknowledgment (nested in response)
 					packetOut.write8(0x51);
 					packetOut.write16(3);
@@ -374,7 +371,6 @@ void Session::packetHandler(PacketReader& packet) {
 					packetOut.write8(0x3f); // ack!
 					packetOut.write8(stage);
 					response.next(6);
-					answer = true;
 
 					// Prepare response
 					response.write8(flag);
@@ -392,11 +388,13 @@ void Session::packetHandler(PacketReader& packet) {
 
 					// Process request
 					if(flow(idFlow,true).request(stage,request,response)) {
-						idResponse = 0x10;
 						if(connecting)
 							_clientAccepted = true;
-					} else if(connecting)
-						setFailed("Client rejected");
+					} else {
+						response.clear();
+						if(connecting)
+							setFailed("Client rejected");
+					}
 
 					break;
 				}
@@ -407,11 +405,11 @@ void Session::packetHandler(PacketReader& packet) {
 			// No response for a failed session!
 			if(_failed)
 				idResponse=0;
-			if(idResponse<=0)
+			if(idResponse==0 && idResponse != 0x10)
 				response.clear();
 		}
 		
-		if(idResponse>0) {
+		if(idResponse>0 && idResponse != 0x10) {
 			answer = true;
 			packetOut.write8(idResponse);
 			int len = packetOut.length()-packetOut.position()-2;

@@ -33,58 +33,57 @@ FlowGroup::FlowGroup(Peer& peer,ServerData& data) : Flow(peer,data),_pGroup(NULL
 FlowGroup::~FlowGroup() {
 }
 
-UInt8 FlowGroup::maxStage() {
-	return 0x02;
-}
 
-bool FlowGroup::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
+Flow::StageFlow FlowGroup::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
 	char buff[MAX_SIZE_MSG];
 	AMFReader reader(request);
 	AMFWriter writer(response);
 
-	switch(stage){
-		case 0x01: {
-			if(_memberRemoved) {
-				WARN("Group member removed, no group subscription possible after that");
-				return false;
-			}
-			request.readRaw(buff,6);
-			request.next(3);
-
-			UInt32 size = request.read7BitValue();
-
-			vector<UInt8> groupId(size);
-			request.readRaw(&groupId[0],size);
-
-			_pGroup = &data.group(groupId);
-
-			Peer* pPeer = _pGroup->bestPeer();
-			_pGroup->addPeer(peer);
-			if(!pPeer || (peer == *pPeer))
-				return false;
-
-			response.writeRaw(buff,6);
-			response.writeRaw("\x03\x00\x0b",3);
-			response.writeRaw(pPeer->id,32);
-
-			return true;
+	if(stage == 0x01) {
+		if(_memberRemoved) {
+			WARN("Group member removed, no group subscription possible after that");
+			return STOP;
 		}
-		case 0x02: {
-			// delete member of group
-			if(_memberRemoved) {
-				WARN("Group member already removed");
-			} else {
-				if(_pGroup)
-					_pGroup->removePeer(peer);
-				_memberRemoved=true;
-			}
-			return false;
+		request.readRaw(buff,6);
+		request.next(3);
+
+		UInt32 size = request.read7BitValue();
+
+		vector<UInt8> groupId(size);
+		request.readRaw(&groupId[0],size);
+
+		_pGroup = &data.group(groupId);
+
+		_pGroup->bestPeers(_bestPeers,peer);
+
+		_pGroup->addPeer(peer);
+		if(_bestPeers.empty())
+			return STOP;
+
+		response.writeRaw(buff,6);
+		response.write8(0x03);
+		response.write16(0x0b);
+		response.writeRaw(_bestPeers.front()->id,32);
+		_bestPeers.pop_front();
+		return _bestPeers.empty() ? STOP : NEXT;
+
+	} else if(!_bestPeers.empty()) {
+		response.write16(0x0b);
+		response.writeRaw(_bestPeers.front()->id,32);
+		_bestPeers.pop_front();
+		return _bestPeers.empty() ? STOP : NEXT;
+
+	} else {
+		// delete member of group
+		if(_memberRemoved) {
+			WARN("Group member already removed");
+		} else {
+			if(_pGroup)
+				_pGroup->removePeer(peer);
+			_memberRemoved=true;
 		}
-		default:
-			ERROR("Unkown FlowGroup stage '%02x'",stage);
+		return MAX;
 	}
-
-	return false;
 }
 
 } // namespace Cumulus

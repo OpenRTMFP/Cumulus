@@ -28,8 +28,7 @@ public:
 	virtual ~FlowConnection();
 
 private:
-	bool requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
-	Poco::UInt8 maxStage();
+	StageFlow requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 };
 
 

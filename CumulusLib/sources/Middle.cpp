@@ -40,7 +40,7 @@ Middle::Middle(UInt32 id,
 				DatagramSocket& socket,
 				ServerData& data,
 				Cirrus& cirrus) : Session(id,farId,peer,decryptKey,encryptKey,socket,data),_middleCertificat("\x02\x1D\x02\x41\x0E",5),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),
-					_cirrus(cirrus),_middleId(0),pPeerWanted(NULL),_firstResponse(false),_queryUrl("rtmfp://"+cirrus.address().toString()+peer.path),_middlePeer(peer) {
+					_cirrus(cirrus),_middleId(0),_firstResponse(false),_queryUrl("rtmfp://"+cirrus.address().toString()+peer.path),_middlePeer(peer) {
 
 	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.parameters);
 
@@ -128,12 +128,6 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 				response.write8(0x71);
 				response.write16(packet.available()+tag.size()+1);
 				response.writeString8(tag);
-				// replace public ip
-				if(pPeerWanted) {
-					response.writeAddress(pPeerWanted->address(),true);
-					packet.next(packet.read8()&0x80 ? 16 : 4); // IP6 or IP4
-					pPeerWanted = NULL;
-				}
 				response.writeRaw(packet.current(),packet.available());
 
 				// to send in handshake mode!
@@ -325,25 +319,34 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 
+	UInt8 idFlow,stage;
+	UInt8 nbPeerSent = 0;
+
 	while(type!=0xFF) {
 		packetOut.write8(type);
 
 		UInt16 size = packet.read16();
 		PacketReader content(packet.current(),size);packetOut.write16(size);
 		
-		if(type==0x10) {
+		if(type==0x10 || type==0x11) {
 			packetOut.write8(content.read8());
-			UInt8 idFlow = content.read8();packetOut.write8(idFlow);
-			UInt8 stage = content.read8();packetOut.write8(stage);
+			if(type==0x10) {
+				idFlow = content.read8();packetOut.write8(idFlow);
+				stage = content.read8();packetOut.write8(stage);
+			}
 			if(stage==0x01 && ((marker==0x4e && idFlow==0x03) || (marker==0x8e && idFlow==0x05))) {
 				/// Replace "middleId" by "peerId"
-
-				UInt8 tmp[10];
-				content.readRaw(tmp,10);packetOut.writeRaw(tmp,10);
+				
+				if(type==0x10) {
+					UInt8 tmp[10];
+					content.readRaw(tmp,10);packetOut.writeRaw(tmp,10);
+				} else
+					packetOut.write8(content.read8());
 				
 				UInt8 middlePeerIdWanted[32];
 				content.readRaw(middlePeerIdWanted,32);
 
+				++nbPeerSent;
 				const Middle* pMiddleWanted = _cirrus.findMiddle(middlePeerIdWanted);
 
 				if(!pMiddleWanted)
@@ -361,7 +364,9 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 				WARN("The p2pHandshake cirrus packet doesn't match the peerId (or the middlePeerId)");
 			// Replace by the peer.id
 			packetOut.writeRaw(peer().id,32);
-			// TODO change the public address!
+			// Replace the public address
+			//content.next(content.read8()&0x80 ? 16 : 4);
+			//packetOut.writeAddress(peer().address(),true);
 		}
 
 		packetOut.writeRaw(content.current(),content.available());
@@ -369,6 +374,9 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 
 		type = packet.available()>0 ? packet.read8() : 0xFF;
 	}
+
+	if(nbPeerSent>0)
+		INFO("%02x peers sending",nbPeerSent);
 
 	if(packetOut.length()>pos)
 		send();

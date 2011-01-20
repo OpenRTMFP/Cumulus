@@ -34,22 +34,17 @@ FlowConnection::FlowConnection(Peer& peer,ServerData& data) : Flow(peer,data) {
 FlowConnection::~FlowConnection() {
 }
 
-UInt8 FlowConnection::maxStage() {
-	return 0x02;
-}
+Flow::StageFlow FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
 
-bool FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
-
-	char buff[MAX_SIZE_MSG];
+	char buff1[MAX_SIZE_MSG];
+	char buff2[MAX_SIZE_MSG];
 	AMFReader reader(request);
 	AMFWriter writer(response);
 
 	switch(stage){
 		case 0x01: {
-			request.readRaw(buff,6);
-			response.writeRaw(buff,6);
-			response.writeRaw("\x02\x0a\x02",3);
-			request.readRaw(buff,6);
+			request.readRaw(buff1,6);
+			request.readRaw(buff2,6);
 
 			string tmp;
 			reader.read(tmp);
@@ -62,9 +57,11 @@ bool FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWrit
 
 			// Check if the client is authorized
 			if(!data.auth(peer))
-				return false;
+				break;
 
-			response.writeRaw(buff,6);
+			response.writeRaw(buff1,6);
+			response.writeRaw("\x02\x0a\x02",3);
+			response.writeRaw(buff2,6);
 			writer.write("_result");
 			writer.writeNumber(1);
 			writer.writeNull();
@@ -75,12 +72,11 @@ bool FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWrit
 			writer.writeObjectProperty("level","status");
 			writer.writeObjectProperty("code","NetConnection.Connect.Success");
 			writer.endObject();
-
-			return true;
+			break;
 		}
 		case 0x02: {
 
-			request.readRaw(buff,6); // unknown, 11 00 00 03 96 00
+			request.next(6); // unknown, 11 00 00 03 96 00
 
 			string tmp; 
 			reader.read(tmp); // "setPeerInfo"
@@ -102,13 +98,13 @@ bool FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWrit
 			response.write16(data.keepAliveServer);
 			response.write16(0); // Unknown!
 			response.write16(data.keepAlivePeer);
-			return true;
+			return MAX;
 		}
 		default:
 			ERROR("Unkown FlowNetConnection stage '%02x'",stage);
 	}
 
-	return false;
+	return STOP;
 }
 
 } // namespace Cumulus

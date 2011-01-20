@@ -185,11 +185,13 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	Sessions::Iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
 		pSession = it->second;
-		if(memcmp(pSession->peer().address().addr(),address.addr(),sizeof(struct sockaddr))==0)
+		if(memcmp(pSession->peer().address().addr(),address.addr(),address.length())==0)
 			break;
 	}
 	if(it==_sessions.end())
 		pSession=NULL;
+
+	Session* pSessionWanted = _sessions.find(peerIdWanted);
 
 	if(_pCirrus) {
 		// Just to make working the man in the middle mode !
@@ -203,7 +205,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 		PacketWriter& request = ((Middle*)pSession)->handshaker();
 		request.write8(0x22);request.write8(0x21);
 		request.write8(0x0F);
-		request.writeRaw(peerIdWanted,32);
+		request.writeRaw(pSessionWanted ? ((Middle*)pSessionWanted)->middlePeer().id : peerIdWanted,32);
 		request.writeRaw(tag);
 
 		((Middle*)pSession)->sendHandshakeToCirrus(0x30);
@@ -211,7 +213,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 		return 0;
 	}
 
-	Session* pSessionWanted = _sessions.find(peerIdWanted);
+	
 	if(!pSessionWanted) {
 		DEBUG("UDP Hole punching : session wanted not found, must be dead");
 		return 0;

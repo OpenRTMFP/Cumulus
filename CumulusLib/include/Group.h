@@ -19,8 +19,7 @@
 
 #include "Cumulus.h"
 #include "Peer.h"
-#include <vector>
-#include <list>
+#include "Peers.h"
 
 
 namespace Cumulus {
@@ -39,19 +38,21 @@ public:
 
 	void addPeer(Peer& peer);
 	void removePeer(Peer& peer);
-	void clear();
-	Peer* bestPeer();
-
-	Poco::UInt32	nbPeers();
+	//void clear();
+	void bestPeers(std::list<const Peer*>& peers,const Peer& askerPeer);
+	bool empty();
 
 private:
 	std::vector<Poco::UInt8>	_id;
-	std::list<Peer*>			_peers;
-	Peer*						_pBestPeer;
+	Peers						_peers;
 };
 
-inline Poco::UInt32 Group::nbPeers() {
-	return _peers.size();
+inline bool Group::empty() {
+	return _peers.empty();
+}
+
+inline void Group::bestPeers(std::list<const Peer*>& peers,const Peer& askerPeer) {
+	_peers.best(peers,askerPeer);
 }
 
 inline bool Group::operator==(const Group& other) const {

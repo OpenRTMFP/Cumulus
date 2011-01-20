@@ -46,16 +46,14 @@ public:
 			++_cycle;
 			if(_cycle==7)
 				throw Exception("Send message failed");
-			DEBUG("Repeat message, try %x",_cycle+1);
-			response.write8(0x10);
-			response.write16(_size);
+			DEBUG("Repeat message, try %02x",_cycle+1);
 			response.writeRaw(_buffer,_size);
 			return true;
 		}
 		return false;
 	}
 
-	UInt8		stage;
+	const UInt8		stage;
 	
 private:
 	Timestamp	_timeCreation;
@@ -66,7 +64,7 @@ private:
 };
 
 
-Flow::Flow(Peer& peer,ServerData& data) : _stage(0),peer(peer),data(data),_pLastResponse(NULL),_consumed(0) {
+Flow::Flow(Peer& peer,ServerData& data) : _stage(0),peer(peer),data(data),_pLastResponse(NULL),_consumed(0),_maxStage(0) {
 }
 
 Flow::~Flow() {
@@ -76,9 +74,11 @@ Flow::~Flow() {
 }
 
 bool Flow::consumed() {
+	if(_maxStage==0)
+		return false;
 	UInt8 stage = 0;
 	UInt64 consumed = _consumed;
-	while(stage<maxStage()) {
+	while(stage<_maxStage) {
 		if(!(consumed&0x01))
 			return false;
 		consumed>>=1;
@@ -88,8 +88,9 @@ bool Flow::consumed() {
 }
 
 void Flow::stageCompleted(UInt8 stage) {
-	_stage = stage; // progress stage
 	_consumed |= (((UInt64)1)<<((UInt64)stage-1));
+	if(stage>_stage) // progress stage
+		_stage = stage;
 }
 
 bool Flow::lastResponse(PacketWriter& response) {
@@ -106,17 +107,44 @@ bool Flow::lastResponse(PacketWriter& response) {
 	return result;
 }
 
+void Flow::writeResponse(PacketWriter& packet,bool nestedResponse) {
+	packet.write8(nestedResponse ? 0x11 : 0x10);
+	int len = packet.length()-packet.position()-2;
+	if(len<0)
+		len = 0;
+	packet.write16(len);
+	packet.next(len);
+}
+
 bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
 	// We can considerate that a request stage+1 pays as a ack for requete stage
 	if(stage>0)
 		stageCompleted(stage-1);
 
-	int pos = response.position()-4; // 4 for firstFlag, idFlow, stage and second Flag write in Session.cpp
-	bool answer = requestHandler(stage,request,response);
+	response.reset(response.position()-7); // 7  for type, size, firstFlag, idFlow, stage and second Flag written in Session.cpp
+	int pos = response.position();
+
+	bool first = true;
+	StageFlow stageFlow(NEXT);
+	while(stageFlow == NEXT) {
+		PacketWriter out(response,first ? 7 : 3);
+		stageFlow = requestHandler(stage,request,out);
+		if(stageFlow == NEXT || out.length()>response.length()) {
+			out.flush();
+			writeResponse(response,!first);
+		} else
+			out.clear();
+		if(stageFlow == MAX)
+			_maxStage = stage;
+		++stage;
+		first = false;
+	}
+	--stage;
 
 	if(_pLastResponse)
 		delete _pLastResponse;
 
+	bool answer = pos<response.position();
 	if(answer)
 		_pLastResponse = new Response(stage,response.begin()+pos,response.length()-pos,_buffer); // Mem the last response (for the correspondant stage flow)
 	else
@@ -126,13 +154,13 @@ bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
 }
 
 void Flow::acknowledgment(Poco::UInt8 stage) {
+	stageCompleted(stage);
 	if(!_pLastResponse)
 		return;
 	// Ack!
-	if(_pLastResponse->stage == stage) {
+	if(this->stage() >= _pLastResponse->stage) {
 		delete _pLastResponse;
 		_pLastResponse = NULL;
-		stageCompleted(stage);
 	}
 }	
 

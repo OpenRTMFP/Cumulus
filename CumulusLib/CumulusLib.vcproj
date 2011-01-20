@@ -457,6 +457,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\Peers.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Peers.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\RTMFP.cpp"
 					>
 				</File>

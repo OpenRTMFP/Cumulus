@@ -31,6 +31,12 @@ public:
 	Flow(Peer& peer,ServerData& data);
 	virtual ~Flow();
 
+	enum StageFlow {
+		MAX,
+		NEXT,
+		STOP
+	};
+
 	bool request(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 
 	void acknowledgment(Poco::UInt8 stage);
@@ -44,16 +50,22 @@ public:
 	
 	
 private:
-	virtual bool requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response)=0;
-	virtual Poco::UInt8 maxStage()=0;
+	void writeResponse(PacketWriter& packet,bool nestedResponse=false);
+	virtual StageFlow requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response)=0;
+	virtual bool followingResponse(Poco::UInt8 stage,PacketWriter& response);
 
 	void stageCompleted(Poco::UInt8 stage);
 
 	Poco::UInt8			_stage;
+	Poco::UInt8			_maxStage;
 	Poco::UInt64		_consumed;
 	Response*			_pLastResponse;
 	Poco::UInt8			_buffer[MAX_SIZE_MSG];
 };
+
+inline bool Flow::followingResponse(Poco::UInt8 stage,PacketWriter& response) {
+	return false;
+}
 
 inline Poco::UInt8 Flow::stage() {
 	return _stage;

@@ -28,7 +28,7 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 Peer::Peer(const Poco::Net::SocketAddress& address):_ping(0),allAddress(1) {
-	((vector<SocketAddress>&)allAddress).push_back(address);
+	((vector<SocketAddress>&)allAddress)[0] = address;
 }
 
 Peer::~Peer() {
@@ -38,38 +38,32 @@ Peer::~Peer() {
 void Peer::unsubscribeGroups() {
 	list<Group*>::const_iterator it=_groups.begin();
 	while(it!=_groups.end()) {
-		(*it)->removePeer(*this);
+		(*it)->_peers.remove(*this);
+		_groups.erase(it);
 		it = _groups.begin();
 	}
 }
 
-void Peer::setPing(UInt16 ping) {
-	// Don't considerate a localhost peer
-	if(address().host().isLoopback()) {
-		DEBUG("Peer with a loopback address skipped for a bestpeer record");
-		return;
-	}
+inline void Peer::setPing(Poco::UInt16 ping) {
+	UInt16 oldPing = _ping;
+	_ping=ping;
 	list<Group*>::const_iterator it;
-	_ping = ping;
-	for(it=_groups.begin();it!=_groups.end();++it) {
-		Group* pGroup = *it;
-		if(pGroup->_pBestPeer!=this && (!pGroup->_pBestPeer || ping<pGroup->_pBestPeer->getPing()))
-			pGroup->_pBestPeer = this;
-	}
+	for(it=_groups.begin();it!=_groups.end();++it)
+		(*it)->_peers.update(*this,oldPing);
 }
 
 void Peer::addPrivateAddress(const SocketAddress& address) {
 	vector<SocketAddress>::const_iterator it;
 	for(it=allAddress.begin();it!=allAddress.end();++it) {
-		if(memcmp(it->addr(),address.addr(),sizeof(struct sockaddr))==0)
+		if(memcmp(it->addr(),address.addr(),address.length())==0)
 			return;
 	}
 	((vector<SocketAddress>&)allAddress).push_back(address);
 }
 
-bool Peer::isIn(Group& group) {
+bool Peer::isIn(Group& group) const {
 	list<Group*>::iterator it;
-	return isIn(group,it);
+	return ((Peer&)*this).isIn(group,it);
 }
 
 bool Peer::isIn(Group& group,list<Group*>::iterator& it) {
