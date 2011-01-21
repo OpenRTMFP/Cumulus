@@ -26,7 +26,6 @@ class FlowNull : public Flow {
 public:
 	FlowNull(Peer& peer,ServerData& data);
 	virtual ~FlowNull();
-	bool isNull();
 private:
 	Flow::StageFlow		requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 };
@@ -35,8 +34,5 @@ inline Flow::StageFlow FlowNull::requestHandler(Poco::UInt8 stage,PacketReader& 
 	return STOP;
 }
 
-inline bool FlowNull::isNull() {
-	return true;
-}
 
 } // namespace Cumulus

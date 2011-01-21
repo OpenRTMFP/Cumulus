@@ -303,19 +303,16 @@ void Session::packetHandler(PacketReader& packet) {
 				// So we emulate a mechanism which seems to answer the same thing when it's necessary
 				case 0x5e : {
 					UInt8 flowId = request.read8();
-					Flow& flow = this->flow(flowId);
-					if(!flow.isNull()) {
-						idResponse = 0x10;
-						response.write8(3);
-						response.write8(flowId);
-						response.write8(flow.stage());
-						response.write8(1); // perhaps 0|1 for stage completed|not completed
-					}
+					idResponse = 0x10;
+					response.write8(3);
+					response.write8(flowId);
+					response.write8(flow(flowId).stage());
+					response.write8(1); // perhaps 0|1 for stage completed|not completed
 					break;
 				}
 
 				case 0x18 : {
-					/// This response is sent when we answer with a null Acknowledgment
+					/// This response is sent when we answer with a Acknowledgment negative
 					// It contains the id flow
 					// Resend the last Acknowledgment success
 					// I don't unsertand the usefulness...
@@ -334,14 +331,14 @@ void Session::packetHandler(PacketReader& packet) {
 					UInt8 idFlow= request.read8();
 					if(request.read8()>0) { // is usually equal to 0x7f
 						UInt8 stage = request.read8();
-						flow(idFlow).acknowledgment(stage);
+						bool ack = request.read8()>0;
+						if(!ack)
+							ERROR("The flow '%02x' has received a ack negative for the stage '%02x'",idFlow,stage);
+						flow(idFlow).acknowledgment(stage,ack);
 					}
 					// else {
-					// In fact here, we should set a acknowledgment to "false" value, to
-					// send a 0x18 message (with id flow) instead of resending the entire message at the repeat timing,
-					// but in a concern to keep things simple and efficient, we believe it is better
-					// to assimilate a acknowledgment to false like a no ack received (so we resend the entire
-					// message at the next repeat timer)
+					// In fact here, we should send a 0x18 message (with id flow),
+					// but it can create a loop... We prefer cancel the message
 					break;
 				}
 				/// Request
@@ -405,11 +402,11 @@ void Session::packetHandler(PacketReader& packet) {
 			// No response for a failed session!
 			if(_failed)
 				idResponse=0;
-			if(idResponse==0 && idResponse != 0x10)
+			if(idResponse==0 && type != 0x10 && type != 0x11)
 				response.clear();
 		}
 		
-		if(idResponse>0 && idResponse != 0x10) {
+		if(idResponse>0 && type != 0x10 && type != 0x11) {
 			answer = true;
 			packetOut.write8(idResponse);
 			int len = packetOut.length()-packetOut.position()-2;

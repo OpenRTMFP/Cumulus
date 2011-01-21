@@ -141,8 +141,10 @@ bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
 	}
 	--stage;
 
-	if(_pLastResponse)
+	if(_pLastResponse) {
 		delete _pLastResponse;
+		_pLastResponse = NULL;
+	}
 
 	bool answer = pos<response.position();
 	if(answer)
@@ -153,8 +155,9 @@ bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
 	return answer;
 }
 
-void Flow::acknowledgment(Poco::UInt8 stage) {
-	stageCompleted(stage);
+void Flow::acknowledgment(Poco::UInt8 stage,bool ack) {
+	if(ack)
+		stageCompleted(stage);
 	if(!_pLastResponse)
 		return;
 	// Ack!

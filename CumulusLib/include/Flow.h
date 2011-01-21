@@ -39,10 +39,9 @@ public:
 
 	bool request(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 
-	void acknowledgment(Poco::UInt8 stage);
+	void acknowledgment(Poco::UInt8 stage,bool ack);
 	bool lastResponse(PacketWriter& response);
 	bool consumed();
-	virtual bool isNull();
 
 	Peer&				peer;
 	Poco::UInt8			stage();
@@ -69,10 +68,6 @@ inline bool Flow::followingResponse(Poco::UInt8 stage,PacketWriter& response) {
 
 inline Poco::UInt8 Flow::stage() {
 	return _stage;
-}
-
-inline bool Flow::isNull() {
-	return false;
 }
 
 } // namespace Cumulus

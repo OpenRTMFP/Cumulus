@@ -78,6 +78,7 @@ Flow::StageFlow FlowGroup::requestHandler(UInt8 stage,PacketReader& request,Pack
 		if(_memberRemoved) {
 			WARN("Group member already removed");
 		} else {
+			DEBUG("Group closed")
 			if(_pGroup)
 				_pGroup->removePeer(peer);
 			_memberRemoved=true;
