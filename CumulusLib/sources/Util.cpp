@@ -79,55 +79,5 @@ void Util::UnpackUrl(const string& url,string& path,map<string,string>& paramete
 }
 
 
-void Util::Dump(PacketReader& packet,const string& fileName) {
-	Dump(packet.current(),packet.available(),fileName);
-}
-void Util::Dump(PacketWriter& packet,const string& fileName) {
-	Dump(packet.begin(),packet.length(),fileName);
-}
-void Util::Dump(PacketWriter& packet,UInt16 offset,const string& fileName) {
-	Dump(packet.begin()+offset,packet.length()-offset,fileName);
-}
-
-
-void Util::Dump(const UInt8* data,int size,const string& fileName) {
-	int i = 0;
-	int c = 0;
-	unsigned char b;
-	while (i<size) {
-		c = 0;
-		while ( (c < 16) && (i+c < size) ) {
-			b = data[i+c];
-			printf("%X%X ", b/16, b & 0x0f );
-			++c;
-		}
-		while (c++ < 16)
-			printf("   ");
-		c = 0;
-		while ( (c < 16) && (i+c < size) ) {
-			b = data[i+c];
-			if (b > 31)
-				printf("%c", (char)b );
-			else
-				printf(".");
-			++c;
-		}
-		i += 16;
-		cout << endl;
-	}
-	cout << endl;
-	if(!fileName.empty()) {
-		FileOutputStream fos(fileName,std::ios::app | std::ios::out);
-		fos.write((char*)data,size);
-		c -= 16;
-		// add 0xFF end-padding
-		while(c<16) {
-			fos.put((UInt8)0xFF);
-			++c;
-		}
-		fos.close();
-	}
-}
-
 
 } // namespace Cumulus

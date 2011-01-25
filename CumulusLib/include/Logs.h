@@ -19,6 +19,8 @@
 
 #include "Cumulus.h"
 #include "Logger.h"
+#include "PacketReader.h"
+#include "PacketWriter.h"
 
 #ifdef CUMULUS_EXPORTS
 	#define CUMULUS_LOGS
@@ -31,16 +33,17 @@ class CUMULUS_API Logs
 public:
 	static void			SetLogger(Logger& logger);
 	static void			SetLevel(Poco::UInt8 level);
-	static void			Dump(bool activate,const std::string& file="");
-	static void			Middle(bool activate);
+	static void			EnableDump(bool all=false);
+	static void			DisableDump();
 
 
 #ifdef CUMULUS_LOGS
 	static Logger*				GetLogger();
-	static bool					Dump();
-	static bool					Middle();
-	static const std::string&	DumpFile();
-	static Poco::UInt8			Level();
+	static Poco::UInt8			GetLevel();
+	static void					Dump(const Poco::UInt8* data,int size,const char* header=NULL,bool required=true);
+	static void					Dump(PacketReader& packet,const char* header=NULL,bool required=true);
+	static void					Dump(PacketWriter& packet,const char* header=NULL,bool required=true);
+	static void					Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header=NULL,bool required=true);
 #endif
 	
 	
@@ -48,39 +51,38 @@ private:
 	Logs();
 	~Logs();
 	
-	static Logger*	s_pLogger;
-
+	static Logger*		s_pLogger;
 	static bool			s_dump;
-	static bool			s_middle;
-	static std::string	s_file;
+	static bool			s_dumpAll;
 	static Poco::UInt8  s_level;
 };
 
+inline void Logs::DisableDump() {
+	s_dump=false;
+}
+
+inline void Logs::SetLevel(Poco::UInt8 level) {
+	s_level = level;
+}
 
 inline void Logs::SetLogger(Logger& logger) {
 	s_pLogger = &logger;
 }
 
-inline void Logs::Middle(bool activate) {
-	s_middle = activate;
-}
-
 
 #ifdef CUMULUS_LOGS
 
-	inline bool Logs::Dump() {
-		return s_dump;
+	inline void Logs::Dump(PacketReader& packet,const char* header,bool required) {
+		Dump(packet.current(),packet.available(),header,required);
+	}
+	inline void Logs::Dump(PacketWriter& packet,const char* header,bool required) {
+		Dump(packet.begin(),packet.length(),header,required);
+	}
+	inline void Logs::Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header,bool required) {
+		Dump(packet.begin()+offset,packet.length()-offset,header,required);
 	}
 
-	inline bool Logs::Middle() {
-		return s_middle;
-	}
-
-	inline const std::string& Logs::DumpFile() {
-		return s_file;
-	}
-
-	inline Poco::UInt8 Logs::Level() {
+	inline Poco::UInt8 Logs::GetLevel() {
 		return s_level;
 	}
 
@@ -91,7 +93,7 @@ inline void Logs::Middle(bool activate) {
 	// Empecher le traitement des chaines si de toute façon le log n'a aucun CLogReceiver!
 	// Ou si le level est plus détaillé que le loglevel
 	#define LOG(PRIO,FILE,LINE,FMT, ...) { \
-		if(Logs::GetLogger() && Logs::Level()>=PRIO) {\
+		if(Logs::GetLogger() && Logs::GetLevel()>=PRIO) {\
 			char szzs[700];\
 			snprintf(szzs,sizeof(szzs),FMT,## __VA_ARGS__);\
 			szzs[sizeof(szzs)-1] = '\0'; \

@@ -42,6 +42,7 @@ public:
 	virtual ~Logger() {}
 
 	virtual void logHandler(Poco::Thread::TID threadId,const std::string& threadName,Priority priority,const char *filePath,long line, const char *text)=0;
+	virtual void dumpHandler(const char* data,int size){}
 
 private:
 	

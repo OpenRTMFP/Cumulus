@@ -139,10 +139,7 @@ void RTMFPServer::run() {
 			continue;
 		}
 	
-		if(Logs::Dump()) {
-			cout << "Request:" << endl;
-			Util::Dump(packet,Logs::DumpFile());
-		}
+		Logs::Dump(packet,"Request:");
 
 		pSession->packetHandler(packet);
 

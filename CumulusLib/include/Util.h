@@ -16,8 +16,6 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketReader.h"
-#include "PacketWriter.h"
 #include <map>
 
 
@@ -29,10 +27,6 @@ public:
 	~Util();
 
 	static std::string FormatHex(const Poco::UInt8* data,unsigned size);
-	static void Dump(const Poco::UInt8* data,int size,const std::string& fileName="");
-	static void Dump(PacketReader& packet,const std::string& fileName="");
-	static void Dump(PacketWriter& packet,const std::string& fileName="");
-	static void Dump(PacketWriter& packet,Poco::UInt16 offset,const std::string& fileName="");
 	static void UnpackUrl(const std::string& url,std::string& path,std::map<std::string,std::string>& parameters);
 };
 

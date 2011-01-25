@@ -24,9 +24,8 @@ using namespace Poco;
 namespace Cumulus {
 
 Logger* Logs::s_pLogger(NULL);
-string	Logs::s_file;
 bool	Logs::s_dump(false);
-bool	Logs::s_middle(false);
+bool	Logs::s_dumpAll(false);
 UInt8	Logs::s_level(Logger::PRIO_INFO); // default log level
 
 Logs::Logs() {
@@ -35,18 +34,53 @@ Logs::Logs() {
 Logs::~Logs() {
 }
 
-void Logs::Dump(bool activate,const string& file) {
-	s_file = file;
-	s_dump=activate;
-	if(s_dump && !s_file.empty()) {
-		File dumpFile(s_file);
-		if(dumpFile.exists())
-			dumpFile.remove();
-	}
+void Logs::EnableDump(bool all) {
+	s_dump=true;
+	s_dumpAll=all;
 }
 
-void Logs::SetLevel(UInt8 level) {
-	s_level = level;
+void Logs::Dump(const UInt8* data,int size,const char* header,bool required) {
+	if(!GetLogger() || !s_dump || (!s_dumpAll && !required))
+		return;
+	char out[MAX_SIZE_MSG*4];
+	int len = 0;
+	int i = 0;
+	int c = 0;
+	unsigned char b;
+	if(header) {
+		out[len++] = '\t';
+		sprintf(out+len,header);
+		len += strlen(header);
+		out[len++] = '\n';
+	}
+	while (i<size) {
+		c = 0;
+		out[len++] = '\t';
+		while ( (c < 16) && (i+c < size) ) {
+			b = data[i+c];
+			sprintf(out+len,"%X%X ", b/16, b & 0x0f );
+			len += 3;
+			++c;
+		}
+		while (c++ < 16) {
+			sprintf(out+len,"   ");
+			len += 3;
+		}
+		out[len++] = ' ';
+		c = 0;
+		while ( (c < 16) && (i+c < size) ) {
+			b = data[i+c];
+			if (b > 31)
+				sprintf(out+len,"%c", (char)b );
+			else
+				sprintf(out+len,".");
+			++len;
+			++c;
+		}
+		i += 16;
+		out[len++] = '\n';
+	}
+	GetLogger()->dumpHandler(out,len);
 }
 
 

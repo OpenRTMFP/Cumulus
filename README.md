@@ -32,15 +32,16 @@ specify a display name for the service (only with /registerService).
 - **startup=automatic|manual**,
 specify the startup mode for the service (only with /registerService).
 
-- **cirrus=address[,dump]**,
-cirrus address to activate a "man-in-the-middle" developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers.
-You may add (after a comma) an option to include middle packets process for your dumping (only with *dump* argument), "p2p.rtmfp.net:10007,1" for example.
+- **cirrus=address**,
+cirrus address to activate a 'man-in-the-middle' developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers, "p2p.rtmfp.net:10007" for example.
+Adding the *dump* option in 'all' mode displays the middle packet process in your logs (see *dump* argument).
 
-- **dump[=file]**,
-enables packet traces in the console. Optionnal *file* argument also allows a file dumping. Used often with *cirrus=address[,dump]* option to observe flash/cirrus exchange.
+- **dump[=all]**,
+enables packet traces in logs. Used usually with *cirrus=address* option to observe flash/cirrus exchange.
+Optional argument 'all' displays all packet process like middle packet process in 'man-in-the-middle' mode (see *cirrus=address* argument).
 
 - **log=level**,
-log level argument beetween 0 and 8 : none, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (note), all logs until info level are displayed.
+log level argument beetween 0 and 8 : none, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (info), all logs until info level are displayed.
 
 - **help**,
 displays help information about command-line usage.

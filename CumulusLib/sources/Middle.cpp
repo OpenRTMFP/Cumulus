@@ -188,10 +188,7 @@ void Middle::sendHandshakeToCirrus(UInt8 type) {
 	_packetOut << type;
 	_packetOut.write16(_packetOut.length()-_packetOut.position()-2);
 
-	if(Logs::Dump() && Logs::Middle()) {
-		cout << "Middle to Cirrus handshaking:" << endl;
-		Util::Dump(_packetOut,6,Logs::DumpFile());
-	}
+	Logs::Dump(_packetOut,6,"Middle to Cirrus handshaking:",false);
 
 	RTMFP::Encode(_packetOut);
 	RTMFP::Pack(_packetOut);
@@ -290,10 +287,7 @@ void Middle::sendToCirrus() {
 		return;
 	}
 
-	if(Logs::Dump() && Logs::Middle()) {
-		cout << "Middle to Cirrus:" << endl;
-		Util::Dump(_packetOut,6,Logs::DumpFile());
-	}
+	Logs::Dump(_packetOut,6,"Middle to Cirrus:",false);
 
 	_firstResponse = true;
 	RTMFP::Encode(*_pMiddleAesEncrypt,_packetOut);
@@ -414,10 +408,7 @@ void Middle::manage() {
 			return;
 		}
 
-		if(Logs::Dump() && Logs::Middle()) {
-			cout << "Cirrus to Middle handshaking:" << endl;
-			Util::Dump(packet,Logs::DumpFile());
-		}
+		Logs::Dump(packet,"Cirrus to Middle handshaking:",false);
 
 		UInt8 marker = packet.read8();
 		if(marker!=0x0B) {
@@ -440,10 +431,7 @@ void Middle::manage() {
 	}
 
 	DEBUG("Cirrus to middle : session d'identification '%u'",id);
-	if(Logs::Dump() && Logs::Middle()) {
-		cout << "Cirrus to Middle:" << endl;
-		Util::Dump(packet,Logs::DumpFile());
-	}
+	Logs::Dump(packet,"Cirrus to Middle:",false);
 
 	cirrusPacketHandler(packet);
 

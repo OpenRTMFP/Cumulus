@@ -215,10 +215,7 @@ void Session::send(bool symetric) {
 	if(timeEcho)
 		_packetOut.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
 
-	if(Logs::Dump()) {
-		cout << "Response:" << endl;
-		Util::Dump(_packetOut,6,Logs::DumpFile());
-	}
+	Logs::Dump(_packetOut,6,"Response:");
 
 	if(symetric)
 		RTMFP::Encode(_packetOut);
@@ -247,19 +244,16 @@ void Session::packetHandler(PacketReader& packet) {
 	_recvTimestamp.update();
 
 	// Read packet
-	UInt8 marker = packet.read8();
+	UInt8 marker = packet.read8()|0xF0;
 	
 	_timeSent = packet.read16();
 
 	// with time echo
-	if((marker|0xF0) == 0xFD) {
+	if(marker == 0xFD) {
 		UInt16 ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16();
 		DEBUG("Ping : %hu",ping);
-	}
-
-	if(marker!=0x8d &&  marker!=0x0d && marker!=0x89 &&  marker!=0x09)
+	} else if(marker != 0xF9)
 		WARN("Packet marker unknown : %02x",marker);
-
 
 	// Begin a possible response
 	PacketWriter& packetOut = writer();

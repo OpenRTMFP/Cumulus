@@ -18,10 +18,16 @@
 #include "RTMFPServer.h"
 #include "Logs.h"
 #include "Auth.h"
-#include "Poco/StringTokenizer.h"
+#include "Poco/File.h"
+#include "Poco/FileStream.h"
+#include "Poco/DateTimeFormatter.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
 #include <iostream>
+
+#define LOG_FILE(END)	"./logs/log."##END
+
+#define LOG_SIZE 1000000
 
 using namespace std;
 using namespace Poco;
@@ -35,7 +41,9 @@ char * g_logPriorities[] = { "FATAL","CRITIC" ,"ERROR","WARN","NOTE","INFO","DEB
 
 class CumulusService: public ServerApplication , private Cumulus::Logger, private Cumulus::ClientHandler {
 public:
-	CumulusService(): _helpRequested(false),_pCirrus(NULL) {
+	CumulusService(): _helpRequested(false),_pCirrus(NULL),_logFile(LOG_FILE("0")) {
+		File("./logs").createDirectory();
+		_logStream.open(LOG_FILE("0"),ios::in | ios::ate);
 		Logs::SetLogger(*this);
 	}
 	
@@ -60,15 +68,15 @@ protected:
 		ServerApplication::defineOptions(options);
 
 		options.addOption(
-			Option("cirrus", "c", "Cirrus address to activate a 'man-in-the-middle' developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers. You may add (after a comma) an option to include middle packets process for your dumping (only with /dump).\nExample: 'p2p.rtmfp.net:10007,1'.",false,"address[,dump]",true)
+			Option("cirrus", "c", "Cirrus address to activate a 'man-in-the-middle' developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers, \"p2p.rtmfp.net:10007\" for example. Adding the 'dump' option in 'all' mode displays the middle packet process in your logs (see 'dump' argument).",false,"address",true)
 				.repeatable(false));
 
 		options.addOption(
-			Option("dump", "d", "Enables packet traces in the console. Optionnal 'file' argument also allows a file dumping. Used often with 'cirrus=address[,dump]' option to observe flash/cirrus exchange.",false,"file",false)
+			Option("dump", "d", "Enables packet traces in logs. Used usually with 'cirrus=address' option to observe flash/cirrus exchange. Optional argument 'all' displays all packet process like middle packet process in 'man-in-the-middle' mode (see 'cirrus=address' argument).",false,"all",false)
 				.repeatable(false));
 
 		options.addOption(
-			Option("log", "l", "Log level argument, must be beetween 0 and 8 : nothing, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (note), all logs until info level are displayed.")
+			Option("log", "l", "Log level argument, must be beetween 0 and 8 : nothing, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (info), all logs until info level are displayed.")
 				.required(false)
 				.argument("level")
 				.repeatable(false));
@@ -85,27 +93,17 @@ protected:
 		if (name == "help")
 			_helpRequested = true;
 		else if (name == "cirrus") {
-			string address;
-			StringTokenizer split(value,",",StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-			if(split.count()>0)
-				address = split[0];
-			if(split.count()>1 && split[1]!="0")
-				Logs::Middle(true);
 			try {
-				if(address.empty())
-					throw Exception("cirrus address must be indicated");
 				if(_pCirrus)
 					delete _pCirrus;
-				URI uri("rtmfp://"+address);
+				URI uri("rtmfp://"+value);
 				_pCirrus = new SocketAddress(uri.getHost(),uri.getPort());
-				INFO("Mode 'man in the middle' : the exchange will bypass to '%s'",address.c_str());
+				INFO("Mode 'man in the middle' : the exchange will bypass to '%s'",value.c_str());
 			} catch(Exception& ex) {
 				ERROR("Mode 'man in the middle' error : %s",ex.displayText().c_str());
 			}
 		} else if (name == "dump")
-			Logs::Dump(true,value);
-		else if (name == "middle")
-			Logs::Middle(true);
+			Logs::EnableDump(value == "all");
 		else if (name == "log")
 			Logs::SetLevel(atoi(value.c_str()));
 	}
@@ -118,9 +116,32 @@ protected:
 		helpFormatter.format(cout);
 	}
 
+	void dumpHandler(const char* data,int size) {
+		cout.write(data,size);
+		_logStream.write(data,size);
+		manageLogFile();
+	}
+
 	void logHandler(Thread::TID threadId,const std::string& threadName,Priority priority,const char *filePath,long line, const char *text) {
-		printf("%s  %s[%ld] %s",g_logPriorities[priority-1],Path(filePath).getBaseName().c_str(),line,text);
-		cout << endl;
+		printf("%s  %s[%ld] %s\n",g_logPriorities[priority-1],Path(filePath).getBaseName().c_str(),line,text);
+		_logStream << DateTimeFormatter::format(LocalDateTime(),"%d/%m %H:%M:%S.%c  ")
+				<< g_logPriorities[priority-1] << '\t' << threadName << '(' << threadId << ")\t"
+				<< Path(filePath).getFileName() << '[' << line << "]  " << text << std::endl;
+		manageLogFile();
+	}
+
+	void manageLogFile() {
+		if(_logFile.getSize()>LOG_SIZE) {
+			int num = 10;
+			File file(LOG_FILE("10"));
+			if(file.exists())
+				file.remove();
+			while(--num>=0) {
+				file = LOG_FILE("")+num;
+				if(file.exists())
+					file.renameTo(LOG_FILE("")+(num+1));
+			}
+		}	
 	}
 
 	bool onConnection(Client& client) {
@@ -156,6 +177,8 @@ private:
 	bool			_helpRequested;
 	SocketAddress*	_pCirrus;
 	Auth			_auth;
+	File			 _logFile;
+	FileOutputStream _logStream;
 };
 
 
