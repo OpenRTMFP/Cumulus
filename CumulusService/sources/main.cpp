@@ -24,6 +24,7 @@
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
 #include <iostream>
+#include <sstream>
 
 #define LOG_FILE(END)	"./logs/log."##END
 
@@ -132,15 +133,19 @@ protected:
 
 	void manageLogFile() {
 		if(_logFile.getSize()>LOG_SIZE) {
+			_logStream.close();
 			int num = 10;
 			File file(LOG_FILE("10"));
 			if(file.exists())
 				file.remove();
 			while(--num>=0) {
-				file = LOG_FILE("")+num;
+				ostringstream src; src << LOG_FILE("") << num;
+				ostringstream dest; dest << LOG_FILE("") << (num+1);
+				file = src.str();
 				if(file.exists())
-					file.renameTo(LOG_FILE("")+(num+1));
+					file.renameTo(dest.str());
 			}
+			_logStream.open(LOG_FILE("0"),ios::in | ios::ate);
 		}	
 	}
 

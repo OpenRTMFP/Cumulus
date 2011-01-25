@@ -122,6 +122,12 @@ void RTMFPServer::run() {
 			continue;
 		}
 
+		// A very small test port protocol (echo one byte)
+		if(size==1) {
+			_socket.sendTo(buff,1,sender);
+			continue;
+		}
+
 		PacketReader packet(buff,size);
 		if(!RTMFP::IsValidPacket(packet)) {
 			ERROR("Invalid packet");
