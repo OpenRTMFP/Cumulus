@@ -24,9 +24,8 @@
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
 #include <iostream>
-#include <sstream>
 
-#define LOG_FILE(END)	"./logs/log."##END
+#define LOG_FILE(END)	"./logs/log."#END
 
 #define LOG_SIZE 1000000
 
@@ -42,9 +41,9 @@ char * g_logPriorities[] = { "FATAL","CRITIC" ,"ERROR","WARN","NOTE","INFO","DEB
 
 class CumulusService: public ServerApplication , private Cumulus::Logger, private Cumulus::ClientHandler {
 public:
-	CumulusService(): _helpRequested(false),_pCirrus(NULL),_logFile(LOG_FILE("0")) {
+	CumulusService(): _helpRequested(false),_pCirrus(NULL),_logFile(LOG_FILE(0)) {
 		File("./logs").createDirectory();
-		_logStream.open(LOG_FILE("0"),ios::in | ios::ate);
+		_logStream.open(LOG_FILE(0),ios::in | ios::ate);
 		Logs::SetLogger(*this);
 	}
 	
@@ -135,17 +134,15 @@ protected:
 		if(_logFile.getSize()>LOG_SIZE) {
 			_logStream.close();
 			int num = 10;
-			File file(LOG_FILE("10"));
+			File file(LOG_FILE(10));
 			if(file.exists())
 				file.remove();
 			while(--num>=0) {
-				ostringstream src; src << LOG_FILE("") << num;
-				ostringstream dest; dest << LOG_FILE("") << (num+1);
-				file = src.str();
+				file = LOG_FILE(num);
 				if(file.exists())
-					file.renameTo(dest.str());
+					file.renameTo(LOG_FILE(num+1));
 			}
-			_logStream.open(LOG_FILE("0"),ios::in | ios::ate);
+			_logStream.open(LOG_FILE(0),ios::in | ios::ate);
 		}	
 	}
 

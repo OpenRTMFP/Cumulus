@@ -17,6 +17,7 @@
 
 #include "Logs.h"
 #include "Poco/File.h"
+#include "string.h"
 
 using namespace std;
 using namespace Poco;
@@ -49,8 +50,9 @@ void Logs::Dump(const UInt8* data,int size,const char* header,bool required) {
 	unsigned char b;
 	if(header) {
 		out[len++] = '\t';
-		sprintf(out+len,header);
-		len += strlen(header);
+		c = strlen(header);
+		memcpy(out+len,header,c);
+		len += c;
 		out[len++] = '\n';
 	}
 	while (i<size) {
@@ -63,7 +65,7 @@ void Logs::Dump(const UInt8* data,int size,const char* header,bool required) {
 			++c;
 		}
 		while (c++ < 16) {
-			sprintf(out+len,"   ");
+			strcpy(out+len,"   ");
 			len += 3;
 		}
 		out[len++] = ' ';
@@ -71,10 +73,9 @@ void Logs::Dump(const UInt8* data,int size,const char* header,bool required) {
 		while ( (c < 16) && (i+c < size) ) {
 			b = data[i+c];
 			if (b > 31)
-				sprintf(out+len,"%c", (char)b );
+				out[len++] = b;
 			else
-				sprintf(out+len,".");
-			++len;
+				out[len++] = '.';
 			++c;
 		}
 		i += 16;
