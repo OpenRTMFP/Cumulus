@@ -177,7 +177,7 @@ protected:
 		return true;
 	}
 	void onFailed(const Client& client,const string& msg) {
-		ERROR(msg.c_str());
+		ERROR("Client failed : %s",msg.c_str());
 	}
 	void onDisconnection(const Client& client) {
 		map<string,string>::const_iterator it = client.parameters.find("family");
@@ -207,7 +207,7 @@ private:
 	Auth			_auth;
 	File			 _logFile;
 	FileOutputStream _logStream;
-	map<string,set<const Client*>> _clientFamilies;	
+	map<string, set<const Client*> > _clientFamilies;	
 };
 
 
