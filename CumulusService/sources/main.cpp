@@ -23,7 +23,9 @@
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
+#include "string.h"
 #include <iostream>
+#include <set>
 
 #define LOG_FILE(END)	"./logs/log."#END
 
