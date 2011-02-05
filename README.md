@@ -118,6 +118,7 @@ If *NetStatusEvent.NET_STATUS* event from *NetConnection* object has failed, it 
 
 - Bad server address
 - Client has no permissions
+- "netConnection.objectEncoding" has perhaps been forced to "ObjectEncoding.AMF0" value, and it doesn't support by Cumulus.
 
 __notice:__ The *ipMulticastMemberUpdatesEnabled* NetGroup mode is not supporter for this moment.
 
@@ -142,7 +143,8 @@ A brief overview:
 			string name = it==client.parameters.end() ? "unknown" : it->second;
 			// Also you can send custom data for the client in writing in "client.data",
 			// on flash side you could read that on "data" property from NetStatusEvent::NET_STATUS event of NetConnection object
-			client.data = "Hello " + name;
+			client.data.resize(name.size()+6);
+			memcpy(&client.data[0],string("Hello " + name).c_str(),client.data.size());
 			...
 			return connectionAccepted;
 		}

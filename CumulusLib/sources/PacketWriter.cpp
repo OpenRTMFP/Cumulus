@@ -74,22 +74,51 @@ void PacketWriter::writeRandom(UInt16 size) {
 	delete [] value;
 }
 
+void PacketWriter::writeAddress(const Address& address,bool publicFlag) {
+	UInt8 flag = publicFlag ? 0x02 : 0x01;
+	if(address.host.size()==16) // IPv6
+		flag &= 0x80;
+	write8(flag);
+	for(int i=0;i<address.host.size();++i)
+		write8(address.host[i]);
+	write16(address.port);
+}
+
 void PacketWriter::writeAddress(const SocketAddress& address,bool publicFlag) {
 	UInt8 flag = publicFlag ? 0x02 : 0x01;
-	UInt8 i;
+	UInt8 size = 4;
 	IPAddress host = address.host();
 	if(host.family() == IPAddress::IPv6) {
-		write8(flag&0x80);
-		const UInt16* words = reinterpret_cast<const UInt16*>(host.addr());
-		for(i=0;i<4;++i)
-			write16(words[i]);
-	} else {
-		write8(flag);
-		const UInt8* bytes = reinterpret_cast<const UInt8*>(host.addr());
-		for(i=0;i<4;++i)
-			write8(bytes[i]);
+		flag &= 0x80;
+		size = 16;
 	}
+	const UInt8* bytes = reinterpret_cast<const UInt8*>(host.addr());
+	write8(flag);
+	for(int i=0;i<size;++i)
+		write8(bytes[i]);
 	write16(address.port());
+}
+
+
+void PacketWriter::write7BitValue(UInt32 value) {
+	UInt8 d=value&0x7F;
+	value>>=7;
+	UInt8 c=value&0x7F;
+	value>>=7;
+	UInt8 b=value&0x7F;
+	value>>=7;
+	UInt8 a=value&0x7F;
+
+	if(a>0) {
+		write8(0x80 | a);
+		write8(0x80 | b);
+		write8(0x80 | c);
+	} else if(b>0) {
+		write8(0x80 | b);
+		write8(0x80 | c);
+	} else if(c>0)
+		write8(0x80 | c);
+	write8(d);
 }
 
 

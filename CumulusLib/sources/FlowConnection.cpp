@@ -41,67 +41,65 @@ Flow::StageFlow FlowConnection::requestHandler(UInt8 stage,PacketReader& request
 	AMFReader reader(request);
 	AMFWriter writer(response);
 
-	switch(stage){
-		case 0x01: {
-			request.readRaw(buff1,6);
-			request.readRaw(buff2,6);
+	if(stage==0x01) {
+		request.readRaw(buff1,6);
+		request.readRaw(buff2,6);
 
-			string tmp;
-			reader.read(tmp);
-			reader.readNumber();
-			// fill peer infos!
-			AMFObject obj;
-			reader.readObject(obj);
-			((URI&)peer.swfUrl) = obj.getString("swfUrl","");
-			((URI&)peer.pageUrl) = obj.getString("pageUrl","");
+		string tmp;
+		reader.read(tmp);
+		reader.readNumber();
+		// fill peer infos!
+		AMFObject obj;
+		reader.readObject(obj);
+		((URI&)peer.swfUrl) = obj.getString("swfUrl","");
+		((URI&)peer.pageUrl) = obj.getString("pageUrl","");
 
-			// Check if the client is authorized
-			if(!data.auth(peer))
-				break;
 
-			response.writeRaw(buff1,6);
-			response.writeRaw("\x02\x0a\x02",3);
-			response.writeRaw(buff2,6);
-			writer.write("_result");
-			writer.writeNumber(1);
-			writer.writeNull();
+		// Don't support AMF0 forced on NetConnection object because impossible to exchange custome data (ByteArray written impossible)
+		// But it's not a pb because NetConnection RTMFP works since flash player 10.0 only (which supports AMF3)
+		if(obj.getDouble("objectEncoding")==0)
+			return STOP;
 
-			writer.beginObject();
-			writer.writeObjectProperty("objectEncoding",3);
-			writer.writeObjectProperty("data",peer.data);
-			writer.writeObjectProperty("level","status");
-			writer.writeObjectProperty("code","NetConnection.Connect.Success");
-			writer.endObject();
-			break;
+		// Check if the client is authorized
+		if(!data.auth(peer))
+			return STOP;
+
+		response.writeRaw(buff1,6);
+		response.writeRaw("\x02\x0a\x02",3);
+		response.writeRaw(buff2,6);
+		writer.write("_result");
+		writer.writeNumber(1);
+		writer.writeNull();
+
+		writer.beginObject();
+		writer.writeObjectProperty("objectEncoding",3);
+		writer.writeObjectProperty("data",peer.data);
+		writer.writeObjectProperty("level","status");
+		writer.writeObjectProperty("code","NetConnection.Connect.Success");
+		writer.endObject();
+
+	} else {
+		request.next(6); // unknown, 11 00 00 03 96 00
+
+		string tmp; 
+		reader.read(tmp); // "setPeerInfo"
+
+		reader.readNumber(); // Unknown, always equals at 0
+		reader.readNull();
+
+		list<Address> address;
+		while(reader.available()) {
+			reader.read(tmp); // private host
+			address.push_back(tmp);
 		}
-		case 0x02: {
+		peer.setPrivateAddress(address);
 
-			request.next(6); // unknown, 11 00 00 03 96 00
-
-			string tmp; 
-			reader.read(tmp); // "setPeerInfo"
-
-			reader.readNumber(); // Unknown, always equals at 0
-			reader.readNull();
-
-			while(reader.available()) {
-				reader.read(tmp); // private host
-				try {
-					SocketAddress addr(tmp);
-					peer.addPrivateAddress(addr);
-				} catch(Exception& ex) {
-					ERROR("Incorrect peer address : %s",ex.displayText().c_str());
-				}
-			}
-
+		if(stage==0x02) {
 			response.writeRaw("\x04\x00\x00\x00\x00\x00\x29\x00\x00",9); // Unknown!
 			response.write16(data.keepAliveServer);
 			response.write16(0); // Unknown!
 			response.write16(data.keepAlivePeer);
-			return MAX;
 		}
-		default:
-			ERROR("Unkown FlowNetConnection stage '%02x'",stage);
 	}
 
 	return STOP;

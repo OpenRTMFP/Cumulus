@@ -4,5 +4,8 @@ it starts a UDP Hole punching process with the RTMFP server instance which conta
 - Error on Linux when I stops the service : System exception: cannot join thread
 - hair-pinning is also supported in RTMFP?
 - Man in the middle mode with a SWF distant client
-- The Session address may be changed during session live?
+- BUG : I on flash side I do it: "netConnection.objectEncoding = ObjectEncoding.AMF0", it crashs!
 - To support IPV6 address!
+- Check a NetGroup behavor connection without GroupSpecifier (var ng:NetGroup = new NetGroup(netConnection, "group1");)
+- Decrypt error! And take in consideration Handshake 7bit size!
+- Write family documentation in the Readme file

@@ -39,7 +39,7 @@ public:
 	const Poco::URI								swfUrl;
 	const Poco::URI								pageUrl;
 
-	std::string									data;
+	std::vector<Poco::UInt8>					data;
 
 	// Query URL content
 	const std::string							path;

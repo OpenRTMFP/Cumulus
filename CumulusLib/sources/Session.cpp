@@ -39,7 +39,7 @@ Session::Session(UInt32 id,
 				 DatagramSocket& socket,
 				 ServerData& data,
 				 ClientHandler* pClientHandler) : 
-	_id(id),_farId(farId),_socket(socket),_pClientHandler(pClientHandler),
+	_id(id),_farId(farId),_socket(socket),_pClientHandler(pClientHandler),_testDecode(false),
 	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_data(data),_peer(peer),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG),_timesKeepalive(0),_clientAccepted(false) {
 
 }
@@ -52,13 +52,16 @@ Session::~Session() {
 		delete it->second;
 	_flows.clear();
 	kill();
-	if(_pClientHandler)
+	if(_clientAccepted && _pClientHandler)
 		WARN("onDisconnect handler has not been called on the session '%u'",_id);
 }
 
 bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
-	((vector<SocketAddress>&)_peer.allAddress)[0] = sender;
-	return RTMFP::Decode(_aesDecrypt,packet);
+	((SocketAddress&)_peer.address) = sender;
+	bool result = RTMFP::Decode(_aesDecrypt,packet);
+	if(result)
+		_testDecode = true;
+	return result;
 }
 
 void Session::kill() {
@@ -83,8 +86,8 @@ void Session::manage() {
 	// After 6 mn we considerate than the session has failed
 	if(_recvTimestamp.isElapsed(360000000))
 		setFailed("Timeout no client message");
-	// to accelerate the deletion of peer ghost (mainly for netgroup efficient)
-	if(!_failed && _recvTimestamp.isElapsed(_data.keepAliveServer*1000+10000000))
+	// To accelerate the deletion of peer ghost (mainly for netgroup efficient), starts a keepalive server after 2 mn
+	if(!_failed && _recvTimestamp.isElapsed(120000000))
 		keepAlive();
 
 	if(_failed) {
@@ -182,9 +185,12 @@ void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,S
 			if(it==_p2pHandshakeAttemps.end())
 				it = _p2pHandshakeAttemps.insert(pair<string,UInt8>(tag,0)).first;
 			
-			content.writeAddress(pSession->peer().allAddress[it->second],it->second==0);
+			if(it->second==0)
+				content.writeAddress(address,true);
+			else
+				content.writeAddress(pSession->peer().privateAddress[it->second-1],false);
 			++it->second;
-			if(pSession->peer().allAddress.size()==it->second)
+			if(it->second>pSession->peer().privateAddress.size())
 				it->second=0;
 		} else
 			content.writeAddress(address,true);
@@ -227,7 +233,7 @@ void Session::send(bool symetric) {
 	try {
 		// TODO remake? without retry (but flow)
 		bool retry=false;
-		while(_socket.sendTo(_packetOut.begin(),_packetOut.length(),_peer.address())!=_packetOut.length()) {
+		while(_socket.sendTo(_packetOut.begin(),_packetOut.length(),_peer.address)!=_packetOut.length()) {
 			if(retry) {
 				ERROR("Socket send error on session '%u' : all data were not sent",_id);
 				break;

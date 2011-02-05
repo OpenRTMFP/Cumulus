@@ -40,7 +40,7 @@ Peers::~Peers() {
 void Peers::add(const Peer& peer) {
 	list<const Peer*>::const_iterator it;
 
-	if(peer.address().host().isLoopback()) {
+	if(peer.address.host().isLoopback()) {
 		for(it=_localPeers.begin();it!=_localPeers.end();++it) {
 			if(*it==&peer)
 				return; // already included
@@ -58,7 +58,7 @@ void Peers::add(const Peer& peer) {
 
 void Peers::remove(const Peer& peer) {
 	
-	if(peer.address().host().isLoopback()) {
+	if(peer.address.host().isLoopback()) {
 		list<const Peer*>::iterator it;
 		for(it=_localPeers.begin();it!=_localPeers.end();++it) {
 			if(*it==&peer) {
@@ -82,7 +82,7 @@ void Peers::remove(const Peer& peer) {
 }
 
 void Peers::update(const Peer& peer,UInt16 oldPing) {
-	if(peer.address().host().isLoopback())
+	if(peer.address.host().isLoopback())
 		return;
 	
 	map<UInt16,list<const Peer*>*>::const_iterator it = _peers.find(oldPing);

@@ -401,6 +401,14 @@
 				Name="Util"
 				>
 				<File
+					RelativePath=".\sources\Address.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Address.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\Cirrus.cpp"
 					>
 				</File>

@@ -18,41 +18,37 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Client.h"
-#include "Address.h"
 #include "Poco/Net/SocketAddress.h"
 #include <vector>
-#include <list>
 
 namespace Cumulus {
 
-class Group;
-class Peer : public Client {
-	friend class Group;
+
+class Address {
 public:
-	Peer(const Poco::Net::SocketAddress& address);
-	virtual ~Peer();
+	Address();
+	Address(const std::string& address);
+	virtual ~Address();
 
-	const Poco::Net::SocketAddress	address;
-	const std::vector<Address>		privateAddress;
+	Address& operator=(const Address& other);
+	bool operator==(const Address& other) const;
+	bool operator==(const Poco::Net::SocketAddress& address) const;
+	bool operator!=(const Address& other) const;
+	bool operator!=(const Poco::Net::SocketAddress& address) const;
 
-	void setPrivateAddress(const std::list<Address>& address);
-	void setPing(Poco::UInt16 ping);
-	void unsubscribeGroups();
-
-	Poco::UInt16 getPing() const;
-	bool isIn(Group& group) const;
-
-private:
-	Peer(){}
-	bool isIn(Group& group,std::list<Group*>::iterator& it);
-
-	std::list<Group*>			_groups;
-	Poco::UInt16				_ping;
+	const std::vector<Poco::UInt8>	host;
+	const Poco::UInt16				port;
 };
 
-inline Poco::UInt16 Peer::getPing() const {
-	return _ping;
+inline bool Address::operator==(const Address& other) const {
+	return other.host==host && other.port==port;
+}
+inline bool Address::operator!=(const Address& other) const {
+	return other.host!=host || other.port!=port;
+}
+
+inline bool Address::operator!=(const Poco::Net::SocketAddress& address) const {
+	return !(operator==(address));
 }
 
 

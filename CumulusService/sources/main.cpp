@@ -147,16 +147,40 @@ protected:
 	}
 
 	bool onConnection(Client& client) {
+
+		//Acceptance
+		if(!_auth.check(client))
+			return false;
+
 		// Here you can read custom client http parameters in reading "client.parameters".
 		// Also you can send custom data for the client in writing in "client.data",
 		// on flash side you could read that on "data" property from NetStatusEvent::NET_STATUS event of NetConnection object
-		return _auth.check(client); //Acceptance
+
+		// Implementation of families!
+		map<string,string>::const_iterator it = client.parameters.find("family");
+		if(it!=client.parameters.end()) {
+			set<const Client*>& clients = _clientFamilies[it->second];
+			// return peer Ids includes in this family
+			if(clients.size()>2000)
+				return false; // 2000 members in a family is the maximum possible!
+			set<const Client*>::const_iterator it;
+			client.data.resize(clients.size()*32);
+			int i=0;
+			for(it=clients.begin();it!=clients.end();++it) {
+				memcpy(&client.data[i],(*it)->id,32);
+				i += 32;
+			}
+			clients.insert(&client);
+		}
+		return true;
 	}
-	void onFailed(const Client& client,const std::string& msg) {
-		
+	void onFailed(const Client& client,const string& msg) {
+		ERROR(msg.c_str());
 	}
 	void onDisconnection(const Client& client) {
-
+		map<string,string>::const_iterator it = client.parameters.find("family");
+		if(it!=client.parameters.end())
+			_clientFamilies[it->second].erase(&client);
 	}
 
 	int main(const std::vector<std::string>& args) {
@@ -181,6 +205,7 @@ private:
 	Auth			_auth;
 	File			 _logFile;
 	FileOutputStream _logStream;
+	map<string,set<const Client*>> _clientFamilies;	
 };
 
 

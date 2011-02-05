@@ -140,7 +140,10 @@ void RTMFPServer::run() {
 		if(!pSession)
 			continue;
 
+		if(!pSession->_testDecode && Logs::GetLevel()>=Logger::PRIO_DEBUG)
+			Logs::Dump(packet,"Packet crypted:");
 		if(!pSession->decode(packet,sender)) {
+			Logs::Dump(packet,"Packet decrypted:");
 			ERROR("Decrypt error");
 			continue;
 		}
@@ -188,7 +191,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	Sessions::Iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
 		pSession = it->second;
-		if(memcmp(pSession->peer().address().addr(),address.addr(),address.length())==0)
+		if(memcmp(pSession->peer().address.addr(),address.addr(),address.length())==0)
 			break;
 	}
 	if(it==_sessions.end())
@@ -228,9 +231,14 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	/// Udp hole punching normal process
 	pSessionWanted->p2pHandshake(address,tag,pSession);
 
-	vector<SocketAddress>::const_iterator it2;
-	for(it2=pSessionWanted->peer().allAddress.begin();it2!=pSessionWanted->peer().allAddress.end();++it2)
-		response.writeAddress(*it2,it2==pSessionWanted->peer().allAddress.begin());
+	response.writeAddress(address,true);
+	vector<Address>::const_iterator it2;
+	for(it2=pSessionWanted->peer().privateAddress.begin();it2!=pSessionWanted->peer().privateAddress.end();++it2) {
+		const Address& addr = *it2;
+		if(addr == address)
+			continue;
+		response.writeAddress(addr,false);
+	}
 	
 	return 0x71;
 

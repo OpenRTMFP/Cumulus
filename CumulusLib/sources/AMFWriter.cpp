@@ -92,9 +92,26 @@ void AMFWriter::writeObjectProperty(const string& name,double value) {
 	writeNumber(value);
 }
 
+void AMFWriter::writeObjectProperty(const string& name,const vector<UInt8>& data) {
+	_writer.writeString16(name);
+	writeByteArray(data);
+}
+
 void AMFWriter::writeObjectProperty(const string& name,const string& value) {
 	_writer.writeString16(name);
 	write(value);
+}
+
+void AMFWriter::writeByteArray(const vector<UInt8>& data) {
+	if(data.size()==0) {
+		_writer.write8(AMF_UNDEFINED);
+		return;
+	}
+	_writer.write8(AMF_AVMPLUS_OBJECT); // switch in AMF3 format 
+	_writer.write8(AMF_LONG_STRING); // bytearray in AMF3 format!
+	_writer.write7BitValue((data.size() << 1) | 1);
+	_writer.writeRaw(&data[0],data.size());
+
 }
 
 void AMFWriter::endObject() {

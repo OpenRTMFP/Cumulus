@@ -55,6 +55,8 @@ public:
 	bool	decode(PacketReader& packet,const Poco::Net::SocketAddress& sender);
 	
 	void	fail(const std::string& msg);
+
+	bool	_testDecode; // TODO enlever!
 protected:
 
 	PacketWriter&	writer();

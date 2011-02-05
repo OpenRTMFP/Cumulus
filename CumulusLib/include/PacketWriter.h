@@ -19,6 +19,7 @@
 
 #include "Cumulus.h"
 #include "MemoryStream.h"
+#include "Address.h"
 #include "Poco/BinaryWriter.h"
 #include "Poco/Net/SocketAddress.h"
 
@@ -41,7 +42,9 @@ public:
 	void writeString16(const std::string& value);
 	void writeString8(const char* value,Poco::UInt8 size);
 	void writeString16(const char* value,Poco::UInt16 size);
+	void write7BitValue(Poco::UInt32 value);
 	void writeRandom(Poco::UInt16 size);
+	void writeAddress(const Address& address,bool publicFlag);
 	void writeAddress(const Poco::Net::SocketAddress& address,bool publicFlag);
 
 	Poco::UInt8*	begin();

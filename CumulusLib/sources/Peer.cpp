@@ -27,8 +27,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Peer::Peer(const Poco::Net::SocketAddress& address):_ping(0),allAddress(1) {
-	((vector<SocketAddress>&)allAddress)[0] = address;
+Peer::Peer(const Poco::Net::SocketAddress& address):_ping(0),address(address) {
 }
 
 Peer::~Peer() {
@@ -52,13 +51,18 @@ inline void Peer::setPing(Poco::UInt16 ping) {
 		(*it)->_peers.update(*this,oldPing);
 }
 
-void Peer::addPrivateAddress(const SocketAddress& address) {
-	vector<SocketAddress>::const_iterator it;
-	for(it=allAddress.begin();it!=allAddress.end();++it) {
-		if(memcmp(it->addr(),address.addr(),address.length())==0)
-			return;
+void Peer::setPrivateAddress(const list<Address>& address) {
+	((vector<Address>&)privateAddress).resize(address.size());
+	list<Address>::const_iterator it;
+	int i=0;
+	for(it=address.begin();it!=address.end();++it) {
+		const Address& addr = *it;
+		// Set a port if egals 0!
+		if(addr.port==0)
+			((UInt16&)addr.port) = this->address.port();
+		((vector<Address>&)privateAddress)[i] = addr;
+		++i;
 	}
-	((vector<SocketAddress>&)allAddress).push_back(address);
 }
 
 bool Peer::isIn(Group& group) const {

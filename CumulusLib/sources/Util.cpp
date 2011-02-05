@@ -32,11 +32,11 @@ Util::Util() {
 Util::~Util() {
 }
 
+
 string Util::FormatHex(const UInt8* data,unsigned size) {
 	ostringstream oss;
 	HexBinaryEncoder(oss).write((char*)data,size);
 	return oss.str();
-	//WARN("Unknown session for a peerId of '%s'",printPeerId);
 }
 
 
