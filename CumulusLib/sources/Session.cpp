@@ -22,6 +22,7 @@
 #include "FlowGroup.h"
 #include "FlowNull.h"
 #include "Poco/URI.h"
+#include "string.h"
 
 #define FLOW_CONNECTION 0x02
 
