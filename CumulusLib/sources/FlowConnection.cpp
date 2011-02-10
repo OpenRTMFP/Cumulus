@@ -86,10 +86,9 @@ Flow::StageFlow FlowConnection::requestHandler(UInt8 stage,PacketReader& request
 		reader.readNull();
 
 		if(stage==0x02) {
-			response.writeRaw("\x04\x00\x00\x00\x00\x00\x29\x00\x00",9); // Unknown!
-			response.write16(data.keepAliveServer);
-			response.write16(0); // Unknown!
-			response.write16(data.keepAlivePeer);
+			response.writeRaw("\x04\x00\x00\x00\x00\x00\x29",7); // Unknown!
+			response.write32(data.keepAliveServer);
+			response.write32(data.keepAlivePeer);
 		} else {
 			response.writeRaw("\x11\x00\x00\x00\x00\x00",6); // Unknown!
 		}

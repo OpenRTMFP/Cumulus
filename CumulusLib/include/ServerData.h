@@ -32,8 +32,8 @@ public:
 	Group&	group(const std::vector<Poco::UInt8>& id);
 	bool	auth(Client& client);
 
-	const Poco::UInt16 keepAlivePeer;
-	const Poco::UInt16 keepAliveServer;
+	const Poco::UInt32 keepAlivePeer;
+	const Poco::UInt32 keepAliveServer;
 
 private:
 	ClientHandler*		_pClientHandler;
