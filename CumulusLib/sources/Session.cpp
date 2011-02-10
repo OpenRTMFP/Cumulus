@@ -182,15 +182,19 @@ void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,S
 
 		if(pSession) {
 			map<string,UInt8>::iterator it =	_p2pHandshakeAttemps.find(tag);
-			if(it==_p2pHandshakeAttemps.end())
+			if(it==_p2pHandshakeAttemps.end()) {
 				it = _p2pHandshakeAttemps.insert(pair<string,UInt8>(tag,0)).first;
+				// If two clients are on the same lan, starts with private address
+				if(memcmp(address.addr(),peer().address.addr(),address.length())==0 && pSession->peer().privateAddress.size()>0)
+					it->second=1;
+			}
 			
 			if(it->second==0)
 				content.writeAddress(address,true);
 			else
 				content.writeAddress(pSession->peer().privateAddress[it->second-1],false);
 			++it->second;
-			if(it->second>pSession->peer().privateAddress.size())
+			if(it->second > pSession->peer().privateAddress.size())
 				it->second=0;
 		} else
 			content.writeAddress(address,true);
@@ -428,7 +432,7 @@ void Session::packetHandler(PacketReader& packet) {
 // Don't must return a null value!
 Flow* Session::createFlow(UInt8 id) {
 	if(id==FLOW_CONNECTION) // NetConnection
-		return new FlowConnection(_peer,_data);	
+		return new FlowConnection(_peer,_data,_pClientHandler);	
 	else if(id>FLOW_CONNECTION) // NetGroup
 		return new FlowGroup(_peer,_data);
 	else if(id>0)

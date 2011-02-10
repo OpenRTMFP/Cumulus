@@ -15,30 +15,33 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "AMFResponse.h"
 
-#include "Cumulus.h"
-#include "Client.h"
-#include <map>
-
+using namespace std;
 
 namespace Cumulus {
 
+AMFResponse::AMFResponse(AMFWriter& writer,double responderHandle,const string& error) : AMFWriter(writer) {
+	if(!error.empty()) {
+		writer.write("_error");
+		writer.writeNumber(responderHandle);
+		writer.writeNull();
+		writer.beginObject();
+		writer.writeObjectProperty("level","error");
+		writer.writeObjectProperty("code","NetConnection.Call.Failed");
+		writer.writeObjectProperty("description",error);
+		writer.endObject();
+	} else {
+		writer.write("_result");
+		writer.writeNumber(responderHandle);
+		writer.writeNull();
+	}
+}
 
-class CUMULUS_API ClientHandler
-{
-public:
-	ClientHandler();
-	virtual ~ClientHandler();
 
-	virtual bool onConnection(Client& client)=0;
-	virtual void onFailed(const Client& client,const std::string& msg)=0;
-	virtual void onDisconnection(const Client& client)=0;
-//	virtual void onMessage(const Client& client,)=0;
+AMFResponse::~AMFResponse() {
 
-private:
-	//onMessage(const Client& client,const std::string& name,AMFReader& reader);
-};
+}
 
 
 } // namespace Cumulus

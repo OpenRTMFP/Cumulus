@@ -28,6 +28,10 @@ AMFWriter::AMFWriter(PacketWriter& writer) : _writer(writer) {
 
 }
 
+AMFWriter::AMFWriter(AMFWriter& writer) : _writer(writer._writer) {
+
+}
+
 
 AMFWriter::~AMFWriter() {
 

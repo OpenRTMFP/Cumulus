@@ -27,6 +27,7 @@ namespace Cumulus {
 class AMFWriter {
 public:
 	AMFWriter(PacketWriter& writer);
+	AMFWriter(AMFWriter& writer);
 	~AMFWriter();
 
 	// slower

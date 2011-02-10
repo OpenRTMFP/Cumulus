@@ -15,30 +15,21 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "ClientHandler.h"
 
-#include "Cumulus.h"
-#include "Client.h"
-#include <map>
 
+using namespace std;
 
 namespace Cumulus {
 
+ClientHandler::ClientHandler() {
+	
+}
 
-class CUMULUS_API ClientHandler
-{
-public:
-	ClientHandler();
-	virtual ~ClientHandler();
 
-	virtual bool onConnection(Client& client)=0;
-	virtual void onFailed(const Client& client,const std::string& msg)=0;
-	virtual void onDisconnection(const Client& client)=0;
-//	virtual void onMessage(const Client& client,)=0;
+ClientHandler::~ClientHandler() {
+}
 
-private:
-	//onMessage(const Client& client,const std::string& name,AMFReader& reader);
-};
 
 
 } // namespace Cumulus

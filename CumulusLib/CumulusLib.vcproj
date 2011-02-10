@@ -365,6 +365,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\AMFResponse.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\AMFResponse.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\AMFWriter.cpp"
 					>
 				</File>
@@ -442,6 +450,10 @@
 				</File>
 				<File
 					RelativePath=".\include\Client.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\ClientHandler.cpp"
 					>
 				</File>
 				<File

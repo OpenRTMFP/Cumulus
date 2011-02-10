@@ -19,16 +19,21 @@
 
 #include "Cumulus.h"
 #include "Flow.h"
+#include "AMFReader.h"
+#include "AMFWriter.h"
+#include "ClientHandler.h"
 
 namespace Cumulus {
 
 class FlowConnection : public Flow {
 public:
-	FlowConnection(Peer& peer,ServerData& data);
+	FlowConnection(Peer& peer,ServerData& data,ClientHandler* pClientHandler);
 	virtual ~FlowConnection();
 
 private:
-	StageFlow requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	StageFlow	requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	void		callbackHandler(const std::string& name,AMFReader& reader,double responderHandle,AMFWriter& writer);
+	ClientHandler* _pClientHandler;
 };
 
 

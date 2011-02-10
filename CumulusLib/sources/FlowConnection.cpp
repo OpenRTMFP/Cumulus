@@ -16,9 +16,8 @@
 */
 
 #include "FlowConnection.h"
-#include "AMFReader.h"
-#include "AMFWriter.h"
 #include "Logs.h"
+#include "AMFResponse.h"
 
 
 using namespace std;
@@ -28,7 +27,7 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-FlowConnection::FlowConnection(Peer& peer,ServerData& data) : Flow(peer,data) {
+FlowConnection::FlowConnection(Peer& peer,ServerData& data,ClientHandler* pClientHandler) : Flow(peer,data),_pClientHandler(pClientHandler) {
 }
 
 FlowConnection::~FlowConnection() {
@@ -81,28 +80,41 @@ Flow::StageFlow FlowConnection::requestHandler(UInt8 stage,PacketReader& request
 	} else {
 		request.next(6); // unknown, 11 00 00 03 96 00
 
-		string tmp; 
-		reader.read(tmp); // "setPeerInfo"
-
-		reader.readNumber(); // Unknown, always equals at 0
+		string name; 
+		reader.read(name);
+		double handle = reader.readNumber(); // Unknown, always equals at 0
 		reader.readNull();
-
-		list<Address> address;
-		while(reader.available()) {
-			reader.read(tmp); // private host
-			address.push_back(tmp);
-		}
-		peer.setPrivateAddress(address);
 
 		if(stage==0x02) {
 			response.writeRaw("\x04\x00\x00\x00\x00\x00\x29\x00\x00",9); // Unknown!
 			response.write16(data.keepAliveServer);
 			response.write16(0); // Unknown!
 			response.write16(data.keepAlivePeer);
+		} else {
+			response.writeRaw("\x11\x00\x00\x00\x00\x00",6); // Unknown!
 		}
+
+		callbackHandler(name,reader,handle,writer);
+		
 	}
 
 	return STOP;
+}
+
+
+void FlowConnection::callbackHandler(const string& name,AMFReader& reader,double responderHandle,AMFWriter& writer) {
+
+	if(name == "setPeerInfo") {
+		list<Address> address;
+		string addr;
+		while(reader.available()) {
+			reader.read(addr); // private host
+			address.push_back(addr);
+		}
+		peer.setPrivateAddress(address);
+	} else 
+		AMFResponse response(writer,responderHandle,"Method not found (" + name + ")");
+	
 }
 
 } // namespace Cumulus

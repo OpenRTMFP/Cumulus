@@ -163,8 +163,8 @@ protected:
 		if(it!=client.parameters.end()) {
 			set<const Client*>& clients = _clientFamilies[it->second];
 			// return peer Ids includes in this family
-			if(clients.size()>2000)
-				return false; // 2000 members in a family is the maximum possible!
+			if(clients.size()>1000)
+				return false; // 1000 members in a family is the maximum acceptable for one UDP packet!
 			set<const Client*>::const_iterator it;
 			client.data.resize(clients.size()*32);
 			int i=0;

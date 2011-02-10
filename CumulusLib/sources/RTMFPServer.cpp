@@ -122,6 +122,8 @@ void RTMFPServer::run() {
 			continue;
 		}
 
+		DEBUG("Sender : %s",sender.toString().c_str());
+
 		// A very small test port protocol (echo one byte)
 		if(size==1) {
 			_socket.sendTo(buff,1,sender);
@@ -191,7 +193,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	Sessions::Iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
 		pSession = it->second;
-		if(memcmp(pSession->peer().address.addr(),address.addr(),address.length())==0)
+		if(memcmp(pSession->peer().address.addr(),address.addr(),address.length())==0 && pSession->peer().address.port() == address.port())
 			break;
 	}
 	if(it==_sessions.end())
@@ -231,7 +233,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	/// Udp hole punching normal process
 	pSessionWanted->p2pHandshake(address,tag,pSession);
 
-	response.writeAddress(address,true);
+	response.writeAddress(pSessionWanted->peer().address,true);
 	vector<Address>::const_iterator it2;
 	for(it2=pSessionWanted->peer().privateAddress.begin();it2!=pSessionWanted->peer().privateAddress.end();++it2) {
 		const Address& addr = *it2;
