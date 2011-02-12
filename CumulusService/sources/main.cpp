@@ -19,6 +19,7 @@
 #include "Logs.h"
 #include "Auth.h"
 #include "Poco/File.h"
+#include "Poco/Format.h"
 #include "Poco/FileStream.h"
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/Util/HelpFormatter.h"

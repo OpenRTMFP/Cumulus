@@ -361,6 +361,9 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 			// Replace the public address
 			//content.next(content.read8()&0x80 ? 16 : 4);
 			//packetOut.writeAddress(peer().address(),true);
+		} else if(type==0x51) {
+			//packetOut.clear(packetOut.position()-3);
+			//content.next(content.available());
 		}
 
 		packetOut.writeRaw(content.current(),content.available());
