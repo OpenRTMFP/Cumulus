@@ -31,8 +31,9 @@ public:
 	virtual ~FlowConnection();
 
 private:
-	StageFlow	requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
-	void		callbackHandler(const std::string& name,AMFReader& reader,double responderHandle,AMFWriter& writer);
+	StageFlow		requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	void			callbackHandler(const std::string& name,AMFReader& reader,double responderHandle,AMFWriter& writer);
+
 	ClientHandler* _pClientHandler;
 };
 

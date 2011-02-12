@@ -11,7 +11,6 @@ Status
 ------------------------------------
 Cumulus is in development, much work remains to be done.
 If you are a developer **help us** to evolve and enhance Cumulus, else you can always make a **donation** ([us]|[eu]) for that we spent more time on it, in fact it's not technical skills that hinder us but lack of time.
-Also with the intention to understand better the exchange between a official RTMFP server and a Flash client, we have created a [worketable] to facilitate sharing of information exchanged and its presentation.
 
 Usage
 ------------------------------------
@@ -196,13 +195,13 @@ package names are *libssl-dev* and *libpoco-dev*.
 
 CumulusLib building manipulation are:
 
-	make
-	make clean
+	make            // install
+	make clean      // uninstall
 
 CumulusService works in a same way:
 
-	make
-	make clean
+	make            // install
+	make clean      // uninstall
 
 Thanks
 ------------------------------------
@@ -214,7 +213,6 @@ Special thanks to Key2 and Andrei of [C++ RMTP Server] who by their preliminary 
 [license]: https://github.com/OpenRTMFP/Cumulus/raw/master/LICENSE "LICENSE"
 [OpenSSL]: http://www.openssl.org/ "www.openssl.org"
 [Poco]: http://pocoproject.org/ "pocoproject.org" 
-[worketable]: http://openrtmfp.github.com/Cumulus/ "Cumulus Worketable"
 [Win32OpenSSL]: [http://www.slproweb.com/products/Win32OpenSSL.html] "www.slproweb.com"
 [us]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=M24B32EH2GV3A "Donation US"
 [eu]: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=QPWT9V67YWSGG "Donation EU"

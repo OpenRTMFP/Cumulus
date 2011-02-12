@@ -23,7 +23,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-ServerData::ServerData(UInt8 keepAliveServer,UInt8 keepAlivePeer,ClientHandler* pClientHandler) : _pClientHandler(pClientHandler),keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),keepAlivePeer(keepAlivePeer<5 ? 5000 : keepAlivePeer*1000) {
+ServerData::ServerData(UInt8 keepAliveServer,UInt8 keepAlivePeer) : keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),keepAlivePeer(keepAlivePeer<5 ? 5000 : keepAlivePeer*1000) {
 
 }
 

@@ -27,7 +27,8 @@
 #include <iostream>
 #include <set>
 
-#define LOG_FILE(END)	"./logs/log."#END
+#define LOG_FILE(END)		"./logs/log."#END
+#define LOG_FILE_VAR(NUM)	format("./logs/log.%d",NUM)
 
 #define LOG_SIZE 1000000
 
@@ -140,9 +141,9 @@ protected:
 			if(file.exists())
 				file.remove();
 			while(--num>=0) {
-				file = LOG_FILE(num);
+				file = LOG_FILE_VAR(num);
 				if(file.exists())
-					file.renameTo(LOG_FILE(num+1));
+					file.renameTo(LOG_FILE_VAR(num+1));
 			}
 			_logStream.open(LOG_FILE(0),ios::in | ios::ate);
 		}	

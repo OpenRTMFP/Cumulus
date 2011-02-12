@@ -5,3 +5,5 @@
 - Decrypt error! And take in consideration Handshake 7bit size!
 - Write family documentation in the Readme file
 - Look the Seb Handshake strange packet with 127 bytes
+
+- Fixed the different pb: 8192, limit UDP packet? Try maybe in MITM mode with a url very very long! one sending buffer by session is perhaps too much in a MMO case? 1000 players in FullMesh is impossibe with 8192 limit! "client.data" should perhaps not be keep in Client class (it's maybe too weight in MMO case).

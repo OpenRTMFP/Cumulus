@@ -32,7 +32,6 @@ private:
 
 	std::list<const Peer*>		_bestPeers;
 	Group*						_pGroup;
-	bool						_memberRemoved;
 };
 
 

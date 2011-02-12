@@ -39,26 +39,24 @@ public:
 
 	bool request(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 
-	void acknowledgment(Poco::UInt8 stage,bool ack);
+	void acknowledgment(Poco::UInt8 stage);
 	bool lastResponse(PacketWriter& response);
 	bool consumed();
 
 	Peer&				peer;
-	Poco::UInt8			stage();
 	ServerData&			data;
-	
+
+	Poco::UInt8			stage();
 	
 private:
 	void writeResponse(PacketWriter& packet,bool nestedResponse=false);
 	virtual StageFlow requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response)=0;
 	virtual bool followingResponse(Poco::UInt8 stage,PacketWriter& response);
 
-	void stageCompleted(Poco::UInt8 stage);
-
 	Poco::UInt8			_stage;
 	Poco::UInt8			_maxStage;
-	Poco::UInt64		_consumed;
 	Response*			_pLastResponse;
+
 	Poco::UInt8			_buffer[MAX_SIZE_MSG];
 };
 
@@ -68,6 +66,10 @@ inline bool Flow::followingResponse(Poco::UInt8 stage,PacketWriter& response) {
 
 inline Poco::UInt8 Flow::stage() {
 	return _stage;
+}
+
+inline bool Flow::consumed() {
+	return _maxStage>0 && _stage>=_maxStage && !_pLastResponse;
 }
 
 } // namespace Cumulus

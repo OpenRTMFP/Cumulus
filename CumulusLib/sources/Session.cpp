@@ -271,7 +271,7 @@ void Session::packetHandler(PacketReader& packet) {
 
 	// Variables for request (0x10 and 0x11)
 	UInt8 flag;
-	UInt8 idFlow;
+	UInt8 idFlow=0;
 	UInt8 stage;
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
@@ -279,6 +279,7 @@ void Session::packetHandler(PacketReader& packet) {
 
 	// Can have nested queries
 	while(type!=0xFF) {
+
 		UInt16 size = packet.read16();
 		UInt8 idResponse = 0;
 
@@ -312,7 +313,7 @@ void Session::packetHandler(PacketReader& packet) {
 					response.write8(3);
 					response.write8(flowId);
 					response.write8(flow(flowId).stage());
-					response.write8(1); // perhaps 0|1 for stage completed|not completed
+					response.write8(0); // perhaps 0|1 for stage completed|not completed
 					break;
 				}
 
@@ -334,13 +335,10 @@ void Session::packetHandler(PacketReader& packet) {
 				case 0x51 : {
 					/// Acknowledgment 
 					UInt8 idFlow= request.read8();
-					if(request.read8()>0) { // is usually equal to 0x7f
-						UInt8 stage = request.read8();
-						bool ack = request.read8()>0;
-						if(!ack)
-							ERROR("The flow '%02x' has received a ack negative for the stage '%02x'",idFlow,stage);
-						flow(idFlow).acknowledgment(stage,ack);
-					}
+					if(request.read8()>0) // is usually equal to 0x7f
+						flow(idFlow).acknowledgment(request.read8());
+					else
+						ERROR("The flow '%02x' has received a ack negative for the stage '%02x'",idFlow,stage);
 					// else {
 					// In fact here, we should send a 0x18 message (with id flow),
 					// but it can create a loop... We prefer cancel the message
@@ -355,46 +353,32 @@ void Session::packetHandler(PacketReader& packet) {
 					stage = request.read8()-1;
 				case 0x11 : {
 					++stage;
-					if(request.read8()==0x02) {
-						// It happens when the previus stage is not ack,
-						// and the 6 next bytes are the 6 bytes of previus flow request in the same location.
-						// Unknown why it's really used, but it can be omitted.
-						// In this case, we must remove the 7 next bytes
+					// It happens when the previus stage is not ack,
+					// and the 6 next bytes are the 6 bytes of previus flow request in the same location.
+					// Unknown why it's really used, but it can be omitted.
+					// In this case, we must remove the 7 next bytes
+					if(request.read8()==0x02)
 						request.next(7);
-					}
-
-					answer = true;
-					idResponse = 0x10;
-
-					// Write Acknowledgment (nested in response)
-					packetOut.write8(0x51);
-					packetOut.write16(3);
-					packetOut.write8(idFlow);
-					packetOut.write8(0x3f); // ack!
-					packetOut.write8(stage);
-					response.next(6);
 
 					// Prepare response
-					response.write8(flag);
-					response.write8(idFlow);
-					response.write8(stage);
-					response.write8(0x01); // Send always a 0x01 flag here means that we considerate that
+					packetOut.next(3);
+					packetOut.write8(flag);
+					packetOut.write8(idFlow);
+					packetOut.write8(stage);
+					packetOut.write8(0x01); // Send always a 0x01 flag here means that we considerate that
 					// the possible previus stage message is ack, even if it's wrong, because we can considerate
 					// to keep things simple that a request is a acknowledgment for its response
-					
-					// We must process just one time the connection flow! If the client has not received our response
-					// it will be resent by repeat flow process (because it's not yet ack)
-					bool connecting= idFlow==FLOW_CONNECTION && stage==1;
-					if(_clientAccepted && connecting)
-						break;
+
+					bool connecting = idFlow==FLOW_CONNECTION && stage==1;
 
 					// Process request
-					if(flow(idFlow,true).request(stage,request,response)) {
+					if(flow(idFlow,true).request(stage,request,packetOut)) {
+						idResponse = 0x10;
 						if(connecting)
 							_clientAccepted = true;
 					} else {
-						response.clear();
-						if(connecting)
+						packetOut.clear(response.position()-3);
+						if(connecting && !_clientAccepted)
 							setFailed("Client rejected");
 					}
 
@@ -407,23 +391,36 @@ void Session::packetHandler(PacketReader& packet) {
 			// No response for a failed session!
 			if(_failed)
 				idResponse=0;
-			if(idResponse==0 && type != 0x10 && type != 0x11)
+			if(idResponse==0)
 				response.clear();
 		}
 		
-		if(idResponse>0 && type != 0x10 && type != 0x11) {
+		if(idResponse>0) {
 			answer = true;
-			packetOut.write8(idResponse);
-			int len = packetOut.length()-packetOut.position()-2;
-			if(len<0)
-				len = 0;
-			packetOut.write16(len);
-			packetOut.next(len);
+			if(type != 0x10 && type != 0x11) {
+				packetOut.write8(idResponse);
+				int len = packetOut.length()-packetOut.position()-2;
+				if(len<0)
+					len = 0;
+				packetOut.write16(len);
+				packetOut.next(len);
+			}
 		}
 
 		// Next
 		packet.next(size);
 		type = packet.available()>0 ? packet.read8() : 0xFF;
+
+		// Write Acknowledgment
+		if(idFlow>0 && type!= 0x11) {
+			answer=true;
+			packetOut.write8(0x51);
+			packetOut.write16(3);
+			packetOut.write8(idFlow);
+			packetOut.write8(0x3f); // ack!
+			packetOut.write8(stage);
+			idFlow=0;
+		}
 	}
 
 	if(answer)

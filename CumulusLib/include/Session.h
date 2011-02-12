@@ -23,6 +23,7 @@
 #include "AESEngine.h"
 #include "RTMFP.h"
 #include "Flow.h"
+#include "ClientHandler.h"
 #include "Poco/Timestamp.h"
 #include "Poco/Net/DatagramSocket.h"
 

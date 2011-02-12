@@ -29,7 +29,7 @@ namespace Cumulus {
 
 class Response {
 public:
-	Response(Poco::UInt8 stage,const UInt8* data,UInt16 size,UInt8* buffer) : _size(size),stage(stage),_buffer(buffer),_time(0),_cycle(-1) {
+	Response(const UInt8* data,UInt16 size,UInt8* buffer) : _size(size),_buffer(buffer),_time(0),_cycle(-1) {
 		memcpy(buffer,data,size);
 	}
 	
@@ -52,8 +52,6 @@ public:
 		}
 		return false;
 	}
-
-	const UInt8		stage;
 	
 private:
 	Timestamp	_timeCreation;
@@ -64,33 +62,13 @@ private:
 };
 
 
-Flow::Flow(Peer& peer,ServerData& data) : _stage(0),peer(peer),data(data),_pLastResponse(NULL),_consumed(0),_maxStage(0) {
+Flow::Flow(Peer& peer,ServerData& data) : _stage(0),peer(peer),data(data),_pLastResponse(NULL),_maxStage(0) {
 }
 
 Flow::~Flow() {
 	// delete last response
 	if(_pLastResponse)
 		delete _pLastResponse;
-}
-
-bool Flow::consumed() {
-	if(_maxStage==0)
-		return false;
-	UInt8 stage = 0;
-	UInt64 consumed = _consumed;
-	while(stage<_maxStage) {
-		if(!(consumed&0x01))
-			return false;
-		consumed>>=1;
-		++stage;
-	}
-	return true;
-}
-
-void Flow::stageCompleted(UInt8 stage) {
-	_consumed |= (((UInt64)1)<<((UInt64)stage-1));
-	if(stage>_stage) // progress stage
-		_stage = stage;
 }
 
 bool Flow::lastResponse(PacketWriter& response) {
@@ -117,9 +95,14 @@ void Flow::writeResponse(PacketWriter& packet,bool nestedResponse) {
 }
 
 bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
-	// We can considerate that a request stage+1 pays as a ack for requete stage
-	if(stage>0)
-		stageCompleted(stage-1);
+	if(stage==_stage) {
+		INFO("Flow stage '%02x' has been resent",stage);
+		return false;
+	} else if(stage<_stage) {
+		WARN("A flow stage '%02x' inferior to current stage '%02x' has been sent",stage,_stage);
+		return false;
+	}
+	_stage = stage;
 
 	response.reset(response.position()-7); // 7  for type, size, firstFlag, idFlow, stage and second Flag written in Session.cpp
 	int pos = response.position();
@@ -136,10 +119,10 @@ bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
 			out.clear();
 		if(stageFlow == MAX)
 			_maxStage = stage;
-		++stage;
+		++_stage;
 		first = false;
 	}
-	--stage;
+	--_stage;
 
 	if(_pLastResponse) {
 		delete _pLastResponse;
@@ -148,23 +131,21 @@ bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
 
 	bool answer = pos<response.position();
 	if(answer)
-		_pLastResponse = new Response(stage,response.begin()+pos,response.length()-pos,_buffer); // Mem the last response (for the correspondant stage flow)
-	else
-		stageCompleted(stage); // stage complete because there is no responsereturn false;
+		_pLastResponse = new Response(response.begin()+pos,response.length()-pos,_buffer); // Mem the last response
 
 	return answer;
 }
 
-void Flow::acknowledgment(Poco::UInt8 stage,bool ack) {
-	if(ack)
-		stageCompleted(stage);
+void Flow::acknowledgment(Poco::UInt8 stage) {
+	if(stage != _stage) {
+		WARN("A acknowledgment for flow stage '%02x' has been sent whereas the current stage for this flow is '%02x' ",stage,_stage);
+		return;
+	}
 	if(!_pLastResponse)
 		return;
 	// Ack!
-	if(this->stage() >= _pLastResponse->stage) {
-		delete _pLastResponse;
-		_pLastResponse = NULL;
-	}
+	delete _pLastResponse;
+	_pLastResponse = NULL;
 }	
 
 } // namespace Cumulus

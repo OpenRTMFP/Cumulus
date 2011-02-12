@@ -27,7 +27,7 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-FlowGroup::FlowGroup(Peer& peer,ServerData& data) : Flow(peer,data),_pGroup(NULL),_memberRemoved(false) {
+FlowGroup::FlowGroup(Peer& peer,ServerData& data) : Flow(peer,data),_pGroup(NULL) {
 }
 
 FlowGroup::~FlowGroup() {
@@ -40,10 +40,6 @@ Flow::StageFlow FlowGroup::requestHandler(UInt8 stage,PacketReader& request,Pack
 	AMFWriter writer(response);
 
 	if(stage == 0x01) {
-		if(_memberRemoved) {
-			WARN("Group member removed, no group subscription possible after that");
-			return STOP;
-		}
 		request.readRaw(buff,6);
 		request.next(3);
 
@@ -75,14 +71,9 @@ Flow::StageFlow FlowGroup::requestHandler(UInt8 stage,PacketReader& request,Pack
 
 	} else {
 		// delete member of group
-		if(_memberRemoved) {
-			WARN("Group member already removed");
-		} else {
-			DEBUG("Group closed")
-			if(_pGroup)
-				_pGroup->removePeer(peer);
-			_memberRemoved=true;
-		}
+		DEBUG("Group closed")
+		if(_pGroup)
+			_pGroup->removePeer(peer);
 		return MAX;
 	}
 }

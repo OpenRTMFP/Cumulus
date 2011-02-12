@@ -60,7 +60,7 @@ Flow::StageFlow FlowConnection::requestHandler(UInt8 stage,PacketReader& request
 			return STOP;
 
 		// Check if the client is authorized
-		if(!data.auth(peer))
+		if(_pClientHandler && !_pClientHandler->onConnection(peer))
 			return STOP;
 
 		response.writeRaw(buff1,6);
