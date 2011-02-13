@@ -335,7 +335,10 @@ void Session::packetHandler(PacketReader& packet) {
 				case 0x51 : {
 					/// Acknowledgment 
 					UInt8 idFlow= request.read8();
-					if(request.read8()>0) // is usually equal to 0x7f
+					UInt8 ack = request.read8();
+					while(ack==0xFF)
+						ack = request.read8();
+					if(ack>0) // is usually equal to 0x7f
 						flow(idFlow).acknowledgment(request.read8());
 					else
 						ERROR("The flow '%02x' has received a ack negative for the stage '%02x'",idFlow,stage);
