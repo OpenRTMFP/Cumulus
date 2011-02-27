@@ -94,7 +94,7 @@ void AMFReader::readObject(AMFObject& amfObject) {
 			default:
 				ERROR("Unknown AMF '%02x' marker",marker);
 			case AMF_NULL:
-				amfObject.setInt(name,NULL);
+				amfObject.setInt(name,0);
 				amfObject.setInt(name+".type",AMF_NULL);
 				break;
 		}

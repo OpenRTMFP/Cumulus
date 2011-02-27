@@ -187,7 +187,6 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 
 UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const SocketAddress& address,const UInt8* peerIdWanted) {
 
-
 	// find the flash client equivalence
 	Session* pSession = NULL;
 	Sessions::Iterator it;
