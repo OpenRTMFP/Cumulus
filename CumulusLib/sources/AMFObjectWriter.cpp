@@ -24,8 +24,8 @@ AMFObjectWriter::AMFObjectWriter(AMFWriter& writer) : _writer(writer),_end(true)
 	_writer.beginObject();
 }
 
-AMFObjectWriter::AMFObjectWriter(AMFObjectWriter& other) : _writer(other._writer),_end(true) {
-	other._end = false;
+AMFObjectWriter::AMFObjectWriter(const AMFObjectWriter& other) : _writer(other._writer),_end(true) {
+	((AMFObjectWriter&)other)._end = false;
 }
 
 

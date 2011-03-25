@@ -26,7 +26,7 @@ namespace Cumulus {
 class AMFObjectWriter {
 public:
 	AMFObjectWriter(AMFWriter& writer);
-	AMFObjectWriter(AMFObjectWriter& other);
+	AMFObjectWriter(const AMFObjectWriter& other);
 	~AMFObjectWriter();
 
 	// slow
