@@ -17,8 +17,6 @@
 
 #include "FlowConnection.h"
 #include "Logs.h"
-#include "AMFResponse.h"
-
 
 using namespace std;
 using namespace Poco;
@@ -26,94 +24,67 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
+string FlowConnection::s_signature("\x00\x54\x43\x04\x00",5);
+string FlowConnection::s_name("NetConnection");
 
-FlowConnection::FlowConnection(Peer& peer,ServerData& data,ClientHandler* pClientHandler) : Flow(peer,data),_pClientHandler(pClientHandler) {
+FlowConnection::FlowConnection(Peer& peer,ServerHandler& serverHandler) : Flow(s_name,peer,serverHandler) {
 }
 
 FlowConnection::~FlowConnection() {
 }
 
-Flow::StageFlow FlowConnection::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
+bool FlowConnection::requestHandler(const std::string& name,AMFReader& request,ResponseWriter& responseWriter) {
+	
+	if(name=="connect") {
 
-	char buff1[MAX_SIZE_MSG];
-	char buff2[MAX_SIZE_MSG];
-	AMFReader reader(request);
-	AMFWriter writer(response);
-
-	if(stage==0x01) {
-		request.readRaw(buff1,6);
-		request.readRaw(buff2,6);
-
-		string tmp;
-		reader.read(tmp);
-		reader.readNumber();
-		// fill peer infos!
 		AMFObject obj;
-		reader.readObject(obj);
+		request.readObject(obj);
 		((URI&)peer.swfUrl) = obj.getString("swfUrl","");
 		((URI&)peer.pageUrl) = obj.getString("pageUrl","");
 
+		((Client::ClientState&)peer.state) = Client::REJECTED;
 
 		// Don't support AMF0 forced on NetConnection object because impossible to exchange custome data (ByteArray written impossible)
 		// But it's not a pb because NetConnection RTMFP works since flash player 10.0 only (which supports AMF3)
 		if(obj.getDouble("objectEncoding")==0)
-			return STOP;
+			return false;
 
 		// Check if the client is authorized
-		if(_pClientHandler && !_pClientHandler->onConnection(peer))
-			return STOP;
-
-		response.writeRaw(buff1,6);
-		response.writeRaw("\x02\x0a\x02",3);
-		response.writeRaw(buff2,6);
-		writer.write("_result");
-		writer.writeNumber(1);
-		writer.writeNull();
-
-		writer.beginObject();
-		writer.writeObjectProperty("objectEncoding",3);
-		writer.writeObjectProperty("data",peer.data);
-		writer.writeObjectProperty("level","status");
-		writer.writeObjectProperty("code","NetConnection.Connect.Success");
-		writer.endObject();
-
-	} else {
-		request.next(6); // unknown, 11 00 00 03 96 00
-
-		string name; 
-		reader.read(name);
-		double handle = reader.readNumber(); // Unknown, always equals at 0
-		reader.readNull();
-
-		if(stage==0x02) {
-			response.writeRaw("\x04\x00\x00\x00\x00\x00\x29",7); // Unknown!
-			response.write32(data.keepAliveServer);
-			response.write32(data.keepAlivePeer);
-		} else {
-			response.writeRaw("\x11\x00\x00\x00\x00\x00",6); // Unknown!
-		}
-
-		callbackHandler(name,reader,handle,writer);
+		if(!serverHandler.connection(peer))
+			return false;
 		
-	}
+		((Client::ClientState&)peer.state) = Client::ACCEPTED;
 
-	return STOP;
-}
+		AMFObjectWriter response(responseWriter.writeSuccessResponse("Connection succeeded"));
+		response.write("objectEncoding",3);
+		response.write("data",peer.data);
 
+	} else if(name == "setPeerInfo") {
 
-void FlowConnection::callbackHandler(const string& name,AMFReader& reader,double responderHandle,AMFWriter& writer) {
-
-	if(name == "setPeerInfo") {
 		list<Address> address;
 		string addr;
-		while(reader.available()) {
-			reader.read(addr); // private host
+		while(request.available()) {
+			request.read(addr); // private host
 			address.push_back(addr);
 		}
 		peer.setPrivateAddress(address);
-	} else 
-		AMFResponse response(writer,responderHandle,"Method not found (" + name + ")");
-	
+		
+		PacketWriter& response(responseWriter.writeRawResponse());
+		response.write16(0x29); // Unknown!
+		response.write32(serverHandler.keepAliveServer);
+		response.write32(serverHandler.keepAlivePeer);
+
+	} else if(name == "createStream") {
+
+		AMFWriter& response(responseWriter.writeAMFResponse());
+		response.writeNumber(1); // TODO, id stream!
+
+	} else
+		responseWriter.writeErrorResponse("Method not found (" + name + ")");
+
+	return false;
 }
+
+
 
 } // namespace Cumulus

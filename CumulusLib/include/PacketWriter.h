@@ -28,7 +28,7 @@ namespace Cumulus {
 
 class PacketWriter: public Poco::BinaryWriter {
 public:
-	PacketWriter(const Poco::UInt8* buffer,int size,int skip=0);
+	PacketWriter(const Poco::UInt8* buffer,int size);
 	PacketWriter(PacketWriter&,int skip=0);
 	virtual ~PacketWriter();
 

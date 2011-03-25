@@ -15,33 +15,35 @@
 	This file is a part of Cumulus.
 */
 
-#include "AMFResponse.h"
+#pragma once
 
-using namespace std;
+#include "Cumulus.h"
+#include "Group.h"
+#include "ClientHandler.h"
+#include "AMFWriter.h"
+#include "AMFReader.h"
 
 namespace Cumulus {
 
-AMFResponse::AMFResponse(AMFWriter& writer,double responderHandle,const string& error) : AMFWriter(writer) {
-	if(!error.empty()) {
-		writer.write("_error");
-		writer.writeNumber(responderHandle);
-		writer.writeNull();
-		writer.beginObject();
-		writer.writeObjectProperty("level","error");
-		writer.writeObjectProperty("code","NetConnection.Call.Failed");
-		writer.writeObjectProperty("description",error);
-		writer.endObject();
-	} else {
-		writer.write("_result");
-		writer.writeNumber(responderHandle);
-		writer.writeNull();
-	}
-}
 
+class ServerHandler
+{
+public:
+	ServerHandler(Poco::UInt8 keepAliveServer,Poco::UInt8 keepAlivePeer,ClientHandler* pClientHandler);
+	virtual ~ServerHandler();
 
-AMFResponse::~AMFResponse() {
+	Group&	group(const std::vector<Poco::UInt8>& id);
 
-}
+	bool connection(Peer& peer);
+	void failed(Peer& peer,const std::string& msg);
+	void disconnection(Peer& peer);
+
+	const Poco::UInt32 keepAlivePeer;
+	const Poco::UInt32 keepAliveServer;
+private:
+	ClientHandler*		_pClientHandler;
+	std::list<Group*>	_groups;
+};
 
 
 } // namespace Cumulus

@@ -26,8 +26,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-PacketWriter::PacketWriter(const UInt8* buffer,int size,int skip) : _memory((char*)buffer,size),BinaryWriter(_memory,BinaryWriter::NETWORK_BYTE_ORDER),_pOther(NULL),_skip(skip) {
-	this->next(skip);
+PacketWriter::PacketWriter(const UInt8* buffer,int size) : _memory((char*)buffer,size),BinaryWriter(_memory,BinaryWriter::NETWORK_BYTE_ORDER),_pOther(NULL),_skip(0) {
 }
 
 // Consctruction by copy

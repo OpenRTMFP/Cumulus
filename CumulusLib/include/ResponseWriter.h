@@ -18,22 +18,38 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Flow.h"
-#include "AMFReader.h"
 #include "AMFWriter.h"
+#include "AMFObjectWriter.h"
 
 namespace Cumulus {
 
-class FlowConnection : public Flow {
-public:
-	FlowConnection(Peer& peer,ServerHandler& serverHandler);
-	virtual ~FlowConnection();
 
-	static std::string	s_signature;
+class ResponseWriter {
+public:
+	ResponseWriter(PacketWriter& writer,double callbackHandle,const std::string& flowName,const std::string& msgName);
+	virtual ~ResponseWriter();
+
+	AMFWriter&		writeAMFResponse();
+	PacketWriter&	writeRawResponse(bool withoutHeader=false);
+	AMFObjectWriter	writeSuccessResponse(const std::string& description,const std::string& name="Success");
+	AMFObjectWriter	writeErrorResponse(const std::string& error,const std::string& name="Failed");
+
+	Poco::UInt8		count();
+	void			flush();
 
 private:
-	static std::string	s_name;
-	bool	requestHandler(const std::string& name,AMFReader& request,ResponseWriter& responseWriter);
+	PacketWriter	_rawWriter;
+	AMFWriter		_amfWriter;
+	double			_callbackHandle;
+	std::string		_code;
+
+	int					_beginMsg;
+	int					_beginCnt;
+	Poco::UInt8			_count;
 };
+
+inline Poco::UInt8 ResponseWriter::count() {
+	return _count;
+}
 
 } // namespace Cumulus

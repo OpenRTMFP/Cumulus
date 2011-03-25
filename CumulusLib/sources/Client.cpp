@@ -22,7 +22,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Client::Client():id() {
+Client::Client():id(),state(NONE) {
 	
 }
 

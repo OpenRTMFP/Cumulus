@@ -24,15 +24,17 @@ namespace Cumulus {
 
 class FlowGroup : public Flow {
 public:
-	FlowGroup(Peer& peer,ServerData& data);
+	FlowGroup(Peer& peer,ServerHandler& serverHandler);
 	virtual ~FlowGroup();
 
+	static std::string	s_signature;
+
 private:
-	StageFlow requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	static std::string	s_name;
+	bool rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter);
 
 	std::list<const Peer*>		_bestPeers;
 	Group*						_pGroup;
 };
-
 
 } // namespace Cumulus

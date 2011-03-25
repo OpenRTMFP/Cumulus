@@ -15,27 +15,24 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "AMFObjectWriter.h"
 
-#include "Cumulus.h"
-#include "Group.h"
 
 namespace Cumulus {
 
-class CUMULUS_API ServerData
-{
-public:
-	ServerData(Poco::UInt8 keepAliveServer,Poco::UInt8 keepAlivePeer);
-	virtual ~ServerData();
+AMFObjectWriter::AMFObjectWriter(AMFWriter& writer) : _writer(writer),_end(true) {
+	_writer.beginObject();
+}
 
-	Group&	group(const std::vector<Poco::UInt8>& id);
+AMFObjectWriter::AMFObjectWriter(AMFObjectWriter& other) : _writer(other._writer),_end(true) {
+	other._end = false;
+}
 
-	const Poco::UInt32 keepAlivePeer;
-	const Poco::UInt32 keepAliveServer;
 
-private:
-	std::list<Group*>	_groups;
-};
+AMFObjectWriter::~AMFObjectWriter() {
+	if(_end)
+		_writer.endObject();
+}
 
 
 } // namespace Cumulus

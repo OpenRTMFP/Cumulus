@@ -24,15 +24,12 @@ namespace Cumulus {
 
 class FlowNull : public Flow {
 public:
-	FlowNull(Peer& peer,ServerData& data);
+	FlowNull(Peer& peer,ServerHandler& serverHandler);
 	virtual ~FlowNull();
 private:
-	Flow::StageFlow		requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	static std::string	s_name;
 };
 
-inline Flow::StageFlow FlowNull::requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response) {
-	return STOP;
-}
 
 
 } // namespace Cumulus

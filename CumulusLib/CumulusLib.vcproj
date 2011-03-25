@@ -357,19 +357,19 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\AMFObjectWriter.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\AMFObjectWriter.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\AMFReader.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\include\AMFReader.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\AMFResponse.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\AMFResponse.h"
 					>
 				</File>
 				<File
@@ -402,6 +402,14 @@
 				</File>
 				<File
 					RelativePath=".\include\PacketWriter.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\ResponseWriter.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\ResponseWriter.h"
 					>
 				</File>
 			</Filter>
@@ -501,11 +509,11 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\ServerData.cpp"
+					RelativePath=".\sources\ServerHandler.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\include\ServerData.h"
+					RelativePath=".\include\ServerHandler.h"
 					>
 				</File>
 			</Filter>
@@ -613,6 +621,14 @@
 				</File>
 				<File
 					RelativePath=".\include\FlowNull.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\FlowStream.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\FlowStream.h"
 					>
 				</File>
 			</Filter>

@@ -97,7 +97,7 @@ inline void Logs::SetLogger(Logger& logger) {
 			char szzs[700];\
 			snprintf(szzs,sizeof(szzs),FMT,## __VA_ARGS__);\
 			szzs[sizeof(szzs)-1] = '\0'; \
-			Logs::GetLogger()->logHandler(Thread::currentTid(),GetThreadName(),PRIO,FILE,LINE,szzs); \
+			Logs::GetLogger()->logHandler(Poco::Thread::currentTid(),GetThreadName(),PRIO,FILE,LINE,szzs); \
 		} \
 	}
 

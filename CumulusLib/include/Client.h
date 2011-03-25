@@ -29,6 +29,12 @@ public:
 	Client();
 	virtual ~Client();
 
+	enum ClientState {
+		NONE,
+		ACCEPTED,
+		REJECTED
+	};
+
 	bool operator==(const Client& other) const;
 	bool operator==(const Poco::UInt8* id) const;
 	bool operator!=(const Client& other) const;
@@ -38,6 +44,7 @@ public:
 
 	const Poco::URI								swfUrl;
 	const Poco::URI								pageUrl;
+	const ClientState							state;
 
 	std::vector<Poco::UInt8>					data;
 

@@ -53,10 +53,9 @@ double AMFReader::readNumber() {
 }
 
 
-void AMFReader::readNull() {
-	UInt8 c = _reader.read8();
-	if(c!=AMF_NULL)
-		ERROR("byte '%02x' is not a AMF Null marker",c);
+void AMFReader::skipNull() {
+	while(AMF_NULL == _reader.read8());
+	_reader.reset(_reader.position()-1);
 }
 
 void AMFReader::readObject(AMFObject& amfObject) {

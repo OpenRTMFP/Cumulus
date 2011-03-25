@@ -34,7 +34,7 @@ public:
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
 			Poco::Net::DatagramSocket& socket,
-			ServerData& data,
+			ServerHandler& serverHandler,
 			Cirrus& cirrus);
 	~Middle();
 

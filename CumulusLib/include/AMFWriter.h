@@ -27,13 +27,13 @@ namespace Cumulus {
 class AMFWriter {
 public:
 	AMFWriter(PacketWriter& writer);
-	AMFWriter(AMFWriter& writer);
+	AMFWriter(AMFWriter& other);
 	~AMFWriter();
 
-	// slower
+	// slow
 	void writeObject(const AMFObject& amfObject);
 
-	// faster
+	// fast
 	void beginObject();
 	void writeObjectProperty(const std::string& name,double value);
 	void writeObjectProperty(const std::string& name,const std::string& value);
@@ -51,7 +51,7 @@ private:
 };
 
 inline void AMFWriter::beginObject() {
-	_writer.write8(0x03); // mark deb
+	_writer.write8(AMF_BEGIN_OBJECT); // mark deb
 }
 
 inline void AMFWriter::writeNull() {

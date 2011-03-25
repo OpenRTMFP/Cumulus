@@ -23,7 +23,7 @@
 #include "AESEngine.h"
 #include "RTMFP.h"
 #include "Flow.h"
-#include "ClientHandler.h"
+#include "FlowNull.h"
 #include "Poco/Timestamp.h"
 #include "Poco/Net/DatagramSocket.h"
 
@@ -38,8 +38,7 @@ public:
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
 			Poco::Net::DatagramSocket& socket,
-			ServerData& data,
-			ClientHandler* pClientHandler=NULL);
+			ServerHandler& serverHandler);
 
 	virtual ~Session();
 
@@ -72,17 +71,20 @@ protected:
 	Poco::UInt16			_timeSent; // Protected for Middle session
 
 private:
+
 	void				keepAlive();
-	Flow*				createFlow(Poco::UInt8 id);
-	Flow&				flow(Poco::UInt8 id,bool canCreate=false);
+
+	Flow&				flow(Poco::UInt8 id);
+	void				createFlow(const std::string& signature,Poco::UInt8 id);
 	
 	bool						_failed;
 	Poco::UInt8					_timesFailed;
 	Poco::UInt8					_timesKeepalive;
 
-	ServerData&					_data;
+	ServerHandler&				_serverHandler;
 
 	std::map<Poco::UInt8,Flow*> _flows;	
+	FlowNull					_flowNull;
 
 	Poco::UInt32				_id;
 
@@ -90,8 +92,6 @@ private:
 	AESEngine					_aesDecrypt;
 	AESEngine					_aesEncrypt;
 
-	bool						_clientAccepted;
-	ClientHandler*				_pClientHandler;
 	bool						_die;
 	Peer						_peer;
 	Poco::UInt8					_buffer[MAX_SIZE_MSG];

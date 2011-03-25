@@ -19,7 +19,8 @@
 
 #include "Cumulus.h"
 #include "PacketReader.h"
-#include "ServerData.h"
+#include "ServerHandler.h"
+#include "ResponseWriter.h"
 #include "Poco/Net/SocketAddress.h"
 
 namespace Cumulus {
@@ -28,14 +29,8 @@ class Response;
 class Flow
 {
 public:
-	Flow(Peer& peer,ServerData& data);
+	Flow(const std::string& name,Peer& peer,ServerHandler& serverHandler);
 	virtual ~Flow();
-
-	enum StageFlow {
-		MAX,
-		NEXT,
-		STOP
-	};
 
 	bool request(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
 
@@ -43,19 +38,24 @@ public:
 	bool lastResponse(PacketWriter& response);
 	bool consumed();
 
-	Peer&				peer;
-	ServerData&			data;
+	Peer&					peer;
+	ServerHandler&			serverHandler;
 
 	Poco::UInt8			stage();
 	
 private:
-	void writeResponse(PacketWriter& packet,bool nestedResponse=false);
-	virtual StageFlow requestHandler(Poco::UInt8 stage,PacketReader& request,PacketWriter& response)=0;
+	
+	bool unpack(PacketReader& reader);
+
+	virtual bool requestHandler(const std::string& name,AMFReader& request,ResponseWriter& responseWriter);
+	virtual bool rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter);
+
 	virtual bool followingResponse(Poco::UInt8 stage,PacketWriter& response);
 
 	Poco::UInt8			_stage;
 	Poco::UInt8			_maxStage;
 	Response*			_pLastResponse;
+	const std::string&	_name;
 
 	Poco::UInt8			_buffer[MAX_SIZE_MSG];
 };
@@ -71,5 +71,7 @@ inline Poco::UInt8 Flow::stage() {
 inline bool Flow::consumed() {
 	return _maxStage>0 && _stage>=_maxStage && !_pLastResponse;
 }
+
+
 
 } // namespace Cumulus

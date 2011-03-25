@@ -21,7 +21,7 @@
 #include "Session.h"
 #include "PacketReader.h"
 #include "Handshake.h"
-#include "ServerData.h"
+#include "ServerHandler.h"
 #include "Cirrus.h"
 #include "Gateway.h"
 #include "Poco/Runnable.h"
@@ -59,9 +59,8 @@ private:
 	Poco::Net::DatagramSocket	_socket;
 
 	Sessions					_sessions;
-	ServerData					_data;
 	Cirrus*						_pCirrus;
-	ClientHandler*				_pClientHandler;
+	ServerHandler				_serverHandler;
 };
 
 inline void RTMFPServer::start(const Poco::Net::SocketAddress* pCirrus) {

@@ -18,16 +18,19 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "AMFWriter.h"
+#include "Flow.h"
 
 namespace Cumulus {
 
-
-class AMFResponse : public AMFWriter {
+class FlowStream : public Flow {
 public:
-	AMFResponse(AMFWriter& writer,double responderHandle,const std::string& error="");
-	~AMFResponse();
+	FlowStream(Peer& peer,ServerHandler& serverHandler);
+	virtual ~FlowStream();
 
+	static std::string	s_signature;
+private:
+	static std::string	s_name;
+	bool rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter);
 };
 
 

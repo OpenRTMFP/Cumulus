@@ -15,33 +15,29 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "FlowStream.h"
+#include "Logs.h"
 
-#include "Cumulus.h"
-#include "PacketReader.h"
-#include "AMFObject.h"
+using namespace std;
+using namespace Poco;
+using namespace Poco::Net;
+
 
 namespace Cumulus {
 
+string FlowStream::s_signature("\x00\x54\x43\x04\x01",5);
+string FlowStream::s_name("NetStream");
 
-class AMFReader {
-public:
-	AMFReader(PacketReader& reader);
-	~AMFReader();
+FlowStream::FlowStream(Peer& peer,ServerHandler& serverHandler) : Flow(s_name,peer,serverHandler) {
+}
 
-	void	readObject(AMFObject& amfObject);
-	void	read(std::string& value);
-	double	readNumber();
-	void	skipNull();
+FlowStream::~FlowStream() {
+}
 
-	bool available();
-	
-private:
-	PacketReader& _reader;
-};
 
-inline bool AMFReader::available() {
-	return _reader.available()>0;
+bool FlowStream::rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter) {
+
+	return false;
 }
 
 } // namespace Cumulus

@@ -16,8 +16,6 @@
 */
 
 #include "FlowGroup.h"
-#include "AMFReader.h"
-#include "AMFWriter.h"
 #include "Logs.h"
 
 using namespace std;
@@ -26,56 +24,48 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
+string FlowGroup::s_signature("\x00\x47\x43",3);
+string FlowGroup::s_name("NetGroup");
 
-FlowGroup::FlowGroup(Peer& peer,ServerData& data) : Flow(peer,data),_pGroup(NULL) {
+FlowGroup::FlowGroup(Peer& peer,ServerHandler& serverHandler) : Flow(s_name,peer,serverHandler),_pGroup(NULL) {
 }
 
 FlowGroup::~FlowGroup() {
 }
 
 
-Flow::StageFlow FlowGroup::requestHandler(UInt8 stage,PacketReader& request,PacketWriter& response) {
-	char buff[MAX_SIZE_MSG];
-	AMFReader reader(request);
-	AMFWriter writer(response);
+bool FlowGroup::rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter) {
 
 	if(stage == 0x01) {
-		request.readRaw(buff,6);
-		request.next(3);
-
 		UInt32 size = request.read7BitValue();
 
 		vector<UInt8> groupId(size);
 		request.readRaw(&groupId[0],size);
 
-		_pGroup = &data.group(groupId);
+		_pGroup = &serverHandler.group(groupId);
 
 		_pGroup->bestPeers(_bestPeers,peer);
 
 		_pGroup->addPeer(peer);
 		if(_bestPeers.empty())
-			return STOP;
+			return false;
 
-		response.writeRaw(buff,6);
-		response.write8(0x03);
-		response.write16(0x0b);
-		response.writeRaw(_bestPeers.front()->id,32);
-		_bestPeers.pop_front();
-		return _bestPeers.empty() ? STOP : NEXT;
-
-	} else if(!_bestPeers.empty()) {
-		response.write16(0x0b);
-		response.writeRaw(_bestPeers.front()->id,32);
-		_bestPeers.pop_front();
-		return _bestPeers.empty() ? STOP : NEXT;
+		while(!_bestPeers.empty()) {
+			PacketWriter& response(responseWriter.writeRawResponse(true));
+		
+			response.write8(0x0b); // unknown
+			response.writeRaw(_bestPeers.front()->id,32);
+			_bestPeers.pop_front();
+		}
 
 	} else {
 		// delete member of group
 		DEBUG("Group closed")
 		if(_pGroup)
 			_pGroup->removePeer(peer);
-		return MAX;
+		return true;
 	}
+	return false;
 }
 
 } // namespace Cumulus

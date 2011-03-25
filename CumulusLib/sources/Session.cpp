@@ -20,11 +20,9 @@
 #include "Logs.h"
 #include "FlowConnection.h"
 #include "FlowGroup.h"
-#include "FlowNull.h"
+#include "FlowStream.h"
 #include "Poco/URI.h"
 #include "string.h"
-
-#define FLOW_CONNECTION 0x02
 
 using namespace std;
 using namespace Poco;
@@ -38,11 +36,9 @@ Session::Session(UInt32 id,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey,
 				 DatagramSocket& socket,
-				 ServerData& data,
-				 ClientHandler* pClientHandler) : 
-	_id(id),_farId(farId),_socket(socket),_pClientHandler(pClientHandler),_testDecode(false),
-	_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_data(data),_peer(peer),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG),_timesKeepalive(0),_clientAccepted(false) {
-
+				 ServerHandler& serverHandler) : 
+		_id(id),_farId(farId),_socket(socket),_testDecode(false),
+		_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_serverHandler(serverHandler),_peer(peer),_flowNull(_peer,_serverHandler),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG),_timesKeepalive(0) {
 }
 
 
@@ -53,8 +49,8 @@ Session::~Session() {
 		delete it->second;
 	_flows.clear();
 	kill();
-	if(_clientAccepted && _pClientHandler)
-		WARN("onDisconnect handler has not been called on the session '%u'",_id);
+	if(_peer.state!=Client::NONE)
+		WARN("onDisconnect client handler has not been called on the session '%u'",_id);
 }
 
 bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
@@ -68,9 +64,9 @@ bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
 void Session::kill() {
 	if(_die)
 		return;
-	if(_clientAccepted && _pClientHandler) {
-		_pClientHandler->onDisconnection(_peer);
-		_pClientHandler = NULL;
+	if(_peer.state==Client::ACCEPTED) {
+		((Client::ClientState&)_peer.state) = Client::NONE;
+		_serverHandler.disconnection(_peer);
 	}
 	_die=true;
 }
@@ -101,6 +97,7 @@ void Session::manage() {
 		Flow& flow = *it->second;
 
 		if(flow.consumed()) {
+			DEBUG("Flow '%02x' consumed",it->first);
 			delete it->second;
 			_flows.erase(it++);
 			continue;
@@ -111,7 +108,7 @@ void Session::manage() {
 			if(flow.lastResponse(response))
 				send();
 		} catch(const Exception& ex) {
-			fail(ex.what());
+			fail(ex.displayText());
 			return;
 		}
 		++it;
@@ -135,8 +132,8 @@ void Session::setFailed(const string& msg) {
 	if(_failed)
 		return;
 	_failed=true;
-	if(_pClientHandler && _clientAccepted)
-		_pClientHandler->onFailed(_peer,msg);
+	if(_peer.state!=Client::NONE)
+		_serverHandler.failed(_peer,msg);
 	_peer.unsubscribeGroups();
 	WARN("Session failed on the server side : %s",msg.c_str());
 }
@@ -156,15 +153,6 @@ void Session::fail() {
 	// After 6 mn we can considerated than the session is died!
 	if(_timesFailed==10 || _recvTimestamp.isElapsed(360000000))
 		kill();
-}
-
-Flow& Session::flow(Poco::UInt8 id,bool canCreate) {
-	if(_flows.find(id)==_flows.end()) {
-		if(!canCreate)
-			id=0; // for force FlowNull returning
-		_flows[id] = createFlow(id);
-	}
-	return *_flows[id];
 }
 
 void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,Session* pSession) {
@@ -287,6 +275,7 @@ void Session::packetHandler(PacketReader& packet) {
 			PacketReader request(packet.current(),size);
 
 			PacketWriter response(packetOut,3); // skip the futur possible id and length response
+			
 
 			switch(type) {
 				case 0x0c :
@@ -338,10 +327,11 @@ void Session::packetHandler(PacketReader& packet) {
 					UInt8 ack = request.read8();
 					while(ack==0xFF)
 						ack = request.read8();
+					UInt8 stage = request.read8();
 					if(ack>0) // is usually equal to 0x7f
-						flow(idFlow).acknowledgment(request.read8());
+						flow(idFlow).acknowledgment(stage);
 					else
-						ERROR("The flow '%02x' has received a ack negative for the stage '%02x'",idFlow,stage);
+						ERROR("The flow '%02x' has received a negative ack for the stage '%02x'",idFlow,stage);
 					// else {
 					// In fact here, we should send a 0x18 message (with id flow),
 					// but it can create a loop... We prefer cancel the message
@@ -354,16 +344,38 @@ void Session::packetHandler(PacketReader& packet) {
 					flag = request.read8(); // Unknown, is 0x80 or 0x00
 					idFlow= request.read8();
 					stage = request.read8()-1;
+					request.read8(); // unknownFlag
+
+					// has Header?
+					if(flag & 0x80) {
+						string signature;
+						request.readString8(signature);
+						createFlow(signature,idFlow);
+						
+						int pos = packetOut.position();
+						packetOut.next(7);
+						packetOut.writeString8(signature);
+						packetOut.write16(0x020a); // Unknown!
+						packetOut.write8(idFlow);
+						packetOut.write8(0);
+						packetOut.reset(pos);
+					}
+
 				case 0x11 : {
 					++stage;
-					// It happens when the previus stage is not ack,
-					// and the 6 next bytes are the 6 bytes of previus flow request in the same location.
-					// Unknown why it's really used, but it can be omitted.
-					// In this case, we must remove the 7 next bytes
-					if(request.read8()==0x02)
-						request.next(7);
+
+					// has Header?
+					if(flag&0x80 || type==0x11) {
+						// Header part unknown
+						UInt8 length=request.read8();
+						while(length>0) {
+							request.next(length);
+							length=request.read8();
+						}
+					}
 
 					// Prepare response
+					int pos = packetOut.position();
 					packetOut.next(3);
 					packetOut.write8(flag);
 					packetOut.write8(idFlow);
@@ -371,17 +383,15 @@ void Session::packetHandler(PacketReader& packet) {
 					packetOut.write8(0x01); // Send always a 0x01 flag here means that we considerate that
 					// the possible previus stage message is ack, even if it's wrong, because we can considerate
 					// to keep things simple that a request is a acknowledgment for its response
-
-					bool connecting = idFlow==FLOW_CONNECTION && stage==1;
+					
+					packetOut.reset(pos);
 
 					// Process request
-					if(flow(idFlow,true).request(stage,request,packetOut)) {
+					if(flow(idFlow).request(stage,request,packetOut))
 						idResponse = 0x10;
-						if(connecting)
-							_clientAccepted = true;
-					} else {
+					else {
 						packetOut.clear(response.position()-3);
-						if(connecting && !_clientAccepted)
+						if(_peer.state==Client::REJECTED)
 							setFailed("Client rejected");
 					}
 
@@ -430,15 +440,25 @@ void Session::packetHandler(PacketReader& packet) {
 		send();
 }
 
-// Don't must return a null value!
-Flow* Session::createFlow(UInt8 id) {
-	if(id==FLOW_CONNECTION) // NetConnection
-		return new FlowConnection(_peer,_data,_pClientHandler);	
-	else if(id>FLOW_CONNECTION) // NetGroup
-		return new FlowGroup(_peer,_data);
-	else if(id>0)
-		ERROR("Flow id '%02x' unknown",id);	
-	return new FlowNull(_peer,_data);
+
+Flow& Session::flow(Poco::UInt8 id) {
+	if(_flows.find(id)==_flows.end())
+		return _flowNull;
+	return *_flows[id];
+}
+
+void Session::createFlow(const string& signature,Poco::UInt8 id) {
+	if(_flows.find(id)==_flows.end()) {
+		if(signature==FlowConnection::s_signature)
+			_flows[id] = new FlowConnection(_peer,_serverHandler);	
+		else if(signature==FlowGroup::s_signature)
+			_flows[id] = new FlowGroup(_peer,_serverHandler);
+		else if(signature==FlowStream::s_signature)
+			_flows[id] = new FlowStream(_peer,_serverHandler);
+		else
+			ERROR("New flow unknown : %s",Util::FormatHex((const UInt8*)signature.c_str(),signature.size()).c_str());
+	} else
+		DEBUG("Flow '%02x' already created : %s",id,Util::FormatHex((const UInt8*)signature.c_str(),signature.size()).c_str());
 }
 
 

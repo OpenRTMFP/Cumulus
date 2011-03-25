@@ -18,7 +18,6 @@
 #include "Handshake.h"
 #include "Logs.h"
 #include "Util.h"
-#include "Middle.h"
 #include "Poco/RandomStream.h"
 #include <openssl/evp.h>
 #include "string.h"
@@ -29,7 +28,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerData& data) : Session(0,0,Peer(SocketAddress()),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket,data),
+Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerHandler& serverHandler) : Session(0,0,Peer(SocketAddress()),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket,serverHandler),
 	_gateway(gateway),_signature("\x03\x1a\x00\x00\x02\x1e\x00\x81\x02\x0d\x02",11) {
 	
 	memcpy(_certificat,"\x01\x0A\x41\x0E",4);

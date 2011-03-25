@@ -15,19 +15,22 @@
 	This file is a part of Cumulus.
 */
 
-#include "ServerData.h"
-#include "Session.h"
+#include "ServerHandler.h"
 
 using namespace std;
 using namespace Poco;
 
 namespace Cumulus {
 
-ServerData::ServerData(UInt8 keepAliveServer,UInt8 keepAlivePeer) : keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),keepAlivePeer(keepAlivePeer<5 ? 5000 : keepAlivePeer*1000) {
-
+ServerHandler::ServerHandler(UInt8 keepAliveServer,UInt8 keepAlivePeer,ClientHandler* pClientHandler) :
+		keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),
+		keepAlivePeer(keepAlivePeer<5 ? 5000 : keepAlivePeer*1000),
+		_pClientHandler(pClientHandler) {
+	
 }
 
-ServerData::~ServerData() {
+
+ServerHandler::~ServerHandler() {
 	// delete groupes
 	Group* pGroup;
 	list<Group*>::const_iterator it;
@@ -38,7 +41,7 @@ ServerData::~ServerData() {
 	_groups.clear();
 }
 
-Group& ServerData::group(const vector<UInt8>& id) {
+Group& ServerHandler::group(const vector<UInt8>& id) {
 	Group* pGroup;
 	list<Group*>::iterator it=_groups.begin();
 	while(it!=_groups.end()) {
@@ -57,6 +60,23 @@ Group& ServerData::group(const vector<UInt8>& id) {
 	_groups.push_back(pGroup);
 	return *pGroup;
 }
+
+bool ServerHandler::connection(Peer& peer) {
+	if(_pClientHandler)
+		return _pClientHandler->onConnection(peer);
+	return true;
+}
+
+void ServerHandler::failed(Peer& peer,const string& msg) {
+	if(_pClientHandler)
+		_pClientHandler->onFailed(peer,msg);
+}
+
+void ServerHandler::disconnection(Peer& peer) {
+	if(_pClientHandler)
+		_pClientHandler->onDisconnection(peer);
+}
+
 
 
 } // namespace Cumulus

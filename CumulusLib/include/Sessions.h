@@ -52,7 +52,6 @@ private:
 	std::map<Poco::UInt32,Session*>	_sessions;
 	Poco::Timestamp					_timeLastManage;
 	int								_freqManage;
-	ClientHandler*					_pClientHandler;
 };
 
 inline Sessions::Iterator Sessions::begin() const {

@@ -62,7 +62,8 @@ private:
 };
 
 
-Flow::Flow(Peer& peer,ServerData& data) : _stage(0),peer(peer),data(data),_pLastResponse(NULL),_maxStage(0) {
+Flow::Flow(const string& name,Peer& peer,ServerHandler& serverHandler) : _stage(0),peer(peer),serverHandler(serverHandler),_pLastResponse(NULL),_maxStage(0),_name(name) {
+	
 }
 
 Flow::~Flow() {
@@ -85,60 +86,9 @@ bool Flow::lastResponse(PacketWriter& response) {
 	return result;
 }
 
-void Flow::writeResponse(PacketWriter& packet,bool nestedResponse) {
-	packet.write8(nestedResponse ? 0x11 : 0x10);
-	int len = packet.length()-packet.position()-2;
-	if(len<0)
-		len = 0;
-	packet.write16(len);
-	packet.next(len);
-}
-
-bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
-	if(stage==_stage) {
-		INFO("Flow stage '%02x' has been resent",stage);
-		return false;
-	} else if(stage<_stage) {
-		WARN("A flow stage '%02x' inferior to current stage '%02x' has been sent",stage,_stage);
-		return false;
-	}
-	_stage = stage;
-
-	response.reset(response.position()-7); // 7  for type, size, firstFlag, idFlow, stage and second Flag written in Session.cpp
-	int pos = response.position();
-
-	bool first = true;
-	StageFlow stageFlow(NEXT);
-	while(stageFlow == NEXT) {
-		PacketWriter out(response,first ? 7 : 3);
-		stageFlow = requestHandler(stage,request,out);
-		if(stageFlow == NEXT || out.length()>response.length()) {
-			out.flush();
-			writeResponse(response,!first);
-		} else
-			out.clear();
-		if(stageFlow == MAX)
-			_maxStage = stage;
-		++_stage;
-		first = false;
-	}
-	--_stage;
-
-	if(_pLastResponse) {
-		delete _pLastResponse;
-		_pLastResponse = NULL;
-	}
-
-	bool answer = pos<response.position();
-	if(answer)
-		_pLastResponse = new Response(response.begin()+pos,response.length()-pos,_buffer); // Mem the last response
-
-	return answer;
-}
-
 void Flow::acknowledgment(Poco::UInt8 stage) {
-	if(stage != _stage) {
-		WARN("A acknowledgment for flow stage '%02x' has been sent whereas the current stage for this flow is '%02x' ",stage,_stage);
+	if(stage > _stage) {
+		WARN("A acknowledgment superior than the current stage has been sent : '%02x' instead of '%02x' ",stage,_stage);
 		return;
 	}
 	if(!_pLastResponse)
@@ -146,6 +96,86 @@ void Flow::acknowledgment(Poco::UInt8 stage) {
 	// Ack!
 	delete _pLastResponse;
 	_pLastResponse = NULL;
-}	
+}
+
+bool Flow::unpack(PacketReader& reader) {
+	if(reader.available()==0)
+		return true;
+	UInt8 flag = reader.read8();
+	switch(flag) {
+		// amf content
+		case 0x11:
+			reader.next(1);
+		case 0x14:
+			reader.next(4);
+			return false;
+		// raw data
+		default:
+			CRITIC("Unpacking flag '%02x' unknown",flag);
+		case 0x04:
+			reader.next(4);
+		case 0x01:
+			;
+	}
+	return true;
+}
+
+bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
+	if(stage==_stage) {
+		INFO("Flow stage '%02x' has already been received",stage);
+		return false;
+	} else if(stage<_stage) {
+		WARN("A flow stage '%02x' inferior to current stage '%02x' received",stage,_stage);
+		return false;
+	}
+
+	_stage = stage;
+
+	bool isRaw = unpack(request);
+	double callbackHandle = 0;
+	string name;
+	AMFReader reader(request);
+	if(!isRaw) {
+		reader.read(name);
+		callbackHandle = reader.readNumber();
+		reader.skipNull();
+	}
+	
+	bool answer = false;
+	{
+		ResponseWriter responseWriter(response,callbackHandle,_name,name);
+		bool maxStage = isRaw ? rawHandler(_stage,request,responseWriter) : requestHandler(name,reader,responseWriter);
+		responseWriter.flush();
+		answer = responseWriter.count()>0;
+		if(answer)
+			_stage += responseWriter.count()-1;
+		if(maxStage)
+			_maxStage = _stage;
+	}
+
+	if(_pLastResponse) {
+		delete _pLastResponse;
+		_pLastResponse = NULL;
+	}
+
+	if(answer)
+		_pLastResponse = new Response(response.begin()+response.position(),response.length()-response.position(),_buffer); // Mem the last response
+
+	// Consume
+	response.reset(response.length());
+
+	return answer;
+}
+
+bool Flow::requestHandler(const std::string& name,AMFReader& request,ResponseWriter& responseWriter) {
+	ERROR("Request '%s' unknown",name.c_str());
+	return false;
+}
+bool Flow::rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter) {
+	ERROR("Request of stage '%02x' unknown",stage);
+	return false;
+}
+
+
 
 } // namespace Cumulus

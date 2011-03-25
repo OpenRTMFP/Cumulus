@@ -101,7 +101,7 @@ If this configuration file doesn't exist, default values will be used.
 
 ### Flash side
 
-If your Cumulus instance is started in local, Flash client can connect it by a classical NetConnection:
+Flash client connect to Cumulus by the classical NetConnection way:
 
     _netConnection.connect("rtmfp://localhost/");
 

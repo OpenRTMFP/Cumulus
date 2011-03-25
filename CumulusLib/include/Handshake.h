@@ -20,7 +20,6 @@
 #include "Cumulus.h"
 #include "Session.h"
 #include "Cookie.h"
-#include "Middle.h"
 #include "Gateway.h"
 
 namespace Cumulus {
@@ -28,7 +27,7 @@ namespace Cumulus {
 
 class Handshake : public Session {
 public:
-	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& socket,ServerData& data);
+	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& socket,ServerHandler& serverHandler);
 	~Handshake();
 	
 	void clear();
