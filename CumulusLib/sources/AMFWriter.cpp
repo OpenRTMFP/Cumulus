@@ -24,17 +24,20 @@ using namespace Poco::Util;
 
 namespace Cumulus {
 
-AMFWriter::AMFWriter(PacketWriter& writer) : _writer(writer) {
+AMFWriter::AMFWriter(BinaryWriter& writer) : _writer(writer) {
 
 }
-
-AMFWriter::AMFWriter(AMFWriter& other) : _writer(other._writer) {
-
-}
-
 
 AMFWriter::~AMFWriter() {
 
+}
+
+void AMFWriter::writeResponseHeader(const string& key,double callbackHandle) {
+	_writer.write8(0x14);
+	_writer.write32(0);
+	write(key);
+	writeNumber(callbackHandle);
+	writeNull();
 }
 
 void AMFWriter::writeBool(bool value){

@@ -33,7 +33,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _serverHandler(keepAliveServer,keepAlivePeer,NULL),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_serverHandler) {
+RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _handler(keepAliveServer,keepAlivePeer,NULL),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_handler) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -41,7 +41,7 @@ RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _serverHan
 }
 
 
-RTMFPServer::RTMFPServer(ClientHandler& clientHandler,UInt8 keepAliveServer,UInt8 keepAlivePeer) : _serverHandler(keepAliveServer,keepAlivePeer,&clientHandler),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_serverHandler) {
+RTMFPServer::RTMFPServer(ClientHandler& clientHandler,UInt8 keepAliveServer,UInt8 keepAlivePeer) : _handler(keepAliveServer,keepAlivePeer,&clientHandler),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_handler) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -77,10 +77,10 @@ void RTMFPServer::start(UInt16 port,const SocketAddress* pCirrus) {
 		return;
 	}
 	_port = port;
-	_sessions.freqManage(2);
+	((Poco::UInt32&)_sessions.freqManage) = 2000000;
 	if(pCirrus) {
 		_pCirrus = new Cirrus(*pCirrus,_sessions);
-		_sessions.freqManage(0); // no waiting, direct process in the middle case!
+		((Poco::UInt32&)_sessions.freqManage) = 0; // no waiting, direct process in the middle case!
 	}
 	_terminate = false;
 	_mainThread.start(*this);
@@ -104,7 +104,7 @@ void RTMFPServer::run() {
 	_socket.bind(address,true);
 	
 	SocketAddress sender;
-	UInt8 buff[MAX_SIZE_MSG];
+	UInt8 buff[PACKETRECV_SIZE];
 	int size = 0;
 	Timespan span(250000);
 
@@ -117,7 +117,7 @@ void RTMFPServer::run() {
 		try {
 			if (!_socket.poll(span, Socket::SELECT_READ))
 				continue;
-			size = _socket.receiveFrom(buff,MAX_SIZE_MSG,sender);
+			size = _socket.receiveFrom(buff,sizeof(buff),sender);
 		} catch(Exception& ex) {
 			WARN("Main socket reception : %s",ex.displayText().c_str());
 			continue;
@@ -132,7 +132,7 @@ void RTMFPServer::run() {
 		}
 
 		PacketReader packet(buff,size);
-		if(!RTMFP::IsValidPacket(packet)) {
+		if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
 			ERROR("Invalid packet");
 			continue;
 		}
@@ -174,13 +174,13 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 		ris.read((char*)(&id),4);
 
 	if(_pCirrus) {
-		Middle* pMiddle = new Middle(id,farId,peer,decryptKey,encryptKey,_socket,_serverHandler,*_pCirrus);
+		Middle* pMiddle = new Middle(id,farId,peer,decryptKey,encryptKey,_socket,_handler,*_pCirrus);
 		_sessions.add(pMiddle);
 		DEBUG("500ms sleeping to wait cirrus handshaking");
 		Thread::sleep(500); // to wait the cirrus handshake
 		pMiddle->manage();
 	} else
-		_sessions.add(new Session(id,farId,peer,decryptKey,encryptKey,_socket,_serverHandler));
+		_sessions.add(new Session(id,farId,peer,decryptKey,encryptKey,_socket,_handler));
 
 	return id;
 }
@@ -204,7 +204,6 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	if(_pCirrus) {
 		// Just to make working the man in the middle mode !
 
-		
 		if(!pSession) {
 			ERROR("UDP Hole punching error : middle equivalence not found for session wanted");
 			return 0;

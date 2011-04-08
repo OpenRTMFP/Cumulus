@@ -15,21 +15,19 @@
 	This file is a part of Cumulus.
 */
 
-#include "FlowNull.h"
+#include "Stream.h"
 
-using namespace std;
-using namespace Poco;
-using namespace Poco::Net;
+
 
 namespace Cumulus {
 
-string FlowNull::s_name;
-string FlowNull::s_signature;
-
-FlowNull::FlowNull(Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(0,s_signature,s_name,peer,session,serverHandler) {
+Stream::Stream() {
+	
 }
 
-FlowNull::~FlowNull() {
+
+Stream::~Stream() {
 }
+
 
 } // namespace Cumulus

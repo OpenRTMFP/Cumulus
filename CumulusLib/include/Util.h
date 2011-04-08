@@ -27,6 +27,7 @@ public:
 	~Util();
 
 	static std::string FormatHex(const Poco::UInt8* data,unsigned size);
+	static Poco::UInt8 Get7BitValueSize(Poco::UInt32 value);
 	static void UnpackUrl(const std::string& url,std::string& path,std::map<std::string,std::string>& parameters);
 };
 

@@ -24,8 +24,10 @@ namespace Cumulus {
 
 class FlowNull : public Flow {
 public:
-	FlowNull(Peer& peer,ServerHandler& serverHandler);
+	FlowNull(Peer& peer,Session& session,ServerHandler& serverHandler);
 	virtual ~FlowNull();
+
+	static std::string	s_signature;
 private:
 	static std::string	s_name;
 };

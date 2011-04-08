@@ -10,3 +10,8 @@
 - Fixed the different pb: 8192, limit UDP packet? Try maybe in MITM mode with a url very very long! one sending buffer by session is perhaps too much in a MMO case? 1000 players in FullMesh is impossibe with 8192 limit! "client.data" should perhaps not be keep in Client class (it's maybe too weight in MMO case).
 
 - Changed "CumulusService" for "CumulusServer"
+- Check if Video(Audio) NetStream packets have need of Acknowledgment
+
+- Vérifier la sécurité, je ne dois pas être capable moi même d'intercaler un serveur en man-in-the-middle mode pour comprendre les échanges entre
+un client flash et son application serveur Cumulus. Peut être dois je considérer l'addresse d'appel dans le handshake pour celà?
+- Si un paquet à envoyé est trop gros (ou juste pour les NetStream), dois je éviter le timeecho?

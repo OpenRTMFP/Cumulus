@@ -179,7 +179,7 @@ protected:
 		return true;
 	}
 	void onFailed(const Client& client,const string& msg) {
-		ERROR("Client failed : %s",msg.c_str());
+		WARN("Client failed : %s",msg.c_str());
 	}
 	void onDisconnection(const Client& client) {
 		map<string,string>::const_iterator it = client.parameters.find("family");

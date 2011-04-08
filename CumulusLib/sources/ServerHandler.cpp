@@ -23,7 +23,7 @@ using namespace Poco;
 namespace Cumulus {
 
 ServerHandler::ServerHandler(UInt8 keepAliveServer,UInt8 keepAlivePeer,ClientHandler* pClientHandler) :
-		keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),
+		keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),pFlowTest(NULL),
 		keepAlivePeer(keepAlivePeer<5 ? 5000 : keepAlivePeer*1000),
 		_pClientHandler(pClientHandler) {
 	
@@ -31,19 +31,22 @@ ServerHandler::ServerHandler(UInt8 keepAliveServer,UInt8 keepAlivePeer,ClientHan
 
 
 ServerHandler::~ServerHandler() {
-	// delete groupes
-	Group* pGroup;
+	// delete groups
 	list<Group*>::const_iterator it;
-	for(it=_groups.begin();it!=_groups.end();++it) {
-		pGroup=*it;
-		delete pGroup;
-	}
+	for(it=_groups.begin();it!=_groups.end();++it)
+		delete (*it);
 	_groups.clear();
+
+	// delete streams
+	map<string,Stream*>::const_iterator it2;
+	for(it2=_streams.begin();it2!=_streams.end();++it2)
+		delete it2->second;
+	_streams.clear();
 }
 
-Group& ServerHandler::group(const vector<UInt8>& id) {
+Group& ServerHandler::group(const vector<UInt8>& id) const {
 	Group* pGroup;
-	list<Group*>::iterator it=_groups.begin();
+	list<Group*>::iterator it=((ServerHandler*)this)->_groups.begin();
 	while(it!=_groups.end()) {
 		pGroup=*it;
 		if(pGroup->operator==(id))
@@ -51,13 +54,13 @@ Group& ServerHandler::group(const vector<UInt8>& id) {
 		// delete a possible empty group in same time
 		if(pGroup->empty()) {
 			delete pGroup;
-			_groups.erase(it++);
+			((ServerHandler*)this)->_groups.erase(it++);
 			continue;
 		}
 		++it;
 	}
 	pGroup = new Group(id);
-	_groups.push_back(pGroup);
+	((ServerHandler*)this)->_groups.push_back(pGroup);
 	return *pGroup;
 }
 

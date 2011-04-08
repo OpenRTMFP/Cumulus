@@ -18,7 +18,7 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketWriter.h"
+#include "BinaryWriter.h"
 #include "AMFObject.h"
 
 namespace Cumulus {
@@ -26,9 +26,10 @@ namespace Cumulus {
 
 class AMFWriter {
 public:
-	AMFWriter(PacketWriter& writer);
-	AMFWriter(AMFWriter& other);
+	AMFWriter(BinaryWriter& writer);
 	~AMFWriter();
+
+	void writeResponseHeader(const std::string& key,double callbackHandle);
 
 	// slow
 	void writeObject(const AMFObject& amfObject);
@@ -47,7 +48,7 @@ public:
 	void writeByteArray(const std::vector<Poco::UInt8>& data);
 	
 private:
-	PacketWriter& _writer;
+	BinaryWriter& _writer;
 };
 
 inline void AMFWriter::beginObject() {

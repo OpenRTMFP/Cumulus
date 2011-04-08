@@ -54,7 +54,7 @@ double AMFReader::readNumber() {
 
 
 void AMFReader::skipNull() {
-	while(AMF_NULL == _reader.read8());
+	while(AMF_NULL == _reader.read8() && _reader.available());
 	_reader.reset(_reader.position()-1);
 }
 

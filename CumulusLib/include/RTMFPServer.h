@@ -58,9 +58,9 @@ private:
 	Poco::Thread				_mainThread;
 	Poco::Net::DatagramSocket	_socket;
 
-	Sessions					_sessions;
 	Cirrus*						_pCirrus;
-	ServerHandler				_serverHandler;
+	ServerHandler				_handler;
+	Sessions					_sessions;
 };
 
 inline void RTMFPServer::start(const Poco::Net::SocketAddress* pCirrus) {

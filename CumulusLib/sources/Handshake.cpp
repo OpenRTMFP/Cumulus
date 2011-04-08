@@ -67,7 +67,7 @@ void Handshake::packetHandler(PacketReader& packet) {
 	UInt8 id = packet.read8();
 	packet.shrink(packet.read16()); // length
 
-	PacketWriter& packetOut = writer();
+	PacketWriter& packetOut(writer());
 	UInt8 idResponse=0;
 	{
 		PacketWriter response(packetOut,3);
@@ -79,13 +79,12 @@ void Handshake::packetHandler(PacketReader& packet) {
 	packetOut << (UInt8)idResponse;
 	packetOut << (UInt16)(packetOut.length()-packetOut.position()-2);
 
-	send(true);
+	flush(SYMETRIC_ENCODING | WITHOUT_ECHO_TIME);
 	// reset farid to 0!
 	_farId=0;
 }
 
 
-// TODO make perhaps a FlowHandshake
 UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& response) {
 
 	switch(id){
@@ -181,8 +180,6 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 
 			// remove cookie
 			_cookies.erase(itCookie);
-
-			// db_add_public(s); // TODO
 
 			return 0x78;
 		}

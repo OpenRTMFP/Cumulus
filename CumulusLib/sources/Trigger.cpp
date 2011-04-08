@@ -15,21 +15,54 @@
 	This file is a part of Cumulus.
 */
 
-#include "FlowNull.h"
+#include "Trigger.h"
+#include "Poco/Exception.h"
+
 
 using namespace std;
 using namespace Poco;
-using namespace Poco::Net;
 
 namespace Cumulus {
 
-string FlowNull::s_name;
-string FlowNull::s_signature;
-
-FlowNull::FlowNull(Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(0,s_signature,s_name,peer,session,serverHandler) {
+Trigger::Trigger() : _time(0),_cycle(-1),_running(false) {
+	
 }
 
-FlowNull::~FlowNull() {
+
+Trigger::~Trigger() {
 }
+
+void Trigger::reset() {
+	_timeInit.update();
+	_time=0;
+	_cycle=-1;
+}
+
+void Trigger::start() {
+	if(_running)
+		return;
+	reset();
+	_running=true;
+}
+
+bool Trigger::raise() {
+	if(!_running)
+		return false;
+	// Wait at least 1.5 sec before to begin the repeat cycle
+	if(_time==0 && !_timeInit.isElapsed(1500000))
+		return false;
+	++_time;
+	if(_time>=_cycle) {
+		_time=0;
+		++_cycle;
+		if(_cycle==7)
+			throw Exception("Repeat trigger failed");
+		DEBUG("Repeat trigger cycle %02x",_cycle+1);
+		return true;
+	}
+	return false;
+}
+
+
 
 } // namespace Cumulus

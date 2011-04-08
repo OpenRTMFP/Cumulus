@@ -27,6 +27,9 @@
 #include "Poco/Timestamp.h"
 #include "Poco/Net/DatagramSocket.h"
 
+#define SYMETRIC_ENCODING	0x01
+#define WITHOUT_ECHO_TIME   0x02
+
 namespace Cumulus {
 
 class Session {
@@ -50,6 +53,9 @@ public:
 	bool				die() const;
 	bool				failed() const;
 	virtual void		manage();
+	void				flush(Poco::UInt8 flags=0);
+	PacketWriter&		writeMessage(Poco::UInt8 type,Poco::UInt16 length);
+	PacketWriter&		writer();
 
 	void	p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag,Session* pSession);
 	bool	decode(PacketReader& packet,const Poco::Net::SocketAddress& sender);
@@ -58,30 +64,25 @@ public:
 
 	bool	_testDecode; // TODO enlever!
 protected:
-
-	PacketWriter&	writer();
-	void			send(bool symetric=false);
 	void			setFailed(const std::string& msg);
 	virtual void	fail();
 	void			kill();
 
+	ServerHandler&			_serverHandler;
+
 	Poco::UInt32			_farId; // Protected for Middle session
-	PacketWriter			_packetOut; // Protected for Middle session
 	Poco::Timestamp			_recvTimestamp; // Protected for Middle session
 	Poco::UInt16			_timeSent; // Protected for Middle session
 
 private:
-
 	void				keepAlive();
 
 	Flow&				flow(Poco::UInt8 id);
-	void				createFlow(const std::string& signature,Poco::UInt8 id);
+	Flow*				createFlow(const std::string& signature,Poco::UInt8 id);
 	
 	bool						_failed;
 	Poco::UInt8					_timesFailed;
 	Poco::UInt8					_timesKeepalive;
-
-	ServerHandler&				_serverHandler;
 
 	std::map<Poco::UInt8,Flow*> _flows;	
 	FlowNull					_flowNull;
@@ -92,13 +93,14 @@ private:
 	AESEngine					_aesDecrypt;
 	AESEngine					_aesEncrypt;
 
+	Poco::UInt8					_buffer[PACKETSEND_SIZE];
+	PacketWriter				_writer;
+
 	bool						_die;
 	Peer						_peer;
-	Poco::UInt8					_buffer[MAX_SIZE_MSG];
 
 	std::map<std::string,Poco::UInt8>		_p2pHandshakeAttemps;
 };
-
 
 inline void Session::fail(const std::string& msg) {
 	setFailed(msg);
@@ -124,6 +126,5 @@ inline Poco::UInt32 Session::farId() const {
 inline bool Session::die() const {
 	return _die;
 }
-
 
 } // namespace Cumulus

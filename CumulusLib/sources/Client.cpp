@@ -23,7 +23,6 @@ using namespace Poco;
 namespace Cumulus {
 
 Client::Client():id(),state(NONE) {
-	
 }
 
 Client::~Client() {

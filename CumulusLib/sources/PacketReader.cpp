@@ -31,10 +31,6 @@ PacketReader::PacketReader(Poco::UInt8* buffer,int size) : _memory((char*)buffer
 PacketReader::PacketReader(PacketReader& other) : _memory(other._memory),BinaryReader(_memory,BinaryReader::NETWORK_BYTE_ORDER) {
 }
 
-// Consctruction by copy
-PacketReader::PacketReader(PacketWriter& writer) : _memory((char*)writer.begin(),writer.length()),BinaryReader(_memory,BinaryReader::NETWORK_BYTE_ORDER) {
-}
-
 
 PacketReader::~PacketReader() {
 }

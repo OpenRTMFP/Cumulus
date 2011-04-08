@@ -15,7 +15,7 @@
 	This file is a part of Cumulus.
 */
 
-#include "FlowNull.h"
+#include "MessageWriter.h"
 
 using namespace std;
 using namespace Poco;
@@ -23,13 +23,19 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-string FlowNull::s_name;
-string FlowNull::s_signature;
-
-FlowNull::FlowNull(Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(0,s_signature,s_name,peer,session,serverHandler) {
+MessageWriter::MessageWriter() : BinaryWriter(_stream),amf(*this),_startStage(0) {
+	
 }
 
-FlowNull::~FlowNull() {
+
+MessageWriter::~MessageWriter() {
+
 }
+
+void MessageWriter::read(PacketWriter& writer,int size) {
+	_stream.read((char*)(writer.begin()+writer.position()),size);
+	writer.next(size);
+}
+
 
 } // namespace Cumulus

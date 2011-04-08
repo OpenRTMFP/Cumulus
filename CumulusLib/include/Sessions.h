@@ -33,33 +33,28 @@ public:
 	Sessions();
 	virtual ~Sessions();
 
-	Session* find(Poco::UInt32 id);
-	Session* find(const Poco::UInt8* peerId);
+	Session* find(Poco::UInt32 id) const;
+	Session* find(const Poco::UInt8* peerId) const;
 	
 	Session* add(Session* pSession);
 
 	Iterator begin() const;
 	Iterator end() const;
-	
-	void	clear();
-	void	manage();
 
-	void	freqManage(Poco::UInt8 freq);
+	const Poco::UInt32	freqManage;
+	
+	void	manage();
+	void	clear();
 protected:
 	
 
 private:
 	std::map<Poco::UInt32,Session*>	_sessions;
 	Poco::Timestamp					_timeLastManage;
-	int								_freqManage;
 };
 
 inline Sessions::Iterator Sessions::begin() const {
 	return _sessions.begin();
-}
-
-inline void Sessions::freqManage(Poco::UInt8 freq) {
-	_freqManage = freq*1000000;
 }
 
 inline Sessions::Iterator Sessions::end() const {

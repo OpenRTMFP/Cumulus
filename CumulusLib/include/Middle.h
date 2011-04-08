@@ -49,7 +49,7 @@ public:
 	void				fail();
 	
 private:
-	
+	PacketWriter&		writer();
 
 	void				cirrusHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
 	PacketWriter&		requester();
@@ -68,7 +68,7 @@ private:
 
 	Poco::Net::DatagramSocket	_socket;
 	Poco::Timespan				_span;
-	Poco::UInt8					_buffer[MAX_SIZE_MSG];
+	Poco::UInt8					_buffer[PACKETRECV_SIZE];
 
 	bool						_firstResponse;
 

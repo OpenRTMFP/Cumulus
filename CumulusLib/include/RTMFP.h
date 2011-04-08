@@ -27,20 +27,21 @@ namespace Cumulus {
 
 #define RTMFP_SYMETRIC_KEY (Poco::UInt8*)"Adobe Systems 02"
 #define RTMFP_DEFAULT_PORT 1935
+#define RTMFP_MIN_PACKET_SIZE 12
+#define RTMFP_MAX_PACKET_LENGTH 1182
 
 class RTMFP
 {
 public:
 	static Poco::UInt32				Unpack(PacketReader& packet);
-	static void						Pack(PacketWriter packet,Poco::UInt32 farId=0);
+	static void						Pack(PacketWriter& packet,Poco::UInt32 farId=0);
 
 	static bool						Decode(PacketReader& packet);
 	static bool						Decode(AESEngine& aesDecrypt,PacketReader& packet);
-	static void						Encode(PacketWriter packet);
-	static void						Encode(AESEngine& aesEncrypt,PacketWriter packet);
+	static void						Encode(PacketWriter& packet);
+	static void						Encode(AESEngine& aesEncrypt,PacketWriter& packet);
 	
-	static bool						IsValidPacket(PacketReader& packet);
-	static Poco::UInt16				CheckSum(PacketReader packet);
+	static Poco::UInt16				CheckSum(PacketReader& packet);
 
 	static DH*						BeginDiffieHellman(Poco::UInt8* pubKey);
 	static void						EndDiffieHellman(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt8* sharedSecret);
@@ -67,7 +68,7 @@ inline bool RTMFP::Decode(PacketReader& packet) {
 	return Decode(s_aesDecrypt,packet);
 }
 
-inline void RTMFP::Encode(PacketWriter packet) {
+inline void RTMFP::Encode(PacketWriter& packet) {
 	Encode(s_aesEncrypt,packet);
 }
 

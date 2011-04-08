@@ -27,20 +27,29 @@ namespace Cumulus {
 string FlowGroup::s_signature("\x00\x47\x43",3);
 string FlowGroup::s_name("NetGroup");
 
-FlowGroup::FlowGroup(Peer& peer,ServerHandler& serverHandler) : Flow(s_name,peer,serverHandler),_pGroup(NULL) {
+FlowGroup::FlowGroup(UInt8 id,Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(id,s_signature,s_name,peer,session,serverHandler),_pGroup(NULL) {
 }
 
 FlowGroup::~FlowGroup() {
+	
+}
+
+void FlowGroup::complete() {
+	// delete member of group
+	DEBUG("Group closed")
+	if(_pGroup)
+		_pGroup->removePeer(peer);
+	Flow::complete();
 }
 
 
-bool FlowGroup::rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter) {
+void FlowGroup::rawHandler(PacketReader& data) {
 
-	if(stage == 0x01) {
-		UInt32 size = request.read7BitValue();
+	if(data.available()>0) {
+		UInt32 size = data.read7BitValue();
 
 		vector<UInt8> groupId(size);
-		request.readRaw(&groupId[0],size);
+		data.readRaw(&groupId[0],size);
 
 		_pGroup = &serverHandler.group(groupId);
 
@@ -48,24 +57,16 @@ bool FlowGroup::rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWrite
 
 		_pGroup->addPeer(peer);
 		if(_bestPeers.empty())
-			return false;
+			return;
 
 		while(!_bestPeers.empty()) {
-			PacketWriter& response(responseWriter.writeRawResponse(true));
+			MessageWriter& response(writeRawMessage(true));
 		
 			response.write8(0x0b); // unknown
 			response.writeRaw(_bestPeers.front()->id,32);
 			_bestPeers.pop_front();
 		}
-
-	} else {
-		// delete member of group
-		DEBUG("Group closed")
-		if(_pGroup)
-			_pGroup->removePeer(peer);
-		return true;
 	}
-	return false;
 }
 
 } // namespace Cumulus

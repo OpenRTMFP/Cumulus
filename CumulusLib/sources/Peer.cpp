@@ -43,7 +43,7 @@ void Peer::unsubscribeGroups() {
 	}
 }
 
-inline void Peer::setPing(Poco::UInt16 ping) {
+void Peer::setPing(Poco::UInt16 ping) {
 	UInt16 oldPing = _ping;
 	_ping=ping;
 	list<Group*>::const_iterator it;

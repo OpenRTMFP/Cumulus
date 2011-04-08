@@ -58,11 +58,6 @@ private:
 
 /// inlines
 
-inline void MemoryStreamBuf::next(std::streamsize size) {
-	pbump(size);
-	gbump(size);
-}
-
 inline std::streamsize MemoryStreamBuf::size() {
 	return _bufferSize;
 }
@@ -94,11 +89,13 @@ public:
 	MemoryStreamBuf* rdbuf();
 		/// Returns a pointer to the underlying streambuf.
 
-	void			reset(std::streampos newPos=0);
+	virtual char*	current()=0;
+	void			reset(std::streampos newPos);
 	void			resize(std::streamsize newSize);
 	void			clip(std::streampos pos);
 	char*			begin();
 	void			next(std::streamsize size);
+	std::streamsize available();
 		
 private:
 	MemoryStreamBuf _buf;
@@ -132,15 +129,10 @@ public:
 	MemoryInputStream(MemoryInputStream&);
 	~MemoryInputStream();
 		/// Destroys the MemoryInputStream.
-
-	std::streamsize available();
 	char*			current();
 };
 
-/// inlines
-inline std::streamsize MemoryInputStream::available() {
-	return rdbuf()->size() - static_cast<std::streamsize>(rdbuf()->gCurrent()-rdbuf()->begin());
-}
+
 
 inline char* MemoryInputStream::current() {
 	return rdbuf()->gCurrent();

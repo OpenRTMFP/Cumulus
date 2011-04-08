@@ -22,6 +22,7 @@
 #include "FlowGroup.h"
 #include "FlowStream.h"
 #include "Poco/URI.h"
+#include "Poco/format.h"
 #include "string.h"
 
 using namespace std;
@@ -38,19 +39,21 @@ Session::Session(UInt32 id,
 				 DatagramSocket& socket,
 				 ServerHandler& serverHandler) : 
 		_id(id),_farId(farId),_socket(socket),_testDecode(false),
-		_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_serverHandler(serverHandler),_peer(peer),_flowNull(_peer,_serverHandler),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_packetOut(_buffer,MAX_SIZE_MSG),_timesKeepalive(0) {
+		_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_serverHandler(serverHandler),_peer(peer),_flowNull(_peer,*this,_serverHandler),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_timesKeepalive(0),_writer(_buffer,sizeof(_buffer)) {
+	_writer.next(11);
+	_writer.limit(RTMFP_MAX_PACKET_LENGTH); // set normal limit
 }
 
 
 Session::~Session() {
+	kill();
+	if(_peer.state!=Client::NONE)
+		WARN("onDisconnect client handler has not been called on the session '%u'",_id);
 	// delete flows
 	map<UInt8,Flow*>::const_iterator it;
 	for(it=_flows.begin();it!=_flows.end();++it)
 		delete it->second;
 	_flows.clear();
-	kill();
-	if(_peer.state!=Client::NONE)
-		WARN("onDisconnect client handler has not been called on the session '%u'",_id);
 }
 
 bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
@@ -64,25 +67,22 @@ bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
 void Session::kill() {
 	if(_die)
 		return;
-	if(_peer.state==Client::ACCEPTED) {
+	if(_peer.state!=Client::NONE) {
 		((Client::ClientState&)_peer.state) = Client::NONE;
 		_serverHandler.disconnection(_peer);
 	}
 	_die=true;
 }
 
-PacketWriter& Session::writer() {
-	_packetOut.clear(11);  // 11 for future crc 2 bytes, id session 4 bytes, marker 1 byte, timestamp 2 bytes and timecho 2 bytes 
-	return _packetOut;
-}
-
 void Session::manage() {
-	if(die())
+	if(_die)
 		return;
 
 	// After 6 mn we considerate than the session has failed
 	if(_recvTimestamp.isElapsed(360000000))
 		setFailed("Timeout no client message");
+
+
 	// To accelerate the deletion of peer ghost (mainly for netgroup efficient), starts a keepalive server after 2 mn
 	if(!_failed && _recvTimestamp.isElapsed(120000000))
 		keepAlive();
@@ -103,16 +103,15 @@ void Session::manage() {
 			continue;
 		}
 
-		PacketWriter& response = writer();
 		try {
-			if(flow.lastResponse(response))
-				send();
+			flow.raise();
 		} catch(const Exception& ex) {
 			fail(ex.displayText());
 			return;
 		}
 		++it;
 	}
+	flush();
 }
 
 void Session::keepAlive() {
@@ -122,10 +121,7 @@ void Session::keepAlive() {
 		return;
 	}
 	++_timesKeepalive;
-	PacketWriter& packet = writer();
-	packet.write8(0x01);
-	packet.write16(0x00);
-	send();
+	writeMessage(0x01,0);
 }
 
 void Session::setFailed(const string& msg) {
@@ -142,14 +138,14 @@ void Session::fail() {
 	if(_die)
 		WARN("Fail perhaps useless because session is already dead");
 	if(!_failed) {
-		WARN("Here flag failed should be put (with setFailed method), fail() method just allows the fail packet senging");
+		WARN("Here flag failed should be put (with setFailed method), fail() method just allows the fail packet sending");
 		_failed=true;
 	}
 	++_timesFailed;
-	PacketWriter& packet = writer();
-	packet.write8(0x0C);
-	packet.write16(0x00);
-	send();
+	PacketWriter& writer(writer()); 
+	writer.write8(0x0C);
+	writer.write16(0);
+	flush(WITHOUT_ECHO_TIME); // We send immediatly the fail message
 	// After 6 mn we can considerated than the session is died!
 	if(_timesFailed==10 || _recvTimestamp.isElapsed(360000000))
 		kill();
@@ -158,84 +154,128 @@ void Session::fail() {
 void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,Session* pSession) {
 
 	DEBUG("Peer newcomer address send to peer '%u' connected",id());
-	PacketWriter& packetOut = writer();
-	packetOut.write8(0x0F);
-	{
-		PacketWriter content(packetOut,2);
-		content.write8(34);
-		content.write8(33);
+	
+	Address const* pAddress = NULL;
+	UInt16 size = 0x37 + (address.host().family() == IPAddress::IPv6 ? 16 : 4);
 
-		content.write8(0x0F);
-		content.writeRaw(_peer.id,32);
-
-
-		if(pSession) {
-			map<string,UInt8>::iterator it =	_p2pHandshakeAttemps.find(tag);
-			if(it==_p2pHandshakeAttemps.end()) {
-				it = _p2pHandshakeAttemps.insert(pair<string,UInt8>(tag,0)).first;
-				// If two clients are on the same lan, starts with private address
-				if(memcmp(address.addr(),peer().address.addr(),address.length())==0 && pSession->peer().privateAddress.size()>0)
-					it->second=1;
-			}
-			
-			if(it->second==0)
-				content.writeAddress(address,true);
-			else
-				content.writeAddress(pSession->peer().privateAddress[it->second-1],false);
-			++it->second;
-			if(it->second > pSession->peer().privateAddress.size())
-				it->second=0;
-		} else
-			content.writeAddress(address,true);
-
-
-		content.writeRaw(tag);
+	if(pSession) {
+		map<string,UInt8>::iterator it =	_p2pHandshakeAttemps.find(tag);
+		if(it==_p2pHandshakeAttemps.end()) {
+			it = _p2pHandshakeAttemps.insert(pair<string,UInt8>(tag,0)).first;
+			// If two clients are on the same lan, starts with private address
+			if(memcmp(address.addr(),peer().address.addr(),address.length())==0 && pSession->peer().privateAddress.size()>0)
+				it->second=1;
+		}
+		
+		if(it->second>0) {
+			pAddress = &pSession->peer().privateAddress[it->second-1];
+			size +=  pAddress->host.size();
+		}
+		++it->second;
+		if(it->second > pSession->peer().privateAddress.size())
+			it->second=0;
 	}
+	
+	PacketWriter& writer = writeMessage(0x0F,size);
 
-	packetOut.write16(packetOut.length()-packetOut.position()-2);
-	send();
+	writer.write8(34);
+	writer.write8(33);
+
+	writer.write8(0x0F);
+	writer.writeRaw(_peer.id,32);
+	
+	if(pAddress)
+		writer.writeAddress(*pAddress,false);
+	else
+		writer.writeAddress(address,true);
+
+	writer.writeRaw(tag);
+
+	flush();
 }
 
-void Session::send(bool symetric) {
-	_packetOut.reset(6);
+void Session::flush(UInt8 flags) {
+	PacketWriter& packet(writer());
+	if(packet.length()>=RTMFP_MIN_PACKET_SIZE) {
 
-	bool timeEcho = true;
+		packet.limit(); // no limit for sending!
+		packet.reset(6);
 
-	// After 30 sec, send packet without echo time
-	if(symetric || _recvTimestamp.isElapsed(30000000)) {
-		timeEcho = false;
-		_packetOut.clip(2);
-	}
+		// After 30 sec, send packet without echo time
+		bool timeEcho = flags&WITHOUT_ECHO_TIME ? false : !_recvTimestamp.isElapsed(30000000);
 
-	UInt8 marker = symetric ? 0x0b : (timeEcho ? 0x4e : 0x4a);
+		UInt8 marker = flags&SYMETRIC_ENCODING ? 0x0b : 0x4a;
+		if(timeEcho)
+			marker+=4;
+		else
+			packet.clip(2);
 
-	_packetOut << marker;
-	_packetOut << RTMFP::TimeNow();
-	if(timeEcho)
-		_packetOut.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
+		packet.write8(marker);
+		packet.write16(RTMFP::TimeNow());
+		if(timeEcho)
+			packet.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
 
-	Logs::Dump(_packetOut,6,"Response:");
+		Logs::Dump(packet,6,"Response:");
 
-	if(symetric)
-		RTMFP::Encode(_packetOut);
-	else
-		RTMFP::Encode(_aesEncrypt,_packetOut);
+		if(flags&SYMETRIC_ENCODING)
+			RTMFP::Encode(packet);
+		else
+			RTMFP::Encode(_aesEncrypt,packet);
 
-	RTMFP::Pack(_packetOut,_farId);
+		RTMFP::Pack(packet,_farId);
 
-	try {
-		// TODO remake? without retry (but flow)
-		bool retry=false;
-		while(_socket.sendTo(_packetOut.begin(),_packetOut.length(),_peer.address)!=_packetOut.length()) {
-			if(retry) {
-				ERROR("Socket send error on session '%u' : all data were not sent",_id);
-				break;
+		try {
+			// TODO remake? without retry (but flow)
+			bool retry=false;
+			while(_socket.sendTo(packet.begin(),packet.length(),_peer.address)!=packet.length()) {
+				if(retry) {
+					ERROR("Socket send error on session '%u' : all data were not sent",_id);
+					break;
+				}
+				retry = true;
 			}
-			retry = true;
+		} catch(Exception& ex) {
+			 CRITIC("Socket send error on session '%u' : %s",_id,ex.displayText().c_str());
 		}
-	} catch(Exception& ex) {
-		 CRITIC("Socket send error on session '%u' : %s",_id,ex.displayText().c_str());
+		
+		if(!timeEcho)
+			packet.clip(-2);
+
+		packet.clear(11);
+		packet.limit(RTMFP_MAX_PACKET_LENGTH); // reset the normal limit
 	}
+}
+
+PacketWriter& Session::writer() {
+	if(!_writer.good()) {
+		WARN("Writing packet failed : the writer has certainly exceeded the size set");
+		_writer.reset(11);
+	}
+	_writer.limit(RTMFP_MAX_PACKET_LENGTH);
+	return _writer;
+}
+
+PacketWriter& Session::writeMessage(UInt8 type,UInt16 length) {
+	PacketWriter& writer(writer());
+
+	// No sending formated message for a failed session!
+	if(_failed) {
+		writer.clear();
+		writer.limit(writer.position());
+		return writer;
+	}
+
+	UInt16 size = length + 3; // for type and size
+
+	if(size>writer.available())
+		flush(WITHOUT_ECHO_TIME); // send packet (and without time echo)
+
+	writer.limit(writer.position()+size);
+
+	writer.write8(type);
+	writer.write16(length);
+
+	return writer;
 }
 
 void Session::packetHandler(PacketReader& packet) {
@@ -248,19 +288,17 @@ void Session::packetHandler(PacketReader& packet) {
 	_timeSent = packet.read16();
 
 	// with time echo
-	if(marker == 0xFD) {
-		UInt16 ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16();
-		DEBUG("Ping : %hu",ping);
-	} else if(marker != 0xF9)
+	if(marker == 0xFD)
+		_peer.setPing(RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16());
+	else if(marker != 0xF9)
 		WARN("Packet marker unknown : %02x",marker);
 
-	// Begin a possible response
-	PacketWriter& packetOut = writer();
 
 	// Variables for request (0x10 and 0x11)
-	UInt8 flag;
-	UInt8 idFlow=0;
-	UInt8 stage;
+	UInt8 flags;
+	Flow* pFlow=NULL;
+	UInt32 stage=0;
+	UInt8 subStage=0;
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 	bool answer = false;
@@ -269,155 +307,124 @@ void Session::packetHandler(PacketReader& packet) {
 	while(type!=0xFF) {
 
 		UInt16 size = packet.read16();
-		UInt8 idResponse = 0;
 
-		{
-			PacketReader request(packet.current(),size);
+		PacketReader message(packet.current(),size);		
 
-			PacketWriter response(packetOut,3); // skip the futur possible id and length response
-			
+		switch(type) {
+			case 0x0c :
+				setFailed("Session failed on the client side");
+				break;
 
-			switch(type) {
-				case 0x0c :
-					setFailed("Session failed on the client side");
-					break;
+			case 0x4c :
+				/// Session death!
+				kill();
+				break;
 
-				case 0x4c :
-					/// Session death!
-					kill();
-					break;
+			/// KeepAlive
+			case 0x01 :
+				writeMessage(0x41,0);
+			case 0x41 :
+				_timesKeepalive=0;
+				break;
 
-				/// KeepAlive
-				case 0x01 :
-					idResponse = 0x41;
-				case 0x41 :
-					_timesKeepalive=0;
-					break;
+			case 0x5e :
+				// Flow exception!
+				flow(message.read8()).fail();
+				break;
 
-				// This following message is not really understood (flow header interrogation perhaps?)
-				// So we emulate a mechanism which seems to answer the same thing when it's necessary
-				case 0x5e : {
-					UInt8 flowId = request.read8();
-					idResponse = 0x10;
-					response.write8(3);
-					response.write8(flowId);
-					response.write8(flow(flowId).stage());
-					response.write8(0); // perhaps 0|1 for stage completed|not completed
-					break;
+			case 0x18 :
+				/// This response is sent when we answer with a Acknowledgment negative
+				// It contains the id flow
+				// I don't unsertand the usefulness...
+				//pFlow = &flow(message.read8());
+				//stage = pFlow->stageSnd();
+				// For the moment, we considerate it like a exception
+				fail("Ack negative exception"); // send fail message immediatly
+				break;
+
+			case 0x51 : {
+				/// Acknowledgment 
+				UInt8 idFlow= message.read8();
+				UInt8 ack = message.read8();
+				while(ack==0xFF)
+					ack = message.read8();
+				UInt32 stage = message.read7BitValue();
+				flow(idFlow).acknowledgment(stage);
+				if(ack==0) {
+					string error;
+					format(error,"The flow '%02?u' has received a negative ack for the stage '%u'",idFlow,stage);
+					fail(error);
 				}
+				// else {
+				// In fact here, we should send a 0x18 message (with id flow),
+				// but it can create a loop... We prefer cancel the message
+				break;
+			}
+			/// Request
+			// 0x10 normal request
+			// 0x11 special request, in repeat case (following stage request)
+			case 0x10 : {
+				flags = message.read8();
+				UInt8 idFlow = message.read8();
+				stage = message.read7BitValue()-1;
+				UInt8 subStage = message.read8();
 
-				case 0x18 : {
-					/// This response is sent when we answer with a Acknowledgment negative
-					// It contains the id flow
-					// Resend the last Acknowledgment success
-					// I don't unsertand the usefulness...
-					UInt8 idFlow = request.read8();
-					UInt8 stage = flow(idFlow).stage();
-					if(stage>0) {
-						idResponse = 0x51;
-						response.write8(idFlow);
-						response.write8(0x3f);
-						response.write8(stage);
+				// has Header?
+				if(flags & MESSAGE_HEADER) {
+					string signature;
+					message.readString8(signature);
+
+					// create flow just on a stage of 1 (here 0)
+					if(stage==0)
+						pFlow = createFlow(signature,idFlow);
+					else if(!(flags&MESSAGE_WITH_BEFOREPART))
+						DEBUG("Stage for Flow creation should be egal to 1, Maybe is a repeat or following packet, otherwise flow '%02x' is already consumed",idFlow);
+
+					// Header part useless (correspondence between idflow sender/receiver, but here to make things simple, we choose the same id!)
+					UInt8 length=message.read8();
+					while(length>0 && message.available()) {
+						message.next(length);
+						length=message.read8();
 					}
-					break;
+					if(!message.available())
+						ERROR("Bad header message part, finished before scheduled");
 				}
-				case 0x51 : {
-					/// Acknowledgment 
-					UInt8 idFlow= request.read8();
-					UInt8 ack = request.read8();
-					while(ack==0xFF)
-						ack = request.read8();
-					UInt8 stage = request.read8();
-					if(ack>0) // is usually equal to 0x7f
-						flow(idFlow).acknowledgment(stage);
+				
+				if(!pFlow)
+					pFlow = &flow(idFlow);
+
+				if(stage>pFlow->stageRcv()) {
+					if(subStage>1) {
+						// Here it means that a message with a stage superior to the current receiving stage has been sent
+						// We must ignore this message for that the client resend the precedent packet!
+						pFlow=NULL;
+						break;
+					}
 					else
-						ERROR("The flow '%02x' has received a negative ack for the stage '%02x'",idFlow,stage);
-					// else {
-					// In fact here, we should send a 0x18 message (with id flow),
-					// but it can create a loop... We prefer cancel the message
+						WARN("A flow '%02x' message with a '%u' stage more superior than one with the current stage '%u' has been received'",idFlow,stage,flow(idFlow).stageRcv());
+				}
+			}	
+			case 0x11 : {
+				++stage;
+
+				if(!pFlow) {
+					WARN("A 0x11 following message seems have been received without its precedent part");
 					break;
 				}
-				/// Request
-				// 0x10 normal request
-				// 0x11 special request, in repeat case (following stage request)
-				case 0x10 :
-					flag = request.read8(); // Unknown, is 0x80 or 0x00
-					idFlow= request.read8();
-					stage = request.read8()-1;
-					request.read8(); // unknownFlag
 
-					// has Header?
-					if(flag & 0x80) {
-						string signature;
-						request.readString8(signature);
-						createFlow(signature,idFlow);
-						
-						int pos = packetOut.position();
-						packetOut.next(7);
-						packetOut.writeString8(signature);
-						packetOut.write16(0x020a); // Unknown!
-						packetOut.write8(idFlow);
-						packetOut.write8(0);
-						packetOut.reset(pos);
-					}
+				// has Header?
+				if(type==0x11)
+					flags = message.read8();
 
-				case 0x11 : {
-					++stage;
+				// Process request
+				pFlow->messageHandler(stage,message,flags);
+				if(_peer.state==Client::REJECTED && !failed())
+					fail("Client rejected"); // send fail message immediatly
 
-					// has Header?
-					if(flag&0x80 || type==0x11) {
-						// Header part unknown
-						UInt8 length=request.read8();
-						while(length>0) {
-							request.next(length);
-							length=request.read8();
-						}
-					}
-
-					// Prepare response
-					int pos = packetOut.position();
-					packetOut.next(3);
-					packetOut.write8(flag);
-					packetOut.write8(idFlow);
-					packetOut.write8(stage);
-					packetOut.write8(0x01); // Send always a 0x01 flag here means that we considerate that
-					// the possible previus stage message is ack, even if it's wrong, because we can considerate
-					// to keep things simple that a request is a acknowledgment for its response
-					
-					packetOut.reset(pos);
-
-					// Process request
-					if(flow(idFlow).request(stage,request,packetOut))
-						idResponse = 0x10;
-					else {
-						packetOut.clear(response.position()-3);
-						if(_peer.state==Client::REJECTED)
-							setFailed("Client rejected");
-					}
-
-					break;
-				}
-				default :
-					ERROR("Request type '%02x' unknown",type);
+				break;
 			}
-
-			// No response for a failed session!
-			if(_failed)
-				idResponse=0;
-			if(idResponse==0)
-				response.clear();
-		}
-		
-		if(idResponse>0) {
-			answer = true;
-			if(type != 0x10 && type != 0x11) {
-				packetOut.write8(idResponse);
-				int len = packetOut.length()-packetOut.position()-2;
-				if(len<0)
-					len = 0;
-				packetOut.write16(len);
-				packetOut.next(len);
-			}
+			default :
+				ERROR("Message type '%02x' unknown",type);
 		}
 
 		// Next
@@ -425,40 +432,45 @@ void Session::packetHandler(PacketReader& packet) {
 		type = packet.available()>0 ? packet.read8() : 0xFF;
 
 		// Write Acknowledgment
-		if(idFlow>0 && type!= 0x11) {
-			answer=true;
-			packetOut.write8(0x51);
-			packetOut.write16(3);
-			packetOut.write8(idFlow);
-			packetOut.write8(0x3f); // ack!
-			packetOut.write8(stage);
-			idFlow=0;
+		if(pFlow && stage>0 && type!= 0x11) {
+			PacketWriter& writer = writeMessage(0x51,2+Util::Get7BitValueSize(stage));
+			writer.write8(pFlow->id);
+			writer.write8(0x3f); // ack
+			writer.write7BitValue(stage);
+			pFlow=NULL;
 		}
 	}
 
-	if(answer)
-		send();
+	flush();
 }
 
 
 Flow& Session::flow(Poco::UInt8 id) {
-	if(_flows.find(id)==_flows.end())
+	map<UInt8,Flow*>::const_iterator it = _flows.find(id);
+	if(it==_flows.end())
 		return _flowNull;
-	return *_flows[id];
+	return *it->second;
 }
 
-void Session::createFlow(const string& signature,Poco::UInt8 id) {
-	if(_flows.find(id)==_flows.end()) {
+Flow* Session::createFlow(const string& signature,Poco::UInt8 id) {
+	Flow* pFlow=NULL;
+	map<UInt8,Flow*>::const_iterator it=_flows.find(id);
+	if(it==_flows.end()) {
 		if(signature==FlowConnection::s_signature)
-			_flows[id] = new FlowConnection(_peer,_serverHandler);	
+			pFlow = new FlowConnection(id,_peer,*this,_serverHandler);	
 		else if(signature==FlowGroup::s_signature)
-			_flows[id] = new FlowGroup(_peer,_serverHandler);
+			pFlow = new FlowGroup(id,_peer,*this,_serverHandler);
 		else if(signature==FlowStream::s_signature)
-			_flows[id] = new FlowStream(_peer,_serverHandler);
+			pFlow = new FlowStream(id,_peer,*this,_serverHandler);
 		else
 			ERROR("New flow unknown : %s",Util::FormatHex((const UInt8*)signature.c_str(),signature.size()).c_str());
-	} else
+		if(pFlow)
+			_flows[id] = pFlow;
+	} else {
+		pFlow = it->second;
 		DEBUG("Flow '%02x' already created : %s",id,Util::FormatHex((const UInt8*)signature.c_str(),signature.size()).c_str());
+	}
+	return pFlow;
 }
 
 

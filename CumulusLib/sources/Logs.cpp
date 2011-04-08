@@ -43,7 +43,7 @@ void Logs::EnableDump(bool all) {
 void Logs::Dump(const UInt8* data,int size,const char* header,bool required) {
 	if(!GetLogger() || !s_dump || (!s_dumpAll && !required))
 		return;
-	char out[MAX_SIZE_MSG*4];
+	char out[PACKETRECV_SIZE*4];
 	int len = 0;
 	int i = 0;
 	int c = 0;

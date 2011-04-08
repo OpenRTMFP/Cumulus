@@ -39,6 +39,16 @@ string Util::FormatHex(const UInt8* data,unsigned size) {
 	return oss.str();
 }
 
+UInt8 Util::Get7BitValueSize(UInt32 value) {
+	if(value>=0x200000)
+		return 4;
+	if(value>=0x4000)
+		return 3;
+	if(value>=0x80)
+		return 2;
+	return 1;
+}
+
 
 void Util::UnpackUrl(const string& url,string& path,map<string,string>& parameters) {
 	URI uri(url);

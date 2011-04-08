@@ -17,7 +17,6 @@
 
 #include "Sessions.h"
 #include "Logs.h"
-#include "Poco/RandomStream.h"
 
 using namespace std;
 using namespace Poco;
@@ -25,8 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Sessions::Sessions() {
-	freqManage(2); // 2 sec by default
+Sessions::Sessions() : freqManage(2000000)/* 2 sec by default*/ {
 }
 
 Sessions::~Sessions() {
@@ -54,7 +52,7 @@ Session* Sessions::add(Session* pSession) {
 	return _sessions[pSession->id()] = pSession;
 }
 
-Session* Sessions::find(const Poco::UInt8* peerId) {
+Session* Sessions::find(const Poco::UInt8* peerId) const {
 	Iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
 		if(it->second->peer() == peerId)
@@ -63,18 +61,21 @@ Session* Sessions::find(const Poco::UInt8* peerId) {
 	return NULL;
 }
 
-Session* Sessions::find(UInt32 id) {
-	if(_sessions.find(id)==_sessions.end())
+Session* Sessions::find(UInt32 id) const {
+	Iterator it = _sessions.find(id);
+	if(it==_sessions.end())
 		return NULL;
-	return _sessions[id];
+	return it->second;
 }
 
 void Sessions::manage() {
-	if(!_timeLastManage.isElapsed(_freqManage))
+	if(!_timeLastManage.isElapsed(freqManage))
 		return;
+
 	_timeLastManage.update();
-	map<UInt32,Session*>::iterator it=_sessions.begin();
-	while(it!=_sessions.end()) {
+
+	Sessions::Iterator it= begin();
+	while(it!=end()) {
 		it->second->manage();
 		if(it->second->die()) {
 			NOTE("Session %u died",it->second->id());
@@ -85,6 +86,8 @@ void Sessions::manage() {
 		++it;
 	}
 }
+
+
 
 
 } // namespace Cumulus

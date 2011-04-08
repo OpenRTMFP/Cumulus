@@ -27,18 +27,19 @@ namespace Cumulus {
 string FlowConnection::s_signature("\x00\x54\x43\x04\x00",5);
 string FlowConnection::s_name("NetConnection");
 
-FlowConnection::FlowConnection(Peer& peer,ServerHandler& serverHandler) : Flow(s_name,peer,serverHandler) {
+FlowConnection::FlowConnection(UInt8 id,Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(id,s_signature,s_name,peer,session,serverHandler) {
 }
 
 FlowConnection::~FlowConnection() {
 }
 
-bool FlowConnection::requestHandler(const std::string& name,AMFReader& request,ResponseWriter& responseWriter) {
+
+void FlowConnection::messageHandler(const std::string& name,AMFReader& message) {
 	
 	if(name=="connect") {
 
 		AMFObject obj;
-		request.readObject(obj);
+		message.readObject(obj);
 		((URI&)peer.swfUrl) = obj.getString("swfUrl","");
 		((URI&)peer.pageUrl) = obj.getString("pageUrl","");
 
@@ -47,15 +48,15 @@ bool FlowConnection::requestHandler(const std::string& name,AMFReader& request,R
 		// Don't support AMF0 forced on NetConnection object because impossible to exchange custome data (ByteArray written impossible)
 		// But it's not a pb because NetConnection RTMFP works since flash player 10.0 only (which supports AMF3)
 		if(obj.getDouble("objectEncoding")==0)
-			return false;
+			return;
 
 		// Check if the client is authorized
-		if(!serverHandler.connection(peer))
-			return false;
+		if(!((ServerHandler&)serverHandler).connection(peer))
+			return;
 		
 		((Client::ClientState&)peer.state) = Client::ACCEPTED;
 
-		AMFObjectWriter response(responseWriter.writeSuccessResponse("Connection succeeded"));
+		AMFObjectWriter response(writeSuccessResponse("Connection succeeded"));
 		response.write("objectEncoding",3);
 		response.write("data",peer.data);
 
@@ -63,26 +64,29 @@ bool FlowConnection::requestHandler(const std::string& name,AMFReader& request,R
 
 		list<Address> address;
 		string addr;
-		while(request.available()) {
-			request.read(addr); // private host
+		while(message.available()) {
+			message.read(addr); // private host
 			address.push_back(addr);
 		}
 		peer.setPrivateAddress(address);
 		
-		PacketWriter& response(responseWriter.writeRawResponse());
+		MessageWriter& response(writeRawMessage());
 		response.write16(0x29); // Unknown!
 		response.write32(serverHandler.keepAliveServer);
 		response.write32(serverHandler.keepAlivePeer);
 
 	} else if(name == "createStream") {
 
-		AMFWriter& response(responseWriter.writeAMFResponse());
+		AMFWriter& response(writeAMFMessage());
 		response.writeNumber(1); // TODO, id stream!
 
-	} else
-		responseWriter.writeErrorResponse("Method not found (" + name + ")");
+	} else if(name == "deleteStream") {
 
-	return false;
+		// TODO
+
+	} else
+		writeErrorResponse("Method '" + name + "' not found");
+
 }
 
 

@@ -17,10 +17,6 @@
 
 #pragma once
 
-
-// CONSTANTES
-#define MAX_SIZE_MSG 8192
-
 #if defined(STATIC) && !defined(POCO_STATIC)
 	#define POCO_STATIC
 #endif

@@ -77,8 +77,9 @@ Middle::~Middle() {
 
 
 PacketWriter& Middle::handshaker() {
-	_packetOut.clear(12);
-	return _packetOut;
+	PacketWriter& writer(Session::writer());
+	writer.clear(12);
+	return writer;
 }
 
 void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
@@ -133,7 +134,7 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 				// to send in handshake mode!
 				UInt32 farId = _farId;
 				_farId = 0;
-				send(true);
+				flush(SYMETRIC_ENCODING | WITHOUT_ECHO_TIME);
 				_farId = farId;
 
 			}  else {
@@ -182,22 +183,30 @@ void Middle::cirrusHandshakeHandler(UInt8 type,PacketReader& packet) {
 }
 
 void Middle::sendHandshakeToCirrus(UInt8 type) {
-	_packetOut.reset(6);
-	_packetOut.write8(0x0b);
-	_packetOut << RTMFP::TimeNow();
-	_packetOut << type;
-	_packetOut.write16(_packetOut.length()-_packetOut.position()-2);
+	PacketWriter& packet(Session::writer());
+	packet.reset(6);
+	packet.write8(0x0b);
+	packet << RTMFP::TimeNow();
+	packet << type;
+	packet.write16(packet.length()-packet.position()-2);
 
-	Logs::Dump(_packetOut,6,"Middle to Cirrus handshaking:",false);
+	Logs::Dump(packet,6,"Middle to Cirrus handshaking:",false);
 
-	RTMFP::Encode(_packetOut);
-	RTMFP::Pack(_packetOut);
-	_socket.sendBytes(_packetOut.begin(),_packetOut.length());
+	RTMFP::Encode(packet);
+	RTMFP::Pack(packet);
+	_socket.sendBytes(packet.begin(),packet.length());
 }
 
 PacketWriter& Middle::requester() {
-	_packetOut.clear(6);
-	return _packetOut;
+	PacketWriter& writer(Session::writer());
+	writer.clear(6);
+	return writer;
+}
+
+PacketWriter& Middle::writer() {
+	PacketWriter& writer(Session::writer());
+	writer.clear(11);
+	return writer;
 }
 
 void Middle::packetHandler(PacketReader& packet) {
@@ -286,13 +295,15 @@ void Middle::sendToCirrus() {
 		CRITIC("Send to cirrus packet impossible because the middle hanshake has certainly failed, restart Cumulus");
 		return;
 	}
+	
+	PacketWriter& packet(Session::writer());
 
-	Logs::Dump(_packetOut,6,"Middle to Cirrus:",false);
+	Logs::Dump(packet,6,"Middle to Cirrus:",false);
 
 	_firstResponse = true;
-	RTMFP::Encode(*_pMiddleAesEncrypt,_packetOut);
-	RTMFP::Pack(_packetOut,_middleId);
-	_socket.sendBytes(_packetOut.begin(),_packetOut.length());
+	RTMFP::Encode(*_pMiddleAesEncrypt,packet);
+	RTMFP::Pack(packet,_middleId);
+	_socket.sendBytes(packet.begin(),packet.length());
 }
 
 void Middle::cirrusPacketHandler(PacketReader& packet) {
@@ -309,6 +320,7 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 		_timeSent = packet.read16(); // time echo
 
 	PacketWriter& packetOut = writer();
+
 	int pos = packetOut.position();
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
@@ -362,8 +374,13 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 			//content.next(content.read8()&0x80 ? 16 : 4);
 			//packetOut.writeAddress(peer().address(),true);
 		} else if(type==0x51) {
-			//packetOut.clear(packetOut.position()-3);
-			//content.next(content.available());
+			idFlow = content.read8();packetOut.write8(idFlow);
+			UInt8 ack = content.read8();packetOut.write8(ack);
+			stage = content.read8();packetOut.write8(stage);
+			if(idFlow==3 && stage==2) {
+				packetOut.clear(packetOut.position()-6);
+				content.next(content.available());
+			}
 		}
 
 		packetOut.writeRaw(content.current(),content.available());
@@ -376,7 +393,7 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 		INFO("%02x peers sending",nbPeerSent);
 
 	if(packetOut.length()>pos)
-		send();
+		flush();
 }
 
 
@@ -390,7 +407,7 @@ void Middle::manage() {
 
 	int len = 0;
 	try {
-		len = _socket.receiveBytes(_buffer,MAX_SIZE_MSG);
+		len = _socket.receiveBytes(_buffer,sizeof(_buffer));
 	} catch(Exception& ex) {
 		ERROR("Middle socket reception error : %s",ex.displayText().c_str());
 		return;
@@ -398,10 +415,11 @@ void Middle::manage() {
 
 	PacketReader packet(_buffer,len);
 
-	if(!RTMFP::IsValidPacket(packet)) {
+	if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
 		ERROR("Cirrus to middle : invalid packet");
 		return;
 	}
+
 	UInt32 id = RTMFP::Unpack(packet);
 
 	// Handshaking

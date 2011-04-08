@@ -31,6 +31,7 @@ class Peer : public Client {
 	friend class Group;
 public:
 	Peer(const Poco::Net::SocketAddress& address);
+	
 	virtual ~Peer();
 
 	const Poco::Net::SocketAddress	address;
@@ -44,7 +45,6 @@ public:
 	bool isIn(Group& group) const;
 
 private:
-	Peer(){}
 	bool isIn(Group& group,std::list<Group*>::iterator& it);
 
 	std::list<Group*>			_groups;

@@ -36,6 +36,11 @@ MemoryStreamBuf::MemoryStreamBuf(MemoryStreamBuf& other): _pBuffer(other._pBuffe
 MemoryStreamBuf::~MemoryStreamBuf() {
 }
 
+void MemoryStreamBuf::next(std::streamsize size) {
+	pbump(size);
+	gbump(size);
+}
+
 void MemoryStreamBuf::position(streampos pos) {
 	written(); // Save nb char written
 	setp(_pBuffer,_pBuffer + _bufferSize);
@@ -48,7 +53,7 @@ void MemoryStreamBuf::position(streampos pos) {
 }
 
 void MemoryStreamBuf::resize(streamsize newSize) {
-	if(newSize<0)
+	if(newSize<=0)
 		return;
 	_bufferSize = newSize;
 	int pos = gCurrent()-_pBuffer;
@@ -125,8 +130,16 @@ MemoryIOS::~MemoryIOS() {
 }
 
 void MemoryIOS::reset(streampos newPos) {
-	rdbuf()->position(newPos);
+	if(newPos>=0)
+		rdbuf()->position(newPos);
 	clear();
+}
+
+std::streamsize MemoryIOS::available() {
+	std::streamsize result = rdbuf()->size() - static_cast<std::streamsize>(current()-begin());
+	if(result<0)
+		return 0;
+	return result;
 }
 
 

@@ -24,13 +24,15 @@ namespace Cumulus {
 
 class FlowStream : public Flow {
 public:
-	FlowStream(Peer& peer,ServerHandler& serverHandler);
+	FlowStream(Poco::UInt8 id,Peer& peer,Session& session,ServerHandler& serverHandler);
 	virtual ~FlowStream();
 
 	static std::string	s_signature;
 private:
+	void  complete();
 	static std::string	s_name;
-	bool rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter);
+	void rawHandler(PacketReader& data);
+	void messageHandler(const std::string& name,AMFReader& message);
 };
 
 

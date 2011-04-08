@@ -17,10 +17,10 @@
 
 #include "FlowStream.h"
 #include "Logs.h"
+#include "Poco/StreamCopier.h"
 
 using namespace std;
 using namespace Poco;
-using namespace Poco::Net;
 
 
 namespace Cumulus {
@@ -28,16 +28,51 @@ namespace Cumulus {
 string FlowStream::s_signature("\x00\x54\x43\x04\x01",5);
 string FlowStream::s_name("NetStream");
 
-FlowStream::FlowStream(Peer& peer,ServerHandler& serverHandler) : Flow(s_name,peer,serverHandler) {
+FlowStream::FlowStream(UInt8 id,Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(id,s_signature,s_name,peer,session,serverHandler) {
 }
 
 FlowStream::~FlowStream() {
 }
 
 
-bool FlowStream::rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter) {
+void FlowStream::rawHandler(PacketReader& data) {
+	UInt8 type = data.read8();
+	DEBUG("%02x",type);
+	if(type==0x09 || type==0x08) { // video or sound
+		if(serverHandler.pFlowTest) {
+			MessageWriter& packet = serverHandler.pFlowTest->writeRawMessage(true);
+			packet.write8(type);
+			StreamCopier::copyStream(data.stream(),packet.stream());
+			serverHandler.pFlowTest->flush();
+		}
+	}
+}
 
-	return false;
+void FlowStream::complete() {
+	Flow::complete();
+	if(serverHandler.pFlowTest==this)
+		((ServerHandler&)serverHandler).pFlowTest = NULL;
+}
+
+void FlowStream::messageHandler(const string& name,AMFReader& message) {
+
+	if(name=="publish") {
+		// TODO add a failed scenario? or "badname" scenario?
+		string nameStream,typeStream;
+		message.read(nameStream);
+		if(message.available())
+			message.read(typeStream);
+		writeStatusResponse("Start","'" + nameStream +"' is now published");
+
+	} else if(name=="play") {
+		// TODO add a failed scenario? or "badname" scenario?
+		string nameStream;
+		message.read(nameStream);
+		writeStatusResponse("Start","Started playing '" + nameStream +"'");
+		((ServerHandler&)serverHandler).pFlowTest = this;
+	} else
+		Flow::messageHandler(name,message);
+
 }
 
 } // namespace Cumulus

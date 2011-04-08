@@ -19,59 +19,100 @@
 
 #include "Cumulus.h"
 #include "PacketReader.h"
+#include "MessageWriter.h"
+#include "AMFReader.h"
+#include "AMFObjectWriter.h"
+#include "Trigger.h"
+#include "Peer.h"
+#include "Group.h"
 #include "ServerHandler.h"
-#include "ResponseWriter.h"
-#include "Poco/Net/SocketAddress.h"
+
+#define MESSAGE_HEADER			0x80
+#define MESSAGE_WITH_AFTERPART  0x10 
+#define MESSAGE_WITH_BEFOREPART	0x20
+#define MESSAGE_END				0x03
 
 namespace Cumulus {
 
-class Response;
+class Session;
 class Flow
 {
 public:
-	Flow(const std::string& name,Peer& peer,ServerHandler& serverHandler);
+	Flow(Poco::UInt8 id,const std::string& signature,const std::string& name,Peer& peer,Session& session,const ServerHandler& serverHandler);
 	virtual ~Flow();
 
-	bool request(Poco::UInt8 stage,PacketReader& request,PacketWriter& response);
+	void messageHandler(Poco::UInt32 stage,PacketReader& message,Poco::UInt8 flags);
 
-	void acknowledgment(Poco::UInt8 stage);
-	bool lastResponse(PacketWriter& response);
+	void flush();
+
+	void acknowledgment(Poco::UInt32 stage);
 	bool consumed();
+	void fail();
+	void raise();
+
+	Poco::UInt32		stageRcv();
+	Poco::UInt32		stageSnd();
+
+	const Poco::UInt8		id;
+
+	MessageWriter&			writeRawMessage(bool withoutHeader=false);
+	AMFWriter&				writeAMFMessage();
+
+	AMFObjectWriter			writeSuccessResponse(const std::string& description,const std::string& name="Success");
+	AMFObjectWriter			writeStatusResponse(const std::string& name,const std::string& description);
+	AMFObjectWriter			writeErrorResponse(const std::string& description,const std::string& name="Failed");
+
+protected:
+	virtual void messageHandler(const std::string& name,AMFReader& message);
+	virtual void rawHandler(PacketReader& data);
+	virtual void complete();
+
 
 	Peer&					peer;
-	ServerHandler&			serverHandler;
 
-	Poco::UInt8			stage();
+	const ServerHandler&	serverHandler;
 	
 private:
-	
+	void flushMessages();
+	void raiseMessage();
+
+	void fillCode(const std::string& name,std::string& code);
+
+	MessageWriter& createMessage();
 	bool unpack(PacketReader& reader);
 
-	virtual bool requestHandler(const std::string& name,AMFReader& request,ResponseWriter& responseWriter);
-	virtual bool rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter);
-
-	virtual bool followingResponse(Poco::UInt8 stage,PacketWriter& response);
-
-	Poco::UInt8			_stage;
-	Poco::UInt8			_maxStage;
-	Response*			_pLastResponse;
+	bool				_completed;
 	const std::string&	_name;
+	const std::string&	_signature;
+	Session&			_session;
 
-	Poco::UInt8			_buffer[MAX_SIZE_MSG];
+	// Receiving
+	Poco::UInt32		_stageRcv;
+	Poco::UInt8*		_pBuffer;
+	Poco::UInt32		_sizeBuffer;
+
+	// Sending
+	Poco::UInt32				_stageSnd;
+	std::list<MessageWriter*>	_messages;
+	double						_callbackHandle;
+	std::string					_code;
+	Trigger						_trigger;
+	MessageWriter				_messageNull;
 };
 
-inline bool Flow::followingResponse(Poco::UInt8 stage,PacketWriter& response) {
-	return false;
+inline Poco::UInt32 Flow::stageRcv() {
+	return _stageRcv;
+}
+inline Poco::UInt32 Flow::stageSnd() {
+	return _stageSnd;
 }
 
-inline Poco::UInt8 Flow::stage() {
-	return _stage;
+inline void Flow::complete() {
+	_completed = true;
 }
 
 inline bool Flow::consumed() {
-	return _maxStage>0 && _stage>=_maxStage && !_pLastResponse;
+	return _completed && _messages.empty();
 }
-
-
 
 } // namespace Cumulus

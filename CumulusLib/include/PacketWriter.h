@@ -19,40 +19,29 @@
 
 #include "Cumulus.h"
 #include "MemoryStream.h"
-#include "Address.h"
-#include "Poco/BinaryWriter.h"
-#include "Poco/Net/SocketAddress.h"
+#include "BinaryWriter.h"
+
+#define PACKETSEND_SIZE			1200
 
 namespace Cumulus {
 
 
-class PacketWriter: public Poco::BinaryWriter {
+class PacketWriter: public BinaryWriter {
 public:
 	PacketWriter(const Poco::UInt8* buffer,int size);
 	PacketWriter(PacketWriter&,int skip=0);
 	virtual ~PacketWriter();
 
-	void writeRaw(const Poco::UInt8* value,int size);
-	void writeRaw(const char* value,int size);
-	void writeRaw(const std::string& value);
-	void write32(Poco::UInt32 value);
-	void write16(Poco::UInt16 value);
-	void write8(Poco::UInt8 value);
-	void writeString8(const std::string& value);
-	void writeString16(const std::string& value);
-	void writeString8(const char* value,Poco::UInt8 size);
-	void writeString16(const char* value,Poco::UInt16 size);
-	void write7BitValue(Poco::UInt32 value);
-	void writeRandom(Poco::UInt16 size);
-	void writeAddress(const Address& address,bool publicFlag);
-	void writeAddress(const Poco::Net::SocketAddress& address,bool publicFlag);
-
 	Poco::UInt8*	begin();
 	int				length();
 	int				position();
 	
+	int				available();
+
+	bool	good();
 	void	clear(int pos=0);
-	void	reset(int newPos=0);
+	void	reset(int newPos=-1);
+	void	limit(int length=0);
 	void	clip(int offset);
 	void	next(int size);
 	void	flush();
@@ -61,30 +50,15 @@ private:
 	int					_skip;
 	MemoryOutputStream	_memory;
 	PacketWriter*		_pOther;
+	int					_size;
 };
 
-inline void PacketWriter::writeRaw(const Poco::UInt8* value,int size) {
-	Poco::BinaryWriter::writeRaw((char*)value,size);
+inline int PacketWriter::available() {
+	return _memory.available();
 }
-inline void PacketWriter::writeRaw(const char* value,int size) {
-	Poco::BinaryWriter::writeRaw(value,size);
+inline bool PacketWriter::good() {
+	return _memory.good();
 }
-inline void PacketWriter::writeRaw(const std::string& value) {
-	Poco::BinaryWriter::writeRaw(value);
-}
-
-inline void PacketWriter::write8(Poco::UInt8 value) {
-	(*this) << value;
-}
-
-inline void PacketWriter::write16(Poco::UInt16 value) {
-	(*this) << value;
-}
-
-inline void PacketWriter::write32(Poco::UInt32 value) {
-	(*this) << value;
-}
-
 inline int PacketWriter::length() {
 	return _memory.written();
 }

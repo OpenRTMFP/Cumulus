@@ -15,21 +15,36 @@
 	This file is a part of Cumulus.
 */
 
-#include "FlowNull.h"
+#pragma once
 
-using namespace std;
-using namespace Poco;
-using namespace Poco::Net;
+#include "Cumulus.h"
+#include "Logs.h"
+#include "Poco/Timestamp.h"
+
 
 namespace Cumulus {
 
-string FlowNull::s_name;
-string FlowNull::s_signature;
 
-FlowNull::FlowNull(Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(0,s_signature,s_name,peer,session,serverHandler) {
+class Trigger {
+public:
+	Trigger();
+	virtual ~Trigger();
+
+	bool raise();
+	void start();
+	void reset();
+	void stop();
+private:
+	Poco::Timestamp	_timeInit;
+	Poco::Int8		_cycle;
+	Poco::UInt8		_time;
+	bool			_running;
+
+};
+
+inline void Trigger::stop() {
+	_running=false;
 }
 
-FlowNull::~FlowNull() {
-}
 
 } // namespace Cumulus

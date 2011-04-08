@@ -381,11 +381,35 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\BinaryStream.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\BinaryStream.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\BinaryWriter.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\BinaryWriter.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\MemoryStream.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\include\MemoryStream.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\MessageWriter.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\MessageWriter.h"
 					>
 				</File>
 				<File
@@ -402,14 +426,6 @@
 				</File>
 				<File
 					RelativePath=".\include\PacketWriter.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\ResponseWriter.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\ResponseWriter.h"
 					>
 				</File>
 			</Filter>
@@ -514,6 +530,14 @@
 				</File>
 				<File
 					RelativePath=".\include\ServerHandler.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Stream.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Stream.h"
 					>
 				</File>
 			</Filter>
@@ -629,6 +653,14 @@
 				</File>
 				<File
 					RelativePath=".\include\FlowStream.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Trigger.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Trigger.h"
 					>
 				</File>
 			</Filter>

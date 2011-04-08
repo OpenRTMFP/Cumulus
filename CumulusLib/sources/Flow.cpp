@@ -18,84 +18,66 @@
 #include "Flow.h"
 #include "Util.h"
 #include "Logs.h"
-#include "Poco/Timestamp.h"
 #include "string.h"
+#include "Session.h"
 
 using namespace std;
 using namespace Poco;
-using namespace Poco::Net;
 
 namespace Cumulus {
 
-class Response {
-public:
-	Response(const UInt8* data,UInt16 size,UInt8* buffer) : _size(size),_buffer(buffer),_time(0),_cycle(-1) {
-		memcpy(buffer,data,size);
-	}
-	
-	~Response() {
-	}
 
-	bool response(PacketWriter& response) {
-		// Wait at least 1.5 sec before to begin the repeat cycle
-		if(_time==0 && !_timeCreation.isElapsed(1500000))
-			return false;
-		++_time;
-		if(_time>=_cycle) {
-			_time=0;
-			++_cycle;
-			if(_cycle==7)
-				throw Exception("Send message failed");
-			DEBUG("Repeat message, try %02x",_cycle+1);
-			response.writeRaw(_buffer,_size);
-			return true;
-		}
-		return false;
-	}
-	
-private:
-	Timestamp	_timeCreation;
-	Int8		_cycle;
-	UInt8		_time;
-	int			_size;
-	UInt8*		_buffer;
-};
-
-
-Flow::Flow(const string& name,Peer& peer,ServerHandler& serverHandler) : _stage(0),peer(peer),serverHandler(serverHandler),_pLastResponse(NULL),_maxStage(0),_name(name) {
-	
+Flow::Flow(UInt8 id,const string& signature,const string& name,Peer& peer,Session& session,const ServerHandler& serverHandler) : id(id),_stageRcv(0),_stageSnd(0),peer(peer),serverHandler(serverHandler),_completed(false),_name(name),_signature(signature),_pBuffer(NULL),_sizeBuffer(0),_callbackHandle(0),_session(session) {
+	_messageNull._stream.setstate(ios_base::eofbit);
 }
 
 Flow::~Flow() {
-	// delete last response
-	if(_pLastResponse)
-		delete _pLastResponse;
+	if(!_completed)
+		complete();
+	// delete messages
+	list<MessageWriter*>::const_iterator it;
+	for(it=_messages.begin();it!=_messages.end();++it)
+		delete *it;
+	// delete receive buffer
+	if(_sizeBuffer>0) {
+		delete [] _pBuffer;
+		_sizeBuffer=0;
+	}
 }
 
-bool Flow::lastResponse(PacketWriter& response) {
-	if(!_pLastResponse)
-		return false;
-	bool result = false;
-	try {
-		result = _pLastResponse->response(response);
-	} catch(const Exception&) {
-		delete _pLastResponse;
-		_pLastResponse = NULL;
-		throw;
-	}
-	return result;
-}
-
-void Flow::acknowledgment(Poco::UInt8 stage) {
-	if(stage > _stage) {
-		WARN("A acknowledgment superior than the current stage has been sent : '%02x' instead of '%02x' ",stage,_stage);
+void Flow::acknowledgment(Poco::UInt32 stage) {
+	if(stage>_stageSnd) {
+		ERROR("Acknowledgment received superior than the current sending stage : '%u' instead of '%u'",stage,_stageSnd);
 		return;
 	}
-	if(!_pLastResponse)
+	list<MessageWriter*>::const_iterator it=_messages.begin();
+	if(_messages.empty() || stage<=(*it)->_startStage) {
+		WARN("Acknowledgment of stage '%u' received lower than all repeating messages of flow '%02x', certainly a obsolete ack packet",stage,id);
 		return;
+	}
+	
 	// Ack!
-	delete _pLastResponse;
-	_pLastResponse = NULL;
+	// Here repeating messages exist, and minStage < stage <=_stageSnd
+	UInt32 count = stage - (*it)->_startStage;
+
+	while(count>0 && it!=_messages.end() && !(*it)->_fragments.empty()) { // if _fragments.empty(), it's a message not sending yet (not flushed)
+		MessageWriter& message(**it);
+		
+		while(count-- > 0 && !message._fragments.empty())
+			message._fragments.pop_front();
+
+		if(message._fragments.empty()) {
+			delete *it;
+			_messages.pop_front();
+			it=_messages.begin();
+		}
+	}
+
+	// rest messages not ack?
+	if(_messages.begin()!=_messages.end() && !(*_messages.begin())->_fragments.empty())
+		_trigger.reset();
+	else
+		_trigger.stop();
 }
 
 bool Flow::unpack(PacketReader& reader) {
@@ -110,70 +92,340 @@ bool Flow::unpack(PacketReader& reader) {
 			reader.next(4);
 			return false;
 		// raw data
-		default:
-			CRITIC("Unpacking flag '%02x' unknown",flag);
 		case 0x04:
 			reader.next(4);
+		default:
+			ERROR("Unpacking flag '%02x' unknown",flag);
+			reader.reset(reader.position()-1);
 		case 0x01:
 			;
 	}
 	return true;
 }
 
-bool Flow::request(UInt8 stage,PacketReader& request,PacketWriter& response) {
-	if(stage==_stage) {
-		INFO("Flow stage '%02x' has already been received",stage);
-		return false;
-	} else if(stage<_stage) {
-		WARN("A flow stage '%02x' inferior to current stage '%02x' received",stage,_stage);
-		return false;
+void Flow::raise() {
+	if(!_trigger.raise())
+		return;
+	raiseMessage();
+}
+
+void Flow::flush() {
+	flushMessages();
+	_session.flush();
+}
+
+void Flow::raiseMessage() {
+	if(_messages.empty())
+		_trigger.stop();
+
+	list<MessageWriter*>::const_iterator it;
+	bool header = true;
+	UInt8 subStage=0;
+
+	for(it=_messages.begin();it!=_messages.end();++it) {
+		MessageWriter& message(**it);
+
+		// just messages not flushed, so nothing to do
+		if(message._fragments.empty())
+			return;
+
+		UInt32 stage = message._startStage;
+
+		list<UInt32>::const_iterator itFrag=message._fragments.begin();
+		UInt32 fragment(*itFrag);
+		bool end=false;
+		message._stream.resetReading(fragment);
+		
+		while(!end && message._fragments.end()!=itFrag++) {
+			int size = message._stream.size();
+			end = itFrag==message._fragments.end();
+			if(!end) {
+				size = (*itFrag)-fragment;
+				fragment = *itFrag;
+			}
+
+			PacketWriter& packet(_session.writer());
+			size+=4;
+
+			UInt8 stageSize = Util::Get7BitValueSize(stage+1);
+			if(header) {
+				size+=2;
+				size+=stageSize;
+			}
+
+			// Actual sending packet is enough large? Here we send just one packet!
+			if(!header && size>packet.available())
+				return;
+			
+			// Compute flags
+			UInt8 flags = stage==0 ? MESSAGE_HEADER : 0x00;
+			if(_completed)
+				flags |= MESSAGE_END;
+			if(stage > message._startStage)
+				flags |= MESSAGE_WITH_BEFOREPART; // fragmented
+			if(!end)
+				flags |= MESSAGE_WITH_AFTERPART;
+
+
+			// Write packet
+			size-=3;
+			PacketWriter& writer = _session.writeMessage(header ? 0x10 : 0x11,size);
+			size-=1;
+			
+			writer.write8(flags);
+			if(header) {
+				writer.write8(id);
+				writer.write7BitValue(++stage);
+				writer.write8(++subStage);
+				size-=2;
+				size-=stageSize;
+			}
+
+			message.read(writer,size);
+			header=false;
+		}
+	}
+}
+
+void Flow::flushMessages() {
+	list<MessageWriter*>::const_iterator it;
+	bool header = true;
+	UInt8 subStage=0;
+
+	for(it=_messages.begin();it!=_messages.end();++it) {
+		MessageWriter& message(**it);
+		if(!message._fragments.empty()) {
+			subStage += message._fragments.size();
+			continue;
+		}
+
+		_trigger.start();
+
+		UInt32 fragments= 0;
+
+		do {
+
+			PacketWriter& packet(_session.writer());
+
+			bool head = header;
+			int size = message._stream.size()+4;
+			UInt8 stageSize = Util::Get7BitValueSize(_stageSnd+1);
+			if(head) {
+				size+=2;
+				size+=stageSize;
+			}
+
+			// Compute flags
+			UInt8 flags = _stageSnd==0 ? MESSAGE_HEADER : 0x00;
+			if(_completed)
+				flags |= MESSAGE_END;
+			if(fragments>0)
+				flags |= MESSAGE_WITH_BEFOREPART;
+
+			// Actual sending packet is enough large?
+			if(packet.available()<32) // 20 to have a size minimum of fragmentation!
+				_session.flush(WITHOUT_ECHO_TIME); // send packet (and without time echo)
+			if(size>packet.available()) {
+				// the packet will changed! The message will be fragmented.
+				flags |= MESSAGE_WITH_AFTERPART;
+				size=packet.available();
+				header=true;
+			} else
+				header=false; // the packet stays the same!
+			size-=3;
+
+			// Write packet
+			PacketWriter& writer = _session.writeMessage(head ? 0x10 : 0x11,size);
+
+			size-=1;
+			message._startStage = _stageSnd;
+			
+			writer.write8(flags);
+			if(head) {
+				writer.write8(id);
+				writer.write7BitValue(++_stageSnd);
+				writer.write8(++subStage);
+				size-=2;
+				size-=stageSize;
+			}
+			
+			message.read(writer,size);
+			message._fragments.push_back(fragments);
+			fragments += size;
+
+		} while(message._stream.size()>0);
+	}
+}
+
+void Flow::fail() {
+	// This following message is not really understood (flow header interrogation perhaps?)
+	// So we emulate a mechanism which seems to answer the same thing when it's necessary
+	WARN("The flow '%02x' has failed",id);
+	if(_completed)
+		return;
+	createMessage();
+	complete(); // before the flush messages to set '_completed' to true
+	flushMessages();
+}
+
+MessageWriter& Flow::createMessage() {
+	if(_completed)
+		return _messageNull;
+	MessageWriter* pMessage = new MessageWriter();
+	if(_stageSnd==0 && _messages.empty()) {
+		pMessage->writeString8(_signature);
+		pMessage->write8(0x02); // following size
+		pMessage->write8(0x0a); // Unknown!
+		pMessage->write8(id);
+		pMessage->write8(0); // marker of end for this part
+	}
+	_messages.push_back(pMessage);
+	return *pMessage;
+}
+MessageWriter& Flow::writeRawMessage(bool withoutHeader) {
+	if(withoutHeader)
+		return createMessage();
+	MessageWriter& message(createMessage());
+	message.write8(0x04);
+	message.write32(0);
+	return message;
+}
+AMFWriter& Flow::writeAMFMessage() {
+	MessageWriter& message(createMessage());
+	message.amf.writeResponseHeader("_result",_callbackHandle);
+	return message.amf;
+}
+AMFObjectWriter Flow::writeSuccessResponse(const string& description,const string& name) {
+	AMFWriter& message(writeAMFMessage());
+
+	string code(_code);
+	if(!name.empty()) {
+		code.append(".");
+		code.append(name);
 	}
 
-	_stage = stage;
+	AMFObjectWriter object(message);
+	object.write("level","status");
+	object.write("code",code);
+	if(!description.empty())
+		object.write("description",description);
+	return object;
+}
+AMFObjectWriter Flow::writeStatusResponse(const string& name,const string& description) {
+	MessageWriter& message(createMessage());
+	message.amf.writeResponseHeader("onStatus",_callbackHandle);
 
-	bool isRaw = unpack(request);
-	double callbackHandle = 0;
+	string code(_code);
+	if(!name.empty()) {
+		code.append(".");
+		code.append(name);
+	}
+
+	AMFObjectWriter object(message.amf);
+	object.write("level","status");
+	object.write("code",code);
+	if(!description.empty())
+		object.write("description",description);
+	return object;
+}
+AMFObjectWriter Flow::writeErrorResponse(const string& description,const string& name) {
+	MessageWriter& message(createMessage());
+	message.amf.writeResponseHeader("_error",_callbackHandle);
+
+	string code(_code);
+	if(!name.empty()) {
+		code.append(".");
+		code.append(name);
+	}
+
+	AMFObjectWriter object(message.amf);
+	object.write("level","error");
+	object.write("code",code);
+	if(!description.empty())
+		object.write("description",description);
+
+	WARN("'%s' response error : %s",code.c_str(),description.c_str());
+	return object;
+}
+
+void Flow::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
+	if(stage<=_stageRcv) {
+		DEBUG("Flow '%02x' stage '%u' has already been received",id,stage);
+		return;
+	}
+	_stageRcv = stage;
+
+	PacketReader* pMessage(NULL);
+	if(flags&MESSAGE_WITH_BEFOREPART){
+		if(_sizeBuffer==0) {
+			ERROR("A received message tells to have a 'afterpart' and nevertheless partbuffer is empty");
+			return;
+		}
+		if(flags&MESSAGE_WITH_AFTERPART) {
+			UInt8* pOldBuffer = _pBuffer;
+			_pBuffer = new UInt8[_sizeBuffer + message.available()]();
+			memcpy(_pBuffer,pOldBuffer,_sizeBuffer);
+			memcpy(_pBuffer+_sizeBuffer,message.current(),message.available());
+			_sizeBuffer += message.available();
+			delete [] pOldBuffer;
+			return;
+		}
+		pMessage = new PacketReader(_pBuffer,_sizeBuffer);
+	} else if(flags&MESSAGE_WITH_AFTERPART) {
+		if(_sizeBuffer>0) {
+			ERROR("A received message tells to have not 'beforepart' and nevertheless partbuffer exists");
+			delete [] _pBuffer;
+			_sizeBuffer=0;
+		}
+		_sizeBuffer = message.available();
+		_pBuffer = new UInt8[_sizeBuffer]();
+		memcpy(_pBuffer,message.current(),_sizeBuffer);
+		return;
+	}
+	if(!pMessage)
+		pMessage = new PacketReader(message);
+
+	bool isRaw = unpack(*pMessage);
+	_callbackHandle = 0;
 	string name;
-	AMFReader reader(request);
+	AMFReader reader(*pMessage);
 	if(!isRaw) {
 		reader.read(name);
-		callbackHandle = reader.readNumber();
+		_callbackHandle = reader.readNumber();
 		reader.skipNull();
 	}
+
+	// create code prefix
+	_code.assign(_name);
+	if(!name.empty()) {
+		_code.append(".");
+		_code.push_back(toupper(name[0]));
+		if(name.size()>1)
+			_code.append(&name[1]);
+	}
 	
-	bool answer = false;
-	{
-		ResponseWriter responseWriter(response,callbackHandle,_name,name);
-		bool maxStage = isRaw ? rawHandler(_stage,request,responseWriter) : requestHandler(name,reader,responseWriter);
-		responseWriter.flush();
-		answer = responseWriter.count()>0;
-		if(answer)
-			_stage += responseWriter.count()-1;
-		if(maxStage)
-			_maxStage = _stage;
+	if(isRaw)
+		rawHandler(*pMessage);
+	else
+		messageHandler(name,reader);
+	delete pMessage;
+
+	if(flags&MESSAGE_END)
+		complete();
+
+	if(_sizeBuffer>0) {
+		delete [] _pBuffer;
+		_sizeBuffer=0;
 	}
 
-	if(_pLastResponse) {
-		delete _pLastResponse;
-		_pLastResponse = NULL;
-	}
-
-	if(answer)
-		_pLastResponse = new Response(response.begin()+response.position(),response.length()-response.position(),_buffer); // Mem the last response
-
-	// Consume
-	response.reset(response.length());
-
-	return answer;
+	flushMessages();
 }
 
-bool Flow::requestHandler(const std::string& name,AMFReader& request,ResponseWriter& responseWriter) {
-	ERROR("Request '%s' unknown",name.c_str());
-	return false;
+void Flow::messageHandler(const std::string& name,AMFReader& message) {
+	ERROR("Message '%s' unknown for flow '%02x'",name.c_str(),id);
 }
-bool Flow::rawHandler(Poco::UInt8 stage,PacketReader& request,ResponseWriter& responseWriter) {
-	ERROR("Request of stage '%02x' unknown",stage);
-	return false;
+void Flow::rawHandler(PacketReader& data) {
+	ERROR("Raw message unknown for flow '%02x'",id);
 }
 
 

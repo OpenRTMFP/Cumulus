@@ -21,6 +21,8 @@
 #include "PacketWriter.h"
 #include "Poco/BinaryReader.h"
 
+#define PACKETRECV_SIZE		2048
+
 namespace Cumulus {
 
 
@@ -28,7 +30,6 @@ class PacketReader: public Poco::BinaryReader {
 public:
 	PacketReader(Poco::UInt8* buffer,int size);
 	PacketReader(PacketReader&);
-	PacketReader(PacketWriter&);
 	virtual ~PacketReader();
 
 	Poco::UInt32 read7BitValue();

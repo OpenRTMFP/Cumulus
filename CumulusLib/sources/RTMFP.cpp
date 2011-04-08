@@ -64,20 +64,13 @@ RTMFP::~RTMFP() {
 }
 
 
-
-bool RTMFP::IsValidPacket(PacketReader& packet) {
-	if(packet.available()<12)
-		return false;
-	return true;
-}
-
-
-UInt16 RTMFP::CheckSum(PacketReader packet) {
+UInt16 RTMFP::CheckSum(PacketReader& packet) {
 
 	int sum = 0;
-
+	int pos = packet.position();
 	while(packet.available()>0)
 		sum += packet.available()==1 ? packet.read8() : packet.read16();
+	packet.reset(pos);
 
   /* add back carry outs from top 16 bits to low 16 bits */
   sum = (sum >> 16) + (sum & 0xffff);     /* add hi 16 to low 16 */
@@ -97,7 +90,7 @@ bool RTMFP::Decode(AESEngine& aesDecrypt,PacketReader& packet) {
 }
 
 
-void RTMFP::Encode(AESEngine& aesEncrypt,PacketWriter packet) {
+void RTMFP::Encode(AESEngine& aesEncrypt,PacketWriter& packet) {
 	// paddingBytesLength=(0xffffffff-plainRequestLength+5)&0x0F
 	int paddingBytesLength = (0xFFFFFFFF-packet.length()+5)&0x0F;
 	// Padd the plain request with paddingBytesLength of value 0xff at the end
@@ -105,7 +98,7 @@ void RTMFP::Encode(AESEngine& aesEncrypt,PacketWriter packet) {
 	string end(paddingBytesLength,(UInt8)0xFF);
 	packet.writeRaw(end);
 	// Compute the CRC and add it at the beginning of the request
-	PacketReader reader(packet);
+	PacketReader reader(packet.begin(),packet.length());
 	reader.next(6);
 	UInt16 sum = CheckSum(reader);
 	packet.reset(4);packet << sum;
@@ -124,10 +117,10 @@ UInt32 RTMFP::Unpack(PacketReader& packet) {
 	return id;
 }
 
-void RTMFP::Pack(PacketWriter packet,UInt32 farId) {
-	packet.reset();
-	PacketReader reader(packet);
+void RTMFP::Pack(PacketWriter& packet,UInt32 farId) {
+	PacketReader reader(packet.begin(),packet.length());
 	reader.read32();
+	packet.reset(0);
 	packet.write32(reader.read32()^reader.read32()^farId);
 }
 

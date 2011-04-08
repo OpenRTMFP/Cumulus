@@ -22,17 +22,21 @@
 #include "ClientHandler.h"
 #include "AMFWriter.h"
 #include "AMFReader.h"
+#include "Stream.h"
 
 namespace Cumulus {
 
-
+class Flow; // TODO remove!!
 class ServerHandler
 {
 public:
 	ServerHandler(Poco::UInt8 keepAliveServer,Poco::UInt8 keepAlivePeer,ClientHandler* pClientHandler);
 	virtual ~ServerHandler();
 
-	Group&	group(const std::vector<Poco::UInt8>& id);
+	Group&	group(const std::vector<Poco::UInt8>& id) const;
+
+
+	Flow* pFlowTest;
 
 	bool connection(Peer& peer);
 	void failed(Peer& peer,const std::string& msg);
@@ -41,8 +45,9 @@ public:
 	const Poco::UInt32 keepAlivePeer;
 	const Poco::UInt32 keepAliveServer;
 private:
-	ClientHandler*		_pClientHandler;
-	std::list<Group*>	_groups;
+	ClientHandler*					_pClientHandler;
+	std::list<Group*>				_groups;
+	std::map<std::string,Stream*>	_streams;
 };
 
 
