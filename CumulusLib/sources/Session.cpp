@@ -22,7 +22,7 @@
 #include "FlowGroup.h"
 #include "FlowStream.h"
 #include "Poco/URI.h"
-#include "Poco/format.h"
+#include "Poco/Format.h"
 #include "string.h"
 
 using namespace std;
@@ -142,7 +142,7 @@ void Session::fail() {
 		_failed=true;
 	}
 	++_timesFailed;
-	PacketWriter& writer(writer()); 
+	PacketWriter& writer = this->writer(); 
 	writer.write8(0x0C);
 	writer.write16(0);
 	flush(WITHOUT_ECHO_TIME); // We send immediatly the fail message
@@ -256,7 +256,7 @@ PacketWriter& Session::writer() {
 }
 
 PacketWriter& Session::writeMessage(UInt8 type,UInt16 length) {
-	PacketWriter& writer(writer());
+	PacketWriter& writer = this->writer();
 
 	// No sending formated message for a failed session!
 	if(_failed) {

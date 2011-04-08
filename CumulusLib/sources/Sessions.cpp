@@ -74,7 +74,7 @@ void Sessions::manage() {
 
 	_timeLastManage.update();
 
-	Sessions::Iterator it= begin();
+	map<UInt32,Session*>::iterator it= _sessions.begin();
 	while(it!=end()) {
 		it->second->manage();
 		if(it->second->die()) {

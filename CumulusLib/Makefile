@@ -1,5 +1,5 @@
 # source files.
-OBJECTS = Address AESEngine AMFObject AMFObjectWriter AMFReader AMFWriter BinaryStream BinaryWriter Cirrus Client ClientHandler Cookie Cumulus Flow FlowConnection FlowGroup FlowNull FlowStream Group Handshake Logs MemoryStream Middle PacketReader PacketWriter Peer Peers RTMFP RTMFPServer ServerHandler Session Sessions Stream Trigger Util
+OBJECTS = Address AESEngine AMFObject AMFObjectWriter AMFReader AMFWriter BinaryStream BinaryWriter Cirrus Client ClientHandler Cookie Cumulus Flow FlowConnection FlowGroup FlowNull FlowStream Group Handshake Logs MemoryStream MessageWriter Middle PacketReader PacketWriter Peer Peers RTMFP RTMFPServer ServerHandler Session Sessions Stream Trigger Util
 
 CC=g++
 LIB=libCumulus.so

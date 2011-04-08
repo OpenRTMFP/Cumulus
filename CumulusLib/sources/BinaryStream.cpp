@@ -25,6 +25,12 @@ using namespace Poco;
 namespace Cumulus {
 
 
+BinaryBuffer::BinaryBuffer() {
+}
+BinaryBuffer::~BinaryBuffer() {
+}
+
+
 BinaryBuffer::int_type BinaryBuffer::readFromDevice() {
         if(size()==0)
                 return EOF;
@@ -35,6 +41,12 @@ void BinaryBuffer::copyTo(char_type* data,streamsize size) {
     std::streampos precGPos = _buf.pubseekoff(0,ios_base::cur,ios_base::in);
     _buf.sgetn(data,size);
     _buf.pubseekpos(precGPos,ios_base::in);
+}
+
+BinaryIOS::BinaryIOS() {
+	poco_ios_init(&_buf);
+}
+BinaryIOS::~BinaryIOS() {
 }
 
 

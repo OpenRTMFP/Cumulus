@@ -26,10 +26,8 @@ namespace Cumulus {
 class BinaryBuffer : public Poco::UnbufferedStreamBuf {
        
 public:
-	BinaryBuffer() {
-	}
-	~BinaryBuffer(){
-	}
+	BinaryBuffer();
+	~BinaryBuffer();
 	std::streamsize		size();
 	void				copyTo(char_type* data,std::streamsize size);
 
@@ -38,7 +36,9 @@ private:
 	std::streampos seekoff(std::streamoff off, std::ios_base::seekdir way, std::ios_base::openmode which = std::ios_base::in | std::ios_base::out);
 	std::streamsize xsputn(const char_type* s, std::streamsize n);
 	std::streamsize xsgetn(char_type* p, std::streamsize count);
+#if defined(_WIN32)
 	std::streamsize _Xsgetn_s(char_type * _Ptr,size_t _Ptr_size, std::streamsize _Count);
+#endif
 
 	int_type readFromDevice();
 	int_type writeToDevice(char_type);
@@ -67,12 +67,14 @@ inline std::streampos BinaryBuffer::seekoff(std::streamoff off, std::ios_base::s
 }
 
 inline std::streamsize BinaryBuffer::xsgetn(char_type* p,std::streamsize count) {
-        return _Xsgetn_s(p,-1,count);
+        return _buf.sgetn(p,count);
 }
 
+#if defined(_WIN32)
 inline std::streamsize BinaryBuffer::_Xsgetn_s(char_type * _Ptr,size_t _Ptr_size, std::streamsize _Count) {
         return _buf._Sgetn_s(_Ptr,_Ptr_size,_Count);
 }
+#endif
 
 
 class BinaryIOS: public virtual std::ios {
@@ -81,8 +83,8 @@ public:
         BinaryBuffer* rdbuf();
 
 protected:
-        BinaryIOS(){poco_ios_init(_buf);}
-        ~BinaryIOS(){}
+        BinaryIOS();
+        ~BinaryIOS();
 
 private:
         BinaryBuffer  _buf;
