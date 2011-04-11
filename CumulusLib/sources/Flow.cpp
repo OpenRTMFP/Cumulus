@@ -63,8 +63,11 @@ void Flow::acknowledgment(Poco::UInt32 stage) {
 	while(count>0 && it!=_messages.end() && !(*it)->_fragments.empty()) { // if _fragments.empty(), it's a message not sending yet (not flushed)
 		MessageWriter& message(**it);
 		
-		while(count-- > 0 && !message._fragments.empty())
+		while(count > 0 && !message._fragments.empty()) {
 			message._fragments.pop_front();
+			--count;
+			++message._startStage;
+		}
 
 		if(message._fragments.empty()) {
 			delete *it;
@@ -92,11 +95,12 @@ bool Flow::unpack(PacketReader& reader) {
 			reader.next(4);
 			return false;
 		// raw data
-		case 0x04:
-			reader.next(4);
 		default:
 			ERROR("Unpacking flag '%02x' unknown",flag);
 			reader.reset(reader.position()-1);
+			break;
+		case 0x04:
+			reader.next(4);
 		case 0x01:
 			;
 	}
@@ -120,7 +124,7 @@ void Flow::raiseMessage() {
 
 	list<MessageWriter*>::const_iterator it;
 	bool header = true;
-	UInt8 subStage=0;
+	UInt8 nbStageNAck=0;
 
 	for(it=_messages.begin();it!=_messages.end();++it) {
 		MessageWriter& message(**it);
@@ -176,7 +180,7 @@ void Flow::raiseMessage() {
 			if(header) {
 				writer.write8(id);
 				writer.write7BitValue(++stage);
-				writer.write8(++subStage);
+				writer.write8(++nbStageNAck);
 				size-=2;
 				size-=stageSize;
 			}
@@ -190,16 +194,18 @@ void Flow::raiseMessage() {
 void Flow::flushMessages() {
 	list<MessageWriter*>::const_iterator it;
 	bool header = true;
-	UInt8 subStage=0;
+	UInt8 nbStageNAck=0;
 
 	for(it=_messages.begin();it!=_messages.end();++it) {
 		MessageWriter& message(**it);
 		if(!message._fragments.empty()) {
-			subStage += message._fragments.size();
+			nbStageNAck += message._fragments.size();
 			continue;
 		}
 
 		_trigger.start();
+
+		message._startStage = _stageSnd;
 
 		UInt32 fragments= 0;
 
@@ -207,9 +213,16 @@ void Flow::flushMessages() {
 
 			PacketWriter& packet(_session.writer());
 
+			// Actual sending packet is enough large?
+			if(packet.available()<12) { // 12 to have a size minimum of fragmentation!
+				_session.flush(WITHOUT_ECHO_TIME); // send packet (and without time echo)
+				header=true;
+			}
+
 			bool head = header;
 			int size = message._stream.size()+4;
 			UInt8 stageSize = Util::Get7BitValueSize(_stageSnd+1);
+
 			if(head) {
 				size+=2;
 				size+=stageSize;
@@ -222,9 +235,6 @@ void Flow::flushMessages() {
 			if(fragments>0)
 				flags |= MESSAGE_WITH_BEFOREPART;
 
-			// Actual sending packet is enough large?
-			if(packet.available()<32) // 20 to have a size minimum of fragmentation!
-				_session.flush(WITHOUT_ECHO_TIME); // send packet (and without time echo)
 			if(size>packet.available()) {
 				// the packet will changed! The message will be fragmented.
 				flags |= MESSAGE_WITH_AFTERPART;
@@ -238,13 +248,14 @@ void Flow::flushMessages() {
 			PacketWriter& writer = _session.writeMessage(head ? 0x10 : 0x11,size);
 
 			size-=1;
-			message._startStage = _stageSnd;
 			
 			writer.write8(flags);
+			++_stageSnd;
+
 			if(head) {
 				writer.write8(id);
-				writer.write7BitValue(++_stageSnd);
-				writer.write8(++subStage);
+				writer.write7BitValue(_stageSnd);
+				writer.write8(++nbStageNAck);
 				size-=2;
 				size-=stageSize;
 			}
@@ -417,8 +428,6 @@ void Flow::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
 		delete [] _pBuffer;
 		_sizeBuffer=0;
 	}
-
-	flushMessages();
 }
 
 void Flow::messageHandler(const std::string& name,AMFReader& message) {

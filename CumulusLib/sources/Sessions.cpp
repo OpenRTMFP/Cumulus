@@ -77,7 +77,7 @@ void Sessions::manage() {
 	map<UInt32,Session*>::iterator it= _sessions.begin();
 	while(it!=end()) {
 		it->second->manage();
-		if(it->second->die()) {
+		if(it->second->died()) {
 			NOTE("Session %u died",it->second->id());
 			delete it->second;
 			_sessions.erase(it++);

@@ -29,7 +29,6 @@ public:
 	BinaryBuffer();
 	~BinaryBuffer();
 	std::streamsize		size();
-	void				copyTo(char_type* data,std::streamsize size);
 
 private:
 	std::streampos seekpos(std::streampos sp,std::ios_base::openmode which = std::ios_base::in | std::ios_base::out);
@@ -105,13 +104,8 @@ public:
       void            clear();
 	  void            resetReading(std::streampos position);
       bool            empty();
-	  void			  copyTo(char_type* data,std::streamsize size);
 private:
 };
-
-inline void BinaryStream::copyTo(char_type* data,std::streamsize size) {
-      return rdbuf()->copyTo(data,size);
-}
 
 inline std::streamsize BinaryStream::size() {
       return rdbuf()->size();

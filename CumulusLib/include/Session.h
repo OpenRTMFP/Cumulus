@@ -50,7 +50,7 @@ public:
 	Poco::UInt32		id() const;
 	Poco::UInt32		farId() const;
 	const Peer& 		peer() const;
-	bool				die() const;
+	bool				died() const;
 	bool				failed() const;
 	virtual void		manage();
 	void				flush(Poco::UInt8 flags=0);
@@ -96,7 +96,7 @@ private:
 	Poco::UInt8					_buffer[PACKETSEND_SIZE];
 	PacketWriter				_writer;
 
-	bool						_die;
+	bool						_died;
 	Peer						_peer;
 
 	std::map<std::string,Poco::UInt8>		_p2pHandshakeAttemps;
@@ -123,8 +123,8 @@ inline Poco::UInt32 Session::farId() const {
 	return _farId;
 }
 
-inline bool Session::die() const {
-	return _die;
+inline bool Session::died() const {
+	return _died;
 }
 
 } // namespace Cumulus

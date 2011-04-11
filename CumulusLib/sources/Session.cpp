@@ -39,7 +39,7 @@ Session::Session(UInt32 id,
 				 DatagramSocket& socket,
 				 ServerHandler& serverHandler) : 
 		_id(id),_farId(farId),_socket(socket),_testDecode(false),
-		_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_serverHandler(serverHandler),_peer(peer),_flowNull(_peer,*this,_serverHandler),_die(false),_failed(false),_timesFailed(0),_timeSent(0),_timesKeepalive(0),_writer(_buffer,sizeof(_buffer)) {
+		_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_serverHandler(serverHandler),_peer(peer),_flowNull(_peer,*this,_serverHandler),_died(false),_failed(false),_timesFailed(0),_timeSent(0),_timesKeepalive(0),_writer(_buffer,sizeof(_buffer)) {
 	_writer.next(11);
 	_writer.limit(RTMFP_MAX_PACKET_LENGTH); // set normal limit
 }
@@ -65,17 +65,18 @@ bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
 }
 
 void Session::kill() {
-	if(_die)
+	if(_died)
 		return;
 	if(_peer.state!=Client::NONE) {
 		((Client::ClientState&)_peer.state) = Client::NONE;
 		_serverHandler.disconnection(_peer);
 	}
-	_die=true;
+	_died=true;
+	_failed=true;
 }
 
 void Session::manage() {
-	if(_die)
+	if(_died)
 		return;
 
 	// After 6 mn we considerate than the session has failed
@@ -135,7 +136,7 @@ void Session::setFailed(const string& msg) {
 }
 
 void Session::fail() {
-	if(_die)
+	if(_died)
 		WARN("Fail perhaps useless because session is already dead");
 	if(!_failed) {
 		WARN("Here flag failed should be put (with setFailed method), fail() method just allows the fail packet sending");
@@ -199,7 +200,6 @@ void Session::flush(UInt8 flags) {
 	if(packet.length()>=RTMFP_MIN_PACKET_SIZE) {
 
 		packet.limit(); // no limit for sending!
-		packet.reset(6);
 
 		// After 30 sec, send packet without echo time
 		bool timeEcho = flags&WITHOUT_ECHO_TIME ? false : !_recvTimestamp.isElapsed(30000000);
@@ -210,6 +210,7 @@ void Session::flush(UInt8 flags) {
 		else
 			packet.clip(2);
 
+		packet.reset(6);
 		packet.write8(marker);
 		packet.write16(RTMFP::TimeNow());
 		if(timeEcho)
@@ -298,7 +299,6 @@ void Session::packetHandler(PacketReader& packet) {
 	UInt8 flags;
 	Flow* pFlow=NULL;
 	UInt32 stage=0;
-	UInt8 subStage=0;
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 	bool answer = false;
@@ -367,7 +367,7 @@ void Session::packetHandler(PacketReader& packet) {
 				flags = message.read8();
 				UInt8 idFlow = message.read8();
 				stage = message.read7BitValue()-1;
-				UInt8 subStage = message.read8();
+				UInt8 nbStageNAck = message.read8();
 
 				// has Header?
 				if(flags & MESSAGE_HEADER) {
@@ -394,23 +394,23 @@ void Session::packetHandler(PacketReader& packet) {
 					pFlow = &flow(idFlow);
 
 				if(stage>pFlow->stageRcv()) {
-					if(subStage>1) {
+					if(nbStageNAck>1) {
 						// Here it means that a message with a stage superior to the current receiving stage has been sent
 						// We must ignore this message for that the client resend the precedent packet!
+						WARN("A packet has been lost on the flow '%02x'",idFlow)
 						pFlow=NULL;
 						break;
 					}
 					else
-						WARN("A flow '%02x' message with a '%u' stage more superior than one with the current stage '%u' has been received'",idFlow,stage,flow(idFlow).stageRcv());
+						ERROR("A flow '%02x' message with a '%u' stage more superior than one with the current stage '%u' has been received'",idFlow,stage,flow(idFlow).stageRcv());
 				}
 			}	
 			case 0x11 : {
 				++stage;
 
-				if(!pFlow) {
-					WARN("A 0x11 following message seems have been received without its precedent part");
-					break;
-				}
+				if(!pFlow)
+					break; // Here it means that a message with a stage superior to the current receiving stage has been sent
+					       // We must ignore this message for that the client resend the lacked packet!
 
 				// has Header?
 				if(type==0x11)
@@ -437,6 +437,7 @@ void Session::packetHandler(PacketReader& packet) {
 			writer.write8(pFlow->id);
 			writer.write8(0x3f); // ack
 			writer.write7BitValue(stage);
+			pFlow->flushMessages();
 			pFlow=NULL;
 		}
 	}

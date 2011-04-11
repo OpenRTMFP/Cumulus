@@ -399,7 +399,7 @@ void Middle::cirrusPacketHandler(PacketReader& packet) {
 
 void Middle::manage() {
 	TRACE("Middle::manage");
-	if(die())
+	if(died())
 		return;
 
 	if (_socket.available()==0)

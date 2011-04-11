@@ -44,6 +44,7 @@ public:
 	void messageHandler(Poco::UInt32 stage,PacketReader& message,Poco::UInt8 flags);
 
 	void flush();
+	void flushMessages();
 
 	void acknowledgment(Poco::UInt32 stage);
 	bool consumed();
@@ -73,7 +74,6 @@ protected:
 	const ServerHandler&	serverHandler;
 	
 private:
-	void flushMessages();
 	void raiseMessage();
 
 	void fillCode(const std::string& name,std::string& code);

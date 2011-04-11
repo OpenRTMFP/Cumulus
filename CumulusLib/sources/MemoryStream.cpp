@@ -57,34 +57,28 @@ void MemoryStreamBuf::resize(streamsize newSize) {
 		return;
 	_bufferSize = newSize;
 	int pos = gCurrent()-_pBuffer;
-	if(pos>=_bufferSize)
-		pos = _bufferSize-1;
+	//if(pos>=_bufferSize)
+	//	pos = _bufferSize-1;
 	setg(_pBuffer,_pBuffer+pos,_pBuffer + _bufferSize);
 	pos = pCurrent()-_pBuffer;
-	if(pos>=_bufferSize)
-		pos = _bufferSize-1;
+//	if(pos>=_bufferSize)
+//		pos = _bufferSize-1;
 	setp(_pBuffer,_pBuffer + _bufferSize);
 	pbump(pos);
-	if(_written>=_bufferSize)
-		_written = _bufferSize-1;
 }
 
 void MemoryStreamBuf::clip(streampos offset) {
 	if(offset>=_bufferSize)
 		offset = _bufferSize-1;
 
-	int gpos = gCurrent()-_pBuffer;
-	int ppos = pCurrent()-_pBuffer;
+	char* gpos = gCurrent();
 
 	_pBuffer += offset;
 	_bufferSize -= offset;
 	
-	if(gpos>=_bufferSize)
-		gpos = _bufferSize-1;
-	if(ppos>=_bufferSize)
-		ppos = _bufferSize-1;
+	int ppos = pCurrent()-_pBuffer;
 
-	setg(_pBuffer,_pBuffer+gpos,_pBuffer + _bufferSize);
+	setg(_pBuffer,gpos,_pBuffer + _bufferSize);
 
 	setp(_pBuffer,_pBuffer + _bufferSize);
 	pbump(ppos);
