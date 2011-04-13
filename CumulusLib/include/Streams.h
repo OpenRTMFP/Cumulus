@@ -21,6 +21,7 @@
 #include "Listener.h"
 #include "Subscription.h"
 #include <set>
+#include <map>
 
 
 namespace Cumulus {

@@ -58,7 +58,7 @@ void Subscription::add(Listener& listener) {
 }
 
 void Subscription::remove(Listener& listener) {
-	list<Listener*>::const_iterator it;
+	list<Listener*>::iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
 		if((&listener)==*it) {
 			_listeners.erase(it);
