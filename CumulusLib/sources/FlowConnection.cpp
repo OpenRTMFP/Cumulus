@@ -16,6 +16,7 @@
 */
 
 #include "FlowConnection.h"
+#include "FlowStream.h"
 #include "Logs.h"
 
 using namespace std;
@@ -70,7 +71,7 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		}
 		peer.setPrivateAddress(address);
 		
-		MessageWriter& response(writeRawMessage());
+		BinaryWriter& response(writeRawMessage());
 		response.write16(0x29); // Unknown!
 		response.write32(serverHandler.keepAliveServer);
 		response.write32(serverHandler.keepAlivePeer);
@@ -78,15 +79,12 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 	} else if(name == "createStream") {
 
 		AMFWriter& response(writeAMFMessage());
-		response.writeNumber(1); // TODO, id stream!
+		response.writeNumber(serverHandler.streams.create());
 
 	} else if(name == "deleteStream") {
-
-		// TODO
-
+		serverHandler.streams.destroy((UInt32)message.readNumber());
 	} else
 		writeErrorResponse("Method '" + name + "' not found");
-
 }
 
 

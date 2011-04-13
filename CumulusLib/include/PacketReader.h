@@ -28,7 +28,7 @@ namespace Cumulus {
 
 class PacketReader: public Poco::BinaryReader {
 public:
-	PacketReader(Poco::UInt8* buffer,int size);
+	PacketReader(const Poco::UInt8* buffer,int size);
 	PacketReader(PacketReader&);
 	virtual ~PacketReader();
 

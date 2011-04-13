@@ -19,7 +19,7 @@
 
 #include "Cumulus.h"
 #include "PacketReader.h"
-#include "MessageWriter.h"
+#include "Message.h"
 #include "AMFReader.h"
 #include "AMFObjectWriter.h"
 #include "Trigger.h"
@@ -35,10 +35,9 @@
 namespace Cumulus {
 
 class Session;
-class Flow
-{
+class Flow {
 public:
-	Flow(Poco::UInt8 id,const std::string& signature,const std::string& name,Peer& peer,Session& session,const ServerHandler& serverHandler);
+	Flow(Poco::UInt8 id,const std::string& signature,const std::string& name,Peer& peer,Session& session,ServerHandler& serverHandler);
 	virtual ~Flow();
 
 	void messageHandler(Poco::UInt32 stage,PacketReader& message,Poco::UInt8 flags);
@@ -50,13 +49,14 @@ public:
 	bool consumed();
 	void fail();
 	void raise();
+	virtual void complete();
 
 	Poco::UInt32		stageRcv();
 	Poco::UInt32		stageSnd();
 
 	const Poco::UInt8		id;
 
-	MessageWriter&			writeRawMessage(bool withoutHeader=false);
+	BinaryWriter&			writeRawMessage(bool withoutHeader=false);
 	AMFWriter&				writeAMFMessage();
 
 	AMFObjectWriter			writeSuccessResponse(const std::string& description,const std::string& name="Success");
@@ -65,21 +65,22 @@ public:
 
 protected:
 	virtual void messageHandler(const std::string& name,AMFReader& message);
-	virtual void rawHandler(PacketReader& data);
-	virtual void complete();
+	virtual void rawHandler(Poco::UInt8 type,PacketReader& data);
+	virtual void audioHandler(PacketReader& packet);
+	virtual void videoHandler(PacketReader& packet);
 
 
 	Peer&					peer;
 
-	const ServerHandler&	serverHandler;
+	ServerHandler&			serverHandler;
 	
 private:
 	void raiseMessage();
 
 	void fillCode(const std::string& name,std::string& code);
 
-	MessageWriter& createMessage();
-	bool unpack(PacketReader& reader);
+	Message&	createMessage();
+	Poco::UInt8 unpack(PacketReader& reader);
 
 	bool				_completed;
 	const std::string&	_name;
@@ -92,12 +93,12 @@ private:
 	Poco::UInt32		_sizeBuffer;
 
 	// Sending
-	Poco::UInt32				_stageSnd;
-	std::list<MessageWriter*>	_messages;
-	double						_callbackHandle;
-	std::string					_code;
-	Trigger						_trigger;
-	MessageWriter				_messageNull;
+	Poco::UInt32			_stageSnd;
+	std::list<Message*>		_messages;
+	double					_callbackHandle;
+	std::string				_code;
+	Trigger					_trigger;
+	Message					_messageNull;
 };
 
 inline Poco::UInt32 Flow::stageRcv() {

@@ -61,6 +61,7 @@ private:
 	Cirrus*						_pCirrus;
 	ServerHandler				_handler;
 	Sessions					_sessions;
+	Poco::UInt32				_nextIdSession;
 };
 
 inline void RTMFPServer::start(const Poco::Net::SocketAddress* pCirrus) {

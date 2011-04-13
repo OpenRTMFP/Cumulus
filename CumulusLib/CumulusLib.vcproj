@@ -405,14 +405,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\MessageWriter.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\MessageWriter.h"
-					>
-				</File>
-				<File
 					RelativePath=".\sources\PacketReader.cpp"
 					>
 				</File>
@@ -532,14 +524,6 @@
 					RelativePath=".\include\ServerHandler.h"
 					>
 				</File>
-				<File
-					RelativePath=".\sources\Stream.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Stream.h"
-					>
-				</File>
 			</Filter>
 			<Filter
 				Name="Logs"
@@ -656,11 +640,47 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\Message.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Message.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\Trigger.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\include\Trigger.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Multimedia"
+				>
+				<File
+					RelativePath=".\sources\Listener.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Listener.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Streams.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Streams.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Subscription.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Subscription.h"
 					>
 				</File>
 			</Filter>

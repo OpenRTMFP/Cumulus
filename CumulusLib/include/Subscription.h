@@ -18,34 +18,31 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Group.h"
-#include "ClientHandler.h"
-#include "AMFWriter.h"
-#include "AMFReader.h"
-#include "Streams.h"
+#include "Listener.h"
+#include <list>
 
 namespace Cumulus {
 
-class ServerHandler
-{
+class Subscription {
 public:
-	ServerHandler(Poco::UInt8 keepAliveServer,Poco::UInt8 keepAlivePeer,ClientHandler* pClientHandler);
-	virtual ~ServerHandler();
+	Subscription();
+	virtual ~Subscription();
 
-	Group&	group(const std::vector<Poco::UInt8>& id);
+	void				pushAudioPacket(PacketReader& packet);
+	void				pushVideoPacket(PacketReader& packet);
 
-	bool connection(Peer& peer);
-	void failed(Peer& peer,const std::string& msg);
-	void disconnection(Peer& peer);
-
-	Streams				streams;
-
-	const Poco::UInt32	keepAlivePeer;
-	const Poco::UInt32	keepAliveServer;
+	void				add(Listener& listener);
+	void				remove(Listener& listener);
+	Poco::UInt32		count();
+	
+	const Poco::UInt32	idPublisher;
 private:
-	ClientHandler*					_pClientHandler;
-	std::list<Group*>				_groups;
+	std::list<Listener*>	_listeners;
 };
+
+inline Poco::UInt32 Subscription::count() {
+	return _listeners.size();
+}
 
 
 } // namespace Cumulus

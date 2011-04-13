@@ -34,7 +34,7 @@ private:
 	static std::string	s_name;
 
 	void complete();
-	void rawHandler(PacketReader& data);
+	void rawHandler(Poco::UInt8 type,PacketReader& data);
 
 	std::list<const Peer*>		_bestPeers;
 	Group*						_pGroup;

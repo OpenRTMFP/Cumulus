@@ -15,24 +15,26 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "Listener.h"
+#include "Poco/StreamCopier.h"
 
-#include "Cumulus.h"
-#include "PacketReader.h"
-
+using namespace Poco;
 
 namespace Cumulus {
 
+Listener::Listener() {
+	
+}
 
-class Stream {
-public:
-	Stream();
-	virtual ~Stream();
+Listener::~Listener() {
+}
 
-private:
-
-
-};
+void Listener::pushPacket(UInt8 type,PacketReader& packet) {
+	BinaryWriter& data = writer();
+	data.write8(type);
+	StreamCopier::copyStream(packet.stream(),data.stream());
+	flush();
+}
 
 
 } // namespace Cumulus

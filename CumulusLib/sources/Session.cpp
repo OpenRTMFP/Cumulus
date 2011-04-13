@@ -131,6 +131,11 @@ void Session::setFailed(const string& msg) {
 	_failed=true;
 	if(_peer.state!=Client::NONE)
 		_serverHandler.failed(_peer,msg);
+	// Set flows in consumed state
+	map<UInt8,Flow*>::const_iterator it;
+	for(it=_flows.begin();it!=_flows.end();++it)
+		it->second->complete();
+	// unsubscribe peer for its groups
 	_peer.unsubscribeGroups();
 	WARN("Session failed on the server side : %s",msg.c_str());
 }
@@ -351,9 +356,8 @@ void Session::packetHandler(PacketReader& packet) {
 				UInt32 stage = message.read7BitValue();
 				flow(idFlow).acknowledgment(stage);
 				if(ack==0) {
-					string error;
-					format(error,"The flow '%02?u' has received a negative ack for the stage '%u'",idFlow,stage);
-					fail(error);
+					WARN("The flow '%02x' has received a negative ack for the stage '%u'",idFlow,stage);
+					flow(idFlow).fail();
 				}
 				// else {
 				// In fact here, we should send a 0x18 message (with id flow),
@@ -386,31 +390,36 @@ void Session::packetHandler(PacketReader& packet) {
 						message.next(length);
 						length=message.read8();
 					}
-					if(!message.available())
+					if(length>0)
 						ERROR("Bad header message part, finished before scheduled");
 				}
 				
 				if(!pFlow)
 					pFlow = &flow(idFlow);
 
-				if(stage>pFlow->stageRcv()) {
+				if(stage > pFlow->stageRcv()) {
 					if(nbStageNAck>1) {
+						// CASE stage superior than the current receiving stage
 						// Here it means that a message with a stage superior to the current receiving stage has been sent
-						// We must ignore this message for that the client resend the precedent packet!
-						WARN("A packet has been lost on the flow '%02x'",idFlow)
+						// We must ignore this message for that the client resend the precedent packet, but "ack" the last packet received to try to accelerate the packet repetition!
+						// In true we should save the packet for more later (TODO?), but it happens very rarely!
+						WARN("A packet has been lost on the flow '%02x'",idFlow);
+						PacketWriter& writer = writeMessage(0x51,2+Util::Get7BitValueSize(pFlow->stageRcv()));
+						writer.write8(idFlow);
+						writer.write8(0x3f); // ack
+						writer.write7BitValue(pFlow->stageRcv());
 						pFlow=NULL;
 						break;
 					}
 					else
-						ERROR("A flow '%02x' message with a '%u' stage more superior than one with the current stage '%u' has been received'",idFlow,stage,flow(idFlow).stageRcv());
+						ERROR("A flow '%02x' message with a '%u' stage more superior than one with the current stage '%u' has been received'",idFlow,stage,pFlow->stageRcv());
 				}
 			}	
 			case 0x11 : {
 				++stage;
-
+				
 				if(!pFlow)
-					break; // Here it means that a message with a stage superior to the current receiving stage has been sent
-					       // We must ignore this message for that the client resend the lacked packet!
+					break; // see above at "CASE stage superior than the current receiving stage"
 
 				// has Header?
 				if(type==0x11)
@@ -448,8 +457,10 @@ void Session::packetHandler(PacketReader& packet) {
 
 Flow& Session::flow(Poco::UInt8 id) {
 	map<UInt8,Flow*>::const_iterator it = _flows.find(id);
-	if(it==_flows.end())
+	if(it==_flows.end()) {
+		((UInt8&)_flowNull.id) = id;
 		return _flowNull;
+	}
 	return *it->second;
 }
 
@@ -461,8 +472,8 @@ Flow* Session::createFlow(const string& signature,Poco::UInt8 id) {
 			pFlow = new FlowConnection(id,_peer,*this,_serverHandler);	
 		else if(signature==FlowGroup::s_signature)
 			pFlow = new FlowGroup(id,_peer,*this,_serverHandler);
-		else if(signature==FlowStream::s_signature)
-			pFlow = new FlowStream(id,_peer,*this,_serverHandler);
+		else if(signature.compare(0,FlowStream::s_signature.length(),FlowStream::s_signature)==0)
+			pFlow = new FlowStream(id,signature,_peer,*this,_serverHandler);
 		else
 			ERROR("New flow unknown : %s",Util::FormatHex((const UInt8*)signature.c_str(),signature.size()).c_str());
 		if(pFlow)

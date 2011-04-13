@@ -22,7 +22,6 @@
 #include "PacketWriter.h"
 #include "Util.h"
 #include "Logs.h"
-#include "Poco/RandomStream.h"
 #include "string.h"
 
 
@@ -33,7 +32,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _handler(keepAliveServer,keepAlivePeer,NULL),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_handler) {
+RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _handler(keepAliveServer,keepAlivePeer,NULL),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_handler),_nextIdSession(0) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -41,7 +40,7 @@ RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _handler(k
 }
 
 
-RTMFPServer::RTMFPServer(ClientHandler& clientHandler,UInt8 keepAliveServer,UInt8 keepAlivePeer) : _handler(keepAliveServer,keepAlivePeer,&clientHandler),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_handler) {
+RTMFPServer::RTMFPServer(ClientHandler& clientHandler,UInt8 keepAliveServer,UInt8 keepAlivePeer) : _handler(keepAliveServer,keepAlivePeer,&clientHandler),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_handler),_nextIdSession(0) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -120,6 +119,8 @@ void RTMFPServer::run() {
 			size = _socket.receiveFrom(buff,sizeof(buff),sender);
 		} catch(Exception& ex) {
 			WARN("Main socket reception : %s",ex.displayText().c_str());
+			_socket.close();
+			_socket.bind(address,true);
 			continue;
 		}
 
@@ -168,21 +169,19 @@ void RTMFPServer::run() {
 
 
 UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* decryptKey,const UInt8* encryptKey) {
-	UInt32 id = 0;
-	RandomInputStream ris;
-	while(id==0 || _sessions.find(id))
-		ris.read((char*)(&id),4);
+	while(_nextIdSession==0 || _sessions.find(_nextIdSession))
+		++_nextIdSession;
 
 	if(_pCirrus) {
-		Middle* pMiddle = new Middle(id,farId,peer,decryptKey,encryptKey,_socket,_handler,*_pCirrus);
+		Middle* pMiddle = new Middle(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,_handler,*_pCirrus);
 		_sessions.add(pMiddle);
 		DEBUG("500ms sleeping to wait cirrus handshaking");
 		Thread::sleep(500); // to wait the cirrus handshake
 		pMiddle->manage();
 	} else
-		_sessions.add(new Session(id,farId,peer,decryptKey,encryptKey,_socket,_handler));
+		_sessions.add(new Session(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,_handler));
 
-	return id;
+	return _nextIdSession;
 }
 
 

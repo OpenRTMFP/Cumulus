@@ -17,7 +17,6 @@
 
 #include "FlowStream.h"
 #include "Logs.h"
-#include "Poco/StreamCopier.h"
 
 using namespace std;
 using namespace Poco;
@@ -25,51 +24,91 @@ using namespace Poco;
 
 namespace Cumulus {
 
-string FlowStream::s_signature("\x00\x54\x43\x04\x01",5);
+string FlowStream::s_signature("\x00\x54\x43\x04",4);
 string FlowStream::s_name("NetStream");
 
-FlowStream::FlowStream(UInt8 id,Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(id,s_signature,s_name,peer,session,serverHandler) {
+FlowStream::FlowStream(UInt8 id,const string& signature,Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(id,_signature,s_name,peer,session,serverHandler),_signature(signature),_pSubscription(NULL),_state(IDLE) {
+	PacketReader reader((const UInt8*)signature.c_str(),signature.length());
+	reader.next(4);
+	_index = reader.read7BitValue();
 }
 
 FlowStream::~FlowStream() {
 }
 
+void FlowStream::audioHandler(PacketReader& packet) {
+	if(_pSubscription && _pSubscription->idPublisher == _index)
+		_pSubscription->pushAudioPacket(packet);
+	else
+		fail();
+}
 
-void FlowStream::rawHandler(PacketReader& data) {
-	UInt8 type = data.read8();
-	DEBUG("%02x",type);
-	if(type==0x09 || type==0x08) { // video or sound
-		if(serverHandler.pFlowTest) {
-			MessageWriter& packet = serverHandler.pFlowTest->writeRawMessage(true);
-			packet.write8(type);
-			StreamCopier::copyStream(data.stream(),packet.stream());
-			serverHandler.pFlowTest->flush();
-		}
-	}
+void FlowStream::videoHandler(PacketReader& packet) {
+	if(_pSubscription && _pSubscription->idPublisher == _index)
+		_pSubscription->pushVideoPacket(packet);
+	else
+		fail();
+}
+
+void FlowStream::rawHandler(UInt8 type,PacketReader& data) {
+	if(type==0x04) {
+		_pSubscription = serverHandler.streams.subscription(_index);
+		if(!_pSubscription)
+			fail();
+	} else
+		Flow::rawHandler(type,data);
 }
 
 void FlowStream::complete() {
 	Flow::complete();
-	if(serverHandler.pFlowTest==this)
-		((ServerHandler&)serverHandler).pFlowTest = NULL;
+	// Stop the current  job
+	if(_state==PUBLISHING)
+		serverHandler.streams.unpublish(_index,_name);
+	 else if(_state==PLAYING)
+		serverHandler.streams.unsubscribe(_name,*this);
+	_state=IDLE;
 }
 
 void FlowStream::messageHandler(const string& name,AMFReader& message) {
 
 	if(name=="publish") {
-		// TODO add a failed scenario? or "badname" scenario?
-		string nameStream,typeStream;
-		message.read(nameStream);
+		// Stop a precedent publishment
+		if(_state==PUBLISHING)
+			serverHandler.streams.unpublish(_index,_name);
+		_state = IDLE;
+
+		// TODO add a failed scenario?
+		string type;
+		message.read(_name);
 		if(message.available())
-			message.read(typeStream);
-		writeStatusResponse("Start","'" + nameStream +"' is now published");
+			message.read(type); // TODO record!
+
+		if(serverHandler.streams.publish(_index,_name)) {
+			writeStatusResponse("Start","'" + _name +"' is now published");
+			_state = PUBLISHING;
+		} else
+			writeErrorResponse("'" + _name +"' is already publishing","BadName");
 
 	} else if(name=="play") {
-		// TODO add a failed scenario? or "badname" scenario?
-		string nameStream;
-		message.read(nameStream);
-		writeStatusResponse("Start","Started playing '" + nameStream +"'");
-		((ServerHandler&)serverHandler).pFlowTest = this;
+		// Stop a precedent playing
+		if(_state==PLAYING)
+			serverHandler.streams.unsubscribe(_name,*this);
+		_state = PLAYING;
+
+		// TODO add a failed scenario?
+		message.read(_name);
+		writeStatusResponse("Start","Started playing '" + _name +"'");
+		serverHandler.streams.subscribe(_name,*this);
+	} else if(name == "closeStream") {
+		// Stop the current  job
+		if(_state==PUBLISHING) {
+			serverHandler.streams.unpublish(_index,_name);
+			writeSuccessResponse("Stopped publishing '" + _name +"'"); // TODO doesn't work!
+		} else if(_state==PLAYING) {
+			serverHandler.streams.unsubscribe(_name,*this);
+			writeStatusResponse("Stop","Stopped playing '" + _name +"'"); // TODO doesn't work!
+		}
+		_state=IDLE;
 	} else
 		Flow::messageHandler(name,message);
 

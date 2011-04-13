@@ -21,21 +21,26 @@
 #include "string.h"
 #include "Session.h"
 
+#define EMPTY	0x00
+#define AUDIO	0x08
+#define VIDEO	0x09
+#define AMF		0x14
+
 using namespace std;
 using namespace Poco;
 
 namespace Cumulus {
 
 
-Flow::Flow(UInt8 id,const string& signature,const string& name,Peer& peer,Session& session,const ServerHandler& serverHandler) : id(id),_stageRcv(0),_stageSnd(0),peer(peer),serverHandler(serverHandler),_completed(false),_name(name),_signature(signature),_pBuffer(NULL),_sizeBuffer(0),_callbackHandle(0),_session(session) {
-	_messageNull._stream.setstate(ios_base::eofbit);
+Flow::Flow(UInt8 id,const string& signature,const string& name,Peer& peer,Session& session,ServerHandler& serverHandler) : id(id),_stageRcv(0),_stageSnd(0),peer(peer),serverHandler(serverHandler),_completed(false),_name(name),_signature(signature),_pBuffer(NULL),_sizeBuffer(0),_callbackHandle(0),_session(session) {
+	_messageNull.rawWriter.stream().setstate(ios_base::eofbit);
 }
 
 Flow::~Flow() {
 	if(!_completed)
 		complete();
 	// delete messages
-	list<MessageWriter*>::const_iterator it;
+	list<Message*>::const_iterator it;
 	for(it=_messages.begin();it!=_messages.end();++it)
 		delete *it;
 	// delete receive buffer
@@ -50,26 +55,26 @@ void Flow::acknowledgment(Poco::UInt32 stage) {
 		ERROR("Acknowledgment received superior than the current sending stage : '%u' instead of '%u'",stage,_stageSnd);
 		return;
 	}
-	list<MessageWriter*>::const_iterator it=_messages.begin();
-	if(_messages.empty() || stage<=(*it)->_startStage) {
+	list<Message*>::const_iterator it=_messages.begin();
+	if(_messages.empty() || stage<=(*it)->startStage) {
 		WARN("Acknowledgment of stage '%u' received lower than all repeating messages of flow '%02x', certainly a obsolete ack packet",stage,id);
 		return;
 	}
 	
 	// Ack!
 	// Here repeating messages exist, and minStage < stage <=_stageSnd
-	UInt32 count = stage - (*it)->_startStage;
+	UInt32 count = stage - (*it)->startStage;
 
-	while(count>0 && it!=_messages.end() && !(*it)->_fragments.empty()) { // if _fragments.empty(), it's a message not sending yet (not flushed)
-		MessageWriter& message(**it);
+	while(count>0 && it!=_messages.end() && !(*it)->fragments.empty()) { // if _fragments.empty(), it's a message not sending yet (not flushed)
+		Message& message(**it);
 		
-		while(count > 0 && !message._fragments.empty()) {
-			message._fragments.pop_front();
+		while(count > 0 && !message.fragments.empty()) {
+			message.fragments.pop_front();
 			--count;
-			++message._startStage;
+			++message.startStage;
 		}
 
-		if(message._fragments.empty()) {
+		if(message.fragments.empty()) {
 			delete *it;
 			_messages.pop_front();
 			it=_messages.begin();
@@ -77,34 +82,36 @@ void Flow::acknowledgment(Poco::UInt32 stage) {
 	}
 
 	// rest messages not ack?
-	if(_messages.begin()!=_messages.end() && !(*_messages.begin())->_fragments.empty())
+	if(_messages.begin()!=_messages.end() && !(*_messages.begin())->fragments.empty())
 		_trigger.reset();
 	else
 		_trigger.stop();
 }
 
-bool Flow::unpack(PacketReader& reader) {
+UInt8 Flow::unpack(PacketReader& reader) {
 	if(reader.available()==0)
-		return true;
-	UInt8 flag = reader.read8();
-	switch(flag) {
+		return EMPTY;
+	UInt8 type = reader.read8();
+	switch(type) {
 		// amf content
 		case 0x11:
 			reader.next(1);
-		case 0x14:
+		case AMF:
 			reader.next(4);
-			return false;
-		// raw data
-		default:
-			ERROR("Unpacking flag '%02x' unknown",flag);
-			reader.reset(reader.position()-1);
+			return AMF;
+		case AUDIO:
+		case VIDEO:
 			break;
+		// raw data
 		case 0x04:
 			reader.next(4);
 		case 0x01:
-			;
+			break;
+		default:
+			ERROR("Unpacking type '%02x' unknown",type);
+			break;
 	}
-	return true;
+	return type;
 }
 
 void Flow::raise() {
@@ -122,27 +129,27 @@ void Flow::raiseMessage() {
 	if(_messages.empty())
 		_trigger.stop();
 
-	list<MessageWriter*>::const_iterator it;
+	list<Message*>::const_iterator it;
 	bool header = true;
 	UInt8 nbStageNAck=0;
 
 	for(it=_messages.begin();it!=_messages.end();++it) {
-		MessageWriter& message(**it);
+		Message& message(**it);
 
 		// just messages not flushed, so nothing to do
-		if(message._fragments.empty())
+		if(message.fragments.empty())
 			return;
 
-		UInt32 stage = message._startStage;
+		UInt32 stage = message.startStage;
 
-		list<UInt32>::const_iterator itFrag=message._fragments.begin();
+		list<UInt32>::const_iterator itFrag=message.fragments.begin();
 		UInt32 fragment(*itFrag);
 		bool end=false;
-		message._stream.resetReading(fragment);
+		message.reset();
 		
-		while(!end && message._fragments.end()!=itFrag++) {
-			int size = message._stream.size();
-			end = itFrag==message._fragments.end();
+		while(!end && message.fragments.end()!=itFrag++) {
+			int size = message.available();
+			end = itFrag==message.fragments.end();
 			if(!end) {
 				size = (*itFrag)-fragment;
 				fragment = *itFrag;
@@ -165,7 +172,7 @@ void Flow::raiseMessage() {
 			UInt8 flags = stage==0 ? MESSAGE_HEADER : 0x00;
 			if(_completed)
 				flags |= MESSAGE_END;
-			if(stage > message._startStage)
+			if(stage > message.startStage)
 				flags |= MESSAGE_WITH_BEFOREPART; // fragmented
 			if(!end)
 				flags |= MESSAGE_WITH_AFTERPART;
@@ -192,20 +199,20 @@ void Flow::raiseMessage() {
 }
 
 void Flow::flushMessages() {
-	list<MessageWriter*>::const_iterator it;
+	list<Message*>::const_iterator it;
 	bool header = true;
 	UInt8 nbStageNAck=0;
 
 	for(it=_messages.begin();it!=_messages.end();++it) {
-		MessageWriter& message(**it);
-		if(!message._fragments.empty()) {
-			nbStageNAck += message._fragments.size();
+		Message& message(**it);
+		if(!message.fragments.empty()) {
+			nbStageNAck += message.fragments.size();
 			continue;
 		}
 
 		_trigger.start();
 
-		message._startStage = _stageSnd;
+		message.startStage = _stageSnd;
 
 		UInt32 fragments= 0;
 
@@ -220,7 +227,7 @@ void Flow::flushMessages() {
 			}
 
 			bool head = header;
-			int size = message._stream.size()+4;
+			int size = message.available()+4;
 			UInt8 stageSize = Util::Get7BitValueSize(_stageSnd+1);
 
 			if(head) {
@@ -261,10 +268,10 @@ void Flow::flushMessages() {
 			}
 			
 			message.read(writer,size);
-			message._fragments.push_back(fragments);
+			message.fragments.push_back(fragments);
 			fragments += size;
 
-		} while(message._stream.size()>0);
+		} while(message.available()>0);
 	}
 }
 
@@ -279,32 +286,32 @@ void Flow::fail() {
 	flushMessages();
 }
 
-MessageWriter& Flow::createMessage() {
+Message& Flow::createMessage() {
 	if(_completed)
 		return _messageNull;
-	MessageWriter* pMessage = new MessageWriter();
+	Message* pMessage = new Message();
 	if(_stageSnd==0 && _messages.empty()) {
-		pMessage->writeString8(_signature);
-		pMessage->write8(0x02); // following size
-		pMessage->write8(0x0a); // Unknown!
-		pMessage->write8(id);
-		pMessage->write8(0); // marker of end for this part
+		pMessage->rawWriter.writeString8(_signature);
+		pMessage->rawWriter.write8(0x02); // following size
+		pMessage->rawWriter.write8(0x0a); // Unknown!
+		pMessage->rawWriter.write8(id);
+		pMessage->rawWriter.write8(0); // marker of end for this part
 	}
 	_messages.push_back(pMessage);
 	return *pMessage;
 }
-MessageWriter& Flow::writeRawMessage(bool withoutHeader) {
-	if(withoutHeader)
-		return createMessage();
-	MessageWriter& message(createMessage());
-	message.write8(0x04);
-	message.write32(0);
-	return message;
+BinaryWriter& Flow::writeRawMessage(bool withoutHeader) {
+	Message& message(createMessage());
+	if(!withoutHeader) {
+		message.rawWriter.write8(0x04);
+		message.rawWriter.write32(0);
+	}
+	return message.rawWriter;
 }
 AMFWriter& Flow::writeAMFMessage() {
-	MessageWriter& message(createMessage());
-	message.amf.writeResponseHeader("_result",_callbackHandle);
-	return message.amf;
+	Message& message(createMessage());
+	message.amfWriter.writeResponseHeader("_result",_callbackHandle);
+	return message.amfWriter;
 }
 AMFObjectWriter Flow::writeSuccessResponse(const string& description,const string& name) {
 	AMFWriter& message(writeAMFMessage());
@@ -323,8 +330,8 @@ AMFObjectWriter Flow::writeSuccessResponse(const string& description,const strin
 	return object;
 }
 AMFObjectWriter Flow::writeStatusResponse(const string& name,const string& description) {
-	MessageWriter& message(createMessage());
-	message.amf.writeResponseHeader("onStatus",_callbackHandle);
+	Message& message(createMessage());
+	message.amfWriter.writeResponseHeader("onStatus",_callbackHandle);
 
 	string code(_code);
 	if(!name.empty()) {
@@ -332,7 +339,7 @@ AMFObjectWriter Flow::writeStatusResponse(const string& name,const string& descr
 		code.append(name);
 	}
 
-	AMFObjectWriter object(message.amf);
+	AMFObjectWriter object(message.amfWriter);
 	object.write("level","status");
 	object.write("code",code);
 	if(!description.empty())
@@ -340,8 +347,8 @@ AMFObjectWriter Flow::writeStatusResponse(const string& name,const string& descr
 	return object;
 }
 AMFObjectWriter Flow::writeErrorResponse(const string& description,const string& name) {
-	MessageWriter& message(createMessage());
-	message.amf.writeResponseHeader("_error",_callbackHandle);
+	Message& message(createMessage());
+	message.amfWriter.writeResponseHeader("_error",_callbackHandle);
 
 	string code(_code);
 	if(!name.empty()) {
@@ -349,7 +356,7 @@ AMFObjectWriter Flow::writeErrorResponse(const string& description,const string&
 		code.append(name);
 	}
 
-	AMFObjectWriter object(message.amf);
+	AMFObjectWriter object(message.amfWriter);
 	object.write("level","error");
 	object.write("code",code);
 	if(!description.empty())
@@ -360,6 +367,9 @@ AMFObjectWriter Flow::writeErrorResponse(const string& description,const string&
 }
 
 void Flow::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
+	if(_completed)
+		return;
+
 	if(stage<=_stageRcv) {
 		DEBUG("Flow '%02x' stage '%u' has already been received",id,stage);
 		return;
@@ -396,29 +406,41 @@ void Flow::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
 	if(!pMessage)
 		pMessage = new PacketReader(message);
 
-	bool isRaw = unpack(*pMessage);
-	_callbackHandle = 0;
-	string name;
-	AMFReader reader(*pMessage);
-	if(!isRaw) {
-		reader.read(name);
-		_callbackHandle = reader.readNumber();
-		reader.skipNull();
+	UInt8 type = unpack(*pMessage);
+	if(type!=EMPTY) {
+		_callbackHandle = 0;
+		string name;
+		AMFReader amf(*pMessage);
+		if(type==AMF) {
+			amf.read(name);
+			_callbackHandle = amf.readNumber();
+			amf.skipNull();
+		}
+
+		// create code prefix
+		_code.assign(_name);
+		if(!name.empty()) {
+			_code.append(".");
+			_code.push_back(toupper(name[0]));
+			if(name.size()>1)
+				_code.append(&name[1]);
+		}
+
+		switch(type) {
+			case AMF:
+				messageHandler(name,amf);
+				break;
+			case AUDIO:
+				audioHandler(*pMessage);
+				break;
+			case VIDEO:
+				videoHandler(*pMessage);
+				break;
+			default:
+				rawHandler(type,*pMessage);
+		}
 	}
 
-	// create code prefix
-	_code.assign(_name);
-	if(!name.empty()) {
-		_code.append(".");
-		_code.push_back(toupper(name[0]));
-		if(name.size()>1)
-			_code.append(&name[1]);
-	}
-	
-	if(isRaw)
-		rawHandler(*pMessage);
-	else
-		messageHandler(name,reader);
 	delete pMessage;
 
 	if(flags&MESSAGE_END)
@@ -433,8 +455,14 @@ void Flow::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
 void Flow::messageHandler(const std::string& name,AMFReader& message) {
 	ERROR("Message '%s' unknown for flow '%02x'",name.c_str(),id);
 }
-void Flow::rawHandler(PacketReader& data) {
+void Flow::rawHandler(UInt8 type,PacketReader& data) {
 	ERROR("Raw message unknown for flow '%02x'",id);
+}
+void Flow::audioHandler(PacketReader& packet) {
+	ERROR("Audio packet untreated for flow '%02x'",id);
+}
+void Flow::videoHandler(PacketReader& packet) {
+	ERROR("Video packet untreated for flow '%02x'",id);
 }
 
 

@@ -19,21 +19,46 @@
 
 #include "Cumulus.h"
 #include "Flow.h"
+#include "Subscription.h"
 
 namespace Cumulus {
 
-class FlowStream : public Flow {
+class FlowStream : public Flow,private Listener {
 public:
-	FlowStream(Poco::UInt8 id,Peer& peer,Session& session,ServerHandler& serverHandler);
+	FlowStream(Poco::UInt8 id,const std::string& signature,Peer& peer,Session& session,ServerHandler& serverHandler);
 	virtual ~FlowStream();
 
 	static std::string	s_signature;
 private:
+	enum StreamState {
+		IDLE,
+		PUBLISHING,
+		PLAYING
+	};
+
 	void  complete();
 	static std::string	s_name;
-	void rawHandler(PacketReader& data);
+
+	void rawHandler(Poco::UInt8 type,PacketReader& data);
+	void audioHandler(PacketReader& packet);
+	void videoHandler(PacketReader& packet);
 	void messageHandler(const std::string& name,AMFReader& message);
+
+	std::string		_signature;
+	Poco::UInt32	_index;
+	Subscription*	_pSubscription;
+	StreamState		_state;
+	std::string		_name;
+
+	BinaryWriter& writer();
+	void flush();
 };
 
+inline BinaryWriter& FlowStream::writer() {
+	return writeRawMessage(true);
+}
+inline void FlowStream::flush() {
+	return Flow::flush();
+}
 
 } // namespace Cumulus

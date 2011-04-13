@@ -15,18 +15,36 @@
 	This file is a part of Cumulus.
 */
 
-#include "Stream.h"
+#pragma once
 
-
+#include "Cumulus.h"
+#include "PacketReader.h"
+#include "BinaryWriter.h"
 
 namespace Cumulus {
 
-Stream::Stream() {
+class Listener {
+public:
+	Listener();
+	virtual ~Listener();
+
+	void pushAudioPacket(PacketReader& packet); 
+	void pushVideoPacket(PacketReader& packet);
 	
+private:
+	void pushPacket(Poco::UInt8 type,PacketReader& packet);
+
+	virtual void flush()=0;
+	virtual BinaryWriter& writer()=0;
+};
+
+
+inline void Listener::pushAudioPacket(PacketReader& packet) {
+	pushPacket(0x08,packet);
 }
 
-
-Stream::~Stream() {
+inline void Listener::pushVideoPacket(PacketReader& packet) {
+	pushPacket(0x09,packet);
 }
 
 

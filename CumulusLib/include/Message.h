@@ -15,27 +15,40 @@
 	This file is a part of Cumulus.
 */
 
-#include "MessageWriter.h"
+#pragma once
 
-using namespace std;
-using namespace Poco;
-using namespace Poco::Net;
+#include "Cumulus.h"
+#include "BinaryWriter.h"
+#include "AMFWriter.h"
+#include "BinaryStream.h"
+#include "PacketWriter.h"
+#include <list>
 
 namespace Cumulus {
 
-MessageWriter::MessageWriter() : BinaryWriter(_stream),amf(*this),_startStage(0) {
-	
+
+class Message {
+public:
+	Message();
+	virtual ~Message();
+
+	AMFWriter					amfWriter;
+	BinaryWriter				rawWriter;
+
+	int							available();
+	void						reset();
+	void						read(PacketWriter& writer,int size);
+	std::list<Poco::UInt32>		fragments;
+	Poco::UInt32				startStage;
+
+private:
+	BinaryStream				_stream;
+};
+
+inline int Message::available() {
+	return _stream.size();
 }
 
-
-MessageWriter::~MessageWriter() {
-
-}
-
-void MessageWriter::read(PacketWriter& writer,int size) {
-	_stream.read((char*)(writer.begin()+writer.position()),size);
-	writer.next(size);
-}
 
 
 } // namespace Cumulus

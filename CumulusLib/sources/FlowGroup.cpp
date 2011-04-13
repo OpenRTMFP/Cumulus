@@ -43,30 +43,33 @@ void FlowGroup::complete() {
 }
 
 
-void FlowGroup::rawHandler(PacketReader& data) {
+void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 
-	if(data.available()>0) {
-		UInt32 size = data.read7BitValue();
+	if(type==0x01) {
+		if(data.available()>0) {
+			UInt32 size = data.read7BitValue();
 
-		vector<UInt8> groupId(size);
-		data.readRaw(&groupId[0],size);
+			vector<UInt8> groupId(size);
+			data.readRaw(&groupId[0],size);
 
-		_pGroup = &serverHandler.group(groupId);
+			_pGroup = &serverHandler.group(groupId);
 
-		_pGroup->bestPeers(_bestPeers,peer);
+			_pGroup->bestPeers(_bestPeers,peer);
 
-		_pGroup->addPeer(peer);
-		if(_bestPeers.empty())
-			return;
+			_pGroup->addPeer(peer);
+			if(_bestPeers.empty())
+				return;
 
-		while(!_bestPeers.empty()) {
-			MessageWriter& response(writeRawMessage(true));
-		
-			response.write8(0x0b); // unknown
-			response.writeRaw(_bestPeers.front()->id,32);
-			_bestPeers.pop_front();
+			while(!_bestPeers.empty()) {
+				BinaryWriter& response(writeRawMessage(true));
+			
+				response.write8(0x0b); // unknown
+				response.writeRaw(_bestPeers.front()->id,32);
+				_bestPeers.pop_front();
+			}
 		}
-	}
+	} else
+		Flow::rawHandler(type,data);
 }
 
 } // namespace Cumulus
