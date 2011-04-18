@@ -28,6 +28,7 @@ public:
 	Subscription();
 	virtual ~Subscription();
 
+	void				pushRawPacket(Poco::UInt8 type,PacketReader& packet);
 	void				pushAudioPacket(PacketReader& packet);
 	void				pushVideoPacket(PacketReader& packet);
 

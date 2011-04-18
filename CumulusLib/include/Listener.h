@@ -28,23 +28,21 @@ public:
 	Listener();
 	virtual ~Listener();
 
+	void pushRawPacket(Poco::UInt8 type,PacketReader& packet);
 	void pushAudioPacket(PacketReader& packet); 
 	void pushVideoPacket(PacketReader& packet);
 	
 private:
-	void pushPacket(Poco::UInt8 type,PacketReader& packet);
-
 	virtual void flush()=0;
 	virtual BinaryWriter& writer()=0;
 };
 
-
 inline void Listener::pushAudioPacket(PacketReader& packet) {
-	pushPacket(0x08,packet);
+	pushRawPacket(0x08,packet);
 }
 
 inline void Listener::pushVideoPacket(PacketReader& packet) {
-	pushPacket(0x09,packet);
+	pushRawPacket(0x09,packet);
 }
 
 

@@ -29,9 +29,11 @@ Listener::Listener() {
 Listener::~Listener() {
 }
 
-void Listener::pushPacket(UInt8 type,PacketReader& packet) {
+void Listener::pushRawPacket(UInt8 type,PacketReader& packet) {
 	BinaryWriter& data = writer();
 	data.write8(type);
+	if(type==0x04)
+		data.write32(0);
 	StreamCopier::copyStream(packet.stream(),data.stream());
 	flush();
 }

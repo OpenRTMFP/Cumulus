@@ -18,6 +18,7 @@
 #include "Subscription.h"
 
 using namespace std;
+using namespace Poco;
 
 
 namespace Cumulus {
@@ -28,6 +29,15 @@ Subscription::Subscription():idPublisher(0) {
 
 
 Subscription::~Subscription() {
+}
+
+void Subscription::pushRawPacket(UInt8 type,PacketReader& packet) {
+	list<Listener*>::const_iterator it;
+	int pos = packet.position();
+	for(it=_listeners.begin();it!=_listeners.end();++it) {
+		(*it)->pushRawPacket(type,packet);
+		packet.reset(pos);
+	}
 }
 
 void Subscription::pushAudioPacket(PacketReader& packet) {

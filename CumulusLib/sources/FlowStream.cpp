@@ -31,6 +31,7 @@ FlowStream::FlowStream(UInt8 id,const string& signature,Peer& peer,Session& sess
 	PacketReader reader((const UInt8*)signature.c_str(),signature.length());
 	reader.next(4);
 	_index = reader.read7BitValue();
+	_pSubscription = serverHandler.streams.subscription(_index);
 }
 
 FlowStream::~FlowStream() {
@@ -51,11 +52,9 @@ void FlowStream::videoHandler(PacketReader& packet) {
 }
 
 void FlowStream::rawHandler(UInt8 type,PacketReader& data) {
-	if(type==0x04) {
-		_pSubscription = serverHandler.streams.subscription(_index);
-		if(!_pSubscription)
-			fail();
-	} else
+	if(_pSubscription)
+		_pSubscription->pushRawPacket(type,data);
+	else
 		Flow::rawHandler(type,data);
 }
 

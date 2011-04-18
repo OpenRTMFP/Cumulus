@@ -40,6 +40,7 @@ public:
 
 	Streams				streams;
 
+	const Poco::UInt8   id[32];
 	const Poco::UInt32	keepAlivePeer;
 	const Poco::UInt32	keepAliveServer;
 private:

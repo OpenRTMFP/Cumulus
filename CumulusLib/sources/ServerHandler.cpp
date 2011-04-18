@@ -25,7 +25,7 @@ namespace Cumulus {
 ServerHandler::ServerHandler(UInt8 keepAliveServer,UInt8 keepAlivePeer,ClientHandler* pClientHandler) :
 		keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),
 		keepAlivePeer(keepAlivePeer<5 ? 5000 : keepAlivePeer*1000),
-		_pClientHandler(pClientHandler) {
+		_pClientHandler(pClientHandler),id() {
 	
 }
 

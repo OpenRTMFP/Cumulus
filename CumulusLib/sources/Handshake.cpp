@@ -36,10 +36,9 @@ Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerHandler& serv
 	memcpy(&_certificat[68],"\x02\x15\x02\x02\x15\x05\x02\x15\x0E",9);
 
 	// Display far id flash side
-	UInt8 id[32];
-	EVP_Digest(_certificat,sizeof(_certificat),id,NULL,EVP_sha256(),NULL);
+	EVP_Digest(_certificat,sizeof(_certificat),(unsigned char *)serverHandler.id,NULL,EVP_sha256(),NULL);
 
-	INFO("Id of this cumulus server : %s",Util::FormatHex(id,32).c_str());
+	INFO("Id of this cumulus server : %s",Util::FormatHex(serverHandler.id,32).c_str());
 }
 
 
