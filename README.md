@@ -1,4 +1,3 @@
-
 Cumulus
 =======================================
 
@@ -85,8 +84,8 @@ The configuration file must have *CumulusService* as base name and can be a *ini
 
     <config>
       <port>1985</port>
-	  <keepAlivePeer>10</port>
-	  <keepAliveServer>15</port>
+	  <keepAlivePeer>10</keepAlivePeer>
+	  <keepAliveServer>15</keepAliveServer>
 	  <auth whitelist="true" />
     </config>
 
