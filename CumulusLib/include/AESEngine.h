@@ -22,7 +22,8 @@
 
 namespace Cumulus {
 
-#define AES_KEY_SIZE 0x20
+#define AES_KEY_SIZE	0x20
+#define KEY_SIZE		0x80
 
 class AESEngine
 {

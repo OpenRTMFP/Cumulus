@@ -32,6 +32,11 @@ BinaryWriter::~BinaryWriter() {
 	flush();
 }
 
+void BinaryWriter::writeString(const string& value) {
+	write7BitValue(value.size());
+	writeRaw(value);
+}
+
 void BinaryWriter::writeString8(const char* value,UInt8 size) {
 	write8(size);
 	writeRaw(value);

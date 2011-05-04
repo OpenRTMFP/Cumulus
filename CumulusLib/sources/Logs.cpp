@@ -24,10 +24,9 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Logger* Logs::s_pLogger(NULL);
-bool	Logs::s_dump(false);
-bool	Logs::s_dumpAll(false);
-UInt8	Logs::s_level(Logger::PRIO_INFO); // default log level
+Logger*			Logs::s_pLogger(NULL);
+Logs::DumpMode	Logs::s_dumpMode(NOTHING);
+UInt8			Logs::s_level(Logger::PRIO_INFO); // default log level
 
 Logs::Logs() {
 }
@@ -35,53 +34,50 @@ Logs::Logs() {
 Logs::~Logs() {
 }
 
-void Logs::EnableDump(bool all) {
-	s_dump=true;
-	s_dumpAll=all;
-}
 
-void Logs::Dump(const UInt8* data,int size,const char* header,bool required) {
-	if(!GetLogger() || !s_dump || (!s_dumpAll && !required))
-		return;
-	char out[PACKETRECV_SIZE*4];
-	int len = 0;
-	int i = 0;
-	int c = 0;
-	unsigned char b;
-	if(header) {
-		out[len++] = '\t';
-		c = strlen(header);
-		memcpy(out+len,header,c);
-		len += c;
-		out[len++] = '\n';
+void Logs::Dump(const UInt8* data,int size,const char* header,bool middle) {
+	UInt8 type = middle ? MIDDLE : EXTERNAL;
+	if(GetLogger() && s_dumpMode&type) {
+		char out[PACKETRECV_SIZE*4];
+		int len = 0;
+		int i = 0;
+		int c = 0;
+		unsigned char b;
+		if(header) {
+			out[len++] = '\t';
+			c = strlen(header);
+			memcpy(out+len,header,c);
+			len += c;
+			out[len++] = '\n';
+		}
+		while (i<size) {
+			c = 0;
+			out[len++] = '\t';
+			while ( (c < 16) && (i+c < size) ) {
+				b = data[i+c];
+				sprintf(out+len,"%X%X ", b/16, b & 0x0f );
+				len += 3;
+				++c;
+			}
+			while (c++ < 16) {
+				strcpy(out+len,"   ");
+				len += 3;
+			}
+			out[len++] = ' ';
+			c = 0;
+			while ( (c < 16) && (i+c < size) ) {
+				b = data[i+c];
+				if (b > 31)
+					out[len++] = b;
+				else
+					out[len++] = '.';
+				++c;
+			}
+			i += 16;
+			out[len++] = '\n';
+		}
+		GetLogger()->dumpHandler(out,len);
 	}
-	while (i<size) {
-		c = 0;
-		out[len++] = '\t';
-		while ( (c < 16) && (i+c < size) ) {
-			b = data[i+c];
-			sprintf(out+len,"%X%X ", b/16, b & 0x0f );
-			len += 3;
-			++c;
-		}
-		while (c++ < 16) {
-			strcpy(out+len,"   ");
-			len += 3;
-		}
-		out[len++] = ' ';
-		c = 0;
-		while ( (c < 16) && (i+c < size) ) {
-			b = data[i+c];
-			if (b > 31)
-				out[len++] = b;
-			else
-				out[len++] = '.';
-			++c;
-		}
-		i += 16;
-		out[len++] = '\n';
-	}
-	GetLogger()->dumpHandler(out,len);
 }
 
 

@@ -24,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Sessions::Sessions() : freqManage(2000000)/* 2 sec by default*/ {
+Sessions::Sessions() {
 }
 
 Sessions::~Sessions() {
@@ -69,11 +69,6 @@ Session* Sessions::find(UInt32 id) const {
 }
 
 void Sessions::manage() {
-	if(!_timeLastManage.isElapsed(freqManage))
-		return;
-
-	_timeLastManage.update();
-
 	map<UInt32,Session*>::iterator it= _sessions.begin();
 	while(it!=end()) {
 		it->second->manage();

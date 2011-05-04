@@ -40,8 +40,6 @@ public:
 
 	Iterator begin() const;
 	Iterator end() const;
-
-	const Poco::UInt32	freqManage;
 	
 	void	manage();
 	void	clear();
@@ -50,7 +48,6 @@ protected:
 
 private:
 	std::map<Poco::UInt32,Session*>	_sessions;
-	Poco::Timestamp					_timeLastManage;
 };
 
 inline Sessions::Iterator Sessions::begin() const {

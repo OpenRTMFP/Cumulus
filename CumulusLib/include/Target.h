@@ -18,31 +18,24 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "AESEngine.h"
-#include "Sessions.h"
-
-
+#include "RTMFP.h"
+#include "Poco/Net/SocketAddress.h"
 
 namespace Cumulus {
 
-class Middle;
-class Cirrus
-{
+class Cookie;
+class Target {
 public:
-	Cirrus(const Poco::Net::SocketAddress& address,Sessions& sessions);
-	virtual ~Cirrus();
+	Target(const Poco::Net::SocketAddress& address,Cookie* pCookie=NULL);
+	virtual ~Target();
 
-	const Middle*					findMiddle(const Poco::UInt8* peerId);
-	const Poco::Net::SocketAddress&	address();
+	const Poco::Net::SocketAddress	address;
+	const bool						isPeer;
+	const Poco::UInt8				peerId[32];
 
-private:
-	Sessions&					_sessions;
-	Poco::Net::SocketAddress	_address;
+	const Poco::UInt8				id[32];
+	const Poco::UInt8				publicKey[KEY_SIZE];
+	DH*								pDH;
 };
-
-inline const Poco::Net::SocketAddress& Cirrus::address() {
-	return _address;
-}
-
 
 } // namespace Cumulus

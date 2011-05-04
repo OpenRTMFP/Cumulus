@@ -40,6 +40,7 @@ public:
 	void writeString8(const char* value,Poco::UInt8 size);
 	void writeString16(const std::string& value);
 	void writeString16(const char* value,Poco::UInt16 size);
+	void writeString(const std::string& value);
 	void write7BitValue(Poco::UInt32 value);
 	void writeRandom(Poco::UInt16 size);
 	void writeAddress(const Address& address,bool publicFlag);

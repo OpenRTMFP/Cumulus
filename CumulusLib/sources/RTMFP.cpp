@@ -130,7 +130,7 @@ DH* RTMFP::BeginDiffieHellman(UInt8* pubKey) {
 	pDH->g = BN_new();
 
 	BN_set_word(pDH->g, 2); //group DH 2
-	BN_bin2bn(g_dh1024p,128,pDH->p); //prime number
+	BN_bin2bn(g_dh1024p,KEY_SIZE,pDH->p); //prime number
 	int ret = DH_generate_key(pDH); // TODO que faire de ret?
 
 	// It's our key public part
@@ -138,34 +138,32 @@ DH* RTMFP::BeginDiffieHellman(UInt8* pubKey) {
 	return pDH;
 }
 
-void RTMFP::EndDiffieHellman(DH* pDH,const UInt8* farPubKey,UInt8* sharedSecret) {
-	BIGNUM *bnFarPubKey = BN_bin2bn(farPubKey,0x80,NULL);
+void RTMFP::ComputeDiffieHellmanSecret(DH* pDH,const UInt8* farPubKey,UInt8* sharedSecret) {
+	BIGNUM *bnFarPubKey = BN_bin2bn(farPubKey,KEY_SIZE,NULL);
 	if(DH_compute_key(sharedSecret, bnFarPubKey,pDH)<=0)
 		ERROR("Diffie Hellman exchange failed : dh compute key error");
 	BN_free(bnFarPubKey);
-
-	DH_free(pDH);
 }
 
-void RTMFP::ComputeAsymetricKeys(const UInt8* sharedSecret,const UInt8* serverPubKey,const string& serverSignature,const string& clientCertificat,UInt8* requestKey,UInt8* responseKey) {
-	int bufSize = serverSignature.size()+128;
-	UInt8* buf = new UInt8[bufSize]();
-	memcpy(buf,serverSignature.c_str(),serverSignature.size());
-	memcpy(&buf[serverSignature.size()],serverPubKey,128);
-	UInt8* cert = (UInt8*)clientCertificat.c_str();
-	UInt8 md1[AES_KEY_SIZE];
-	UInt8 md2[AES_KEY_SIZE];
+void RTMFP::EndDiffieHellman(DH* pDH,const UInt8* farPubKey,UInt8* sharedSecret) {
+	ComputeDiffieHellmanSecret(pDH,farPubKey,sharedSecret);
+	EndDiffieHellman(pDH);
+}
+
+void RTMFP::ComputeAsymetricKeys(const UInt8* sharedSecret, const UInt8* initiatorNonce,UInt16 initNonceSize,
+														    const UInt8* responderNonce,UInt16 respNonceSize,
+														    UInt8* requestKey,UInt8* responseKey) {
+	UInt8 mdp1[AES_KEY_SIZE];
+	UInt8 mdp2[AES_KEY_SIZE];
 
 	// doing HMAC-SHA256 of one side
-	HMAC(EVP_sha256(),buf,bufSize,cert,clientCertificat.size(),md1,NULL);
-	// doing HMAC-SHA256 of the other side inverting the packet
-	HMAC(EVP_sha256(),cert,clientCertificat.size(),buf,bufSize,md2,NULL);
-	
-	delete [] buf;
+	HMAC(EVP_sha256(),responderNonce,respNonceSize,initiatorNonce,initNonceSize,mdp1,NULL);
+	// doing HMAC-SHA256 of the other side
+	HMAC(EVP_sha256(),initiatorNonce,initNonceSize,responderNonce,respNonceSize,mdp2,NULL);
 
-	// now doing HMAC-sha256 of both result with the shared secret DH key:\n");
-	HMAC(EVP_sha256(),sharedSecret,128,md1,sizeof(md1),requestKey,NULL);
-	HMAC(EVP_sha256(),sharedSecret,128,md2,sizeof(md2),responseKey,NULL);
+	// now doing HMAC-sha256 of both result with the shared secret DH key
+	HMAC(EVP_sha256(),sharedSecret,KEY_SIZE,mdp1,AES_KEY_SIZE,requestKey,NULL);
+	HMAC(EVP_sha256(),sharedSecret,KEY_SIZE,mdp2,AES_KEY_SIZE,responseKey,NULL);
 }
 
 UInt16 RTMFP::Time(Timestamp::TimeVal timeVal) {

@@ -18,19 +18,41 @@
 #pragma once
 
 #include "Cumulus.h"
-
+#include "RTMFP.h"
+#include "Target.h"
+#include "Peer.h"
 
 namespace Cumulus {
 
 
 class Cookie {
+	friend class Target;
 public:
 	Cookie(const std::string& queryUrl);
+	Cookie(Target& target);
 	virtual ~Cookie();
 
-	const std::string queryUrl;
+	const std::string				queryUrl;
+	const Poco::UInt32				id;
+	
+	void							computeKeys(const Poco::UInt8* initiatorKey,const Poco::UInt8* initiatorNonce,Poco::UInt16 initNonceSize,Poco::UInt8* decryptKey,Poco::UInt8* encryptKey);
+	bool							obsolete();
+	void							write(PacketWriter& writer);
 
+	// just for middle mode!
+	Target*							pTarget;
+private:
+	std::vector<Poco::UInt8>		_nonce;
+	Poco::Timestamp					_createdTimestamp;
+	DH*								_pDH;
+
+	Poco::UInt8						_buffer[256];
+	PacketWriter					_writer;
 };
+
+inline bool Cookie::obsolete() {
+	return _createdTimestamp.isElapsed(120000000); // after 2 mn
+}
 
 
 } // namespace Cumulus

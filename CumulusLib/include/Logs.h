@@ -31,19 +31,24 @@ namespace Cumulus {
 class CUMULUS_API Logs
 {
 public:
+	enum DumpMode {
+		NOTHING			= 0,
+		EXTERNAL        = 1,
+		MIDDLE			= 2,
+		ALL				= 3
+	};
+
 	static void			SetLogger(Logger& logger);
 	static void			SetLevel(Poco::UInt8 level);
-	static void			EnableDump(bool all=false);
-	static void			DisableDump();
-
+	static void			SetDump(DumpMode mode);
 
 #ifdef CUMULUS_LOGS
 	static Logger*				GetLogger();
 	static Poco::UInt8			GetLevel();
-	static void					Dump(const Poco::UInt8* data,int size,const char* header=NULL,bool required=true);
-	static void					Dump(PacketReader& packet,const char* header=NULL,bool required=true);
-	static void					Dump(PacketWriter& packet,const char* header=NULL,bool required=true);
-	static void					Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header=NULL,bool required=true);
+	static void					Dump(const Poco::UInt8* data,int size,const char* header=NULL,bool middle=false);
+	static void					Dump(PacketReader& packet,const char* header=NULL,bool middle=false);
+	static void					Dump(PacketWriter& packet,const char* header=NULL,bool middle=false);
+	static void					Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header=NULL,bool middle=false);
 #endif
 	
 	
@@ -52,13 +57,12 @@ private:
 	~Logs();
 	
 	static Logger*		s_pLogger;
-	static bool			s_dump;
-	static bool			s_dumpAll;
+	static DumpMode		s_dumpMode;
 	static Poco::UInt8  s_level;
 };
 
-inline void Logs::DisableDump() {
-	s_dump=false;
+inline void Logs::SetDump(DumpMode mode) {
+	s_dumpMode=mode;
 }
 
 inline void Logs::SetLevel(Poco::UInt8 level) {
@@ -72,14 +76,14 @@ inline void Logs::SetLogger(Logger& logger) {
 
 #ifdef CUMULUS_LOGS
 
-	inline void Logs::Dump(PacketReader& packet,const char* header,bool required) {
-		Dump(packet.current(),packet.available(),header,required);
+	inline void Logs::Dump(PacketReader& packet,const char* header,bool middle) {
+		Dump(packet.current(),packet.available(),header,middle);
 	}
-	inline void Logs::Dump(PacketWriter& packet,const char* header,bool required) {
-		Dump(packet.begin(),packet.length(),header,required);
+	inline void Logs::Dump(PacketWriter& packet,const char* header,bool middle) {
+		Dump(packet.begin(),packet.length(),header,middle);
 	}
-	inline void Logs::Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header,bool required) {
-		Dump(packet.begin()+offset,packet.length()-offset,header,required);
+	inline void Logs::Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header,bool middle) {
+		Dump(packet.begin()+offset,packet.length()-offset,header,middle);
 	}
 
 	inline Poco::UInt8 Logs::GetLevel() {

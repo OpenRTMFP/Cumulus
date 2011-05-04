@@ -22,8 +22,8 @@
 #include "PacketReader.h"
 #include "Handshake.h"
 #include "ServerHandler.h"
-#include "Cirrus.h"
 #include "Gateway.h"
+#include "Sessions.h"
 #include "Poco/Runnable.h"
 #include "Poco/Mutex.h"
 #include "Poco/Thread.h"
@@ -33,14 +33,22 @@
 
 namespace Cumulus {
 
+class CUMULUS_API RTMFPServerParams {
+public:
+	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),pCirrus(NULL),middle(false) {
+	}
+	Poco::UInt16				port;
+	bool						middle;
+	Poco::Net::SocketAddress*	pCirrus;
+};
+
 class CUMULUS_API RTMFPServer : public Poco::Runnable,private Gateway {
 public:
 	RTMFPServer(Poco::UInt8 keepAliveServer=15,Poco::UInt8 keepAlivePeer=10);
 	RTMFPServer(ClientHandler& clientHandler,Poco::UInt8 keepAliveServer=15,Poco::UInt8 keepAlivePeer=10);
 	virtual ~RTMFPServer();
 
-	void start(Poco::UInt16 port=RTMFP_DEFAULT_PORT,const Poco::Net::SocketAddress* pCirrus=NULL);
-	void start(const Poco::Net::SocketAddress* pCirrus);
+	void start(RTMFPServerParams& params=RTMFPServerParams());
 	void stop();
 	bool running();
 
@@ -48,7 +56,8 @@ private:
 	Session* findSession(Poco::UInt32 id);
 	void	 run();
 	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);
-	Poco::UInt32	createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey);
+	Poco::UInt32	createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie);
+	void			manage();
 
 	Handshake					_handshake;
 
@@ -58,15 +67,15 @@ private:
 	Poco::Thread				_mainThread;
 	Poco::Net::DatagramSocket	_socket;
 
-	Cirrus*						_pCirrus;
-	ServerHandler				_handler;
-	Sessions					_sessions;
-	Poco::UInt32				_nextIdSession;
-};
+	bool							_middle;
+	Target*							_pCirrus;
+	ServerHandler					_handler;
+	Sessions						_sessions;
+	Poco::UInt32					_nextIdSession;
 
-inline void RTMFPServer::start(const Poco::Net::SocketAddress* pCirrus) {
-	start(RTMFP_DEFAULT_PORT,pCirrus);
-}
+	Poco::Timestamp					_timeLastManage;
+	Poco::UInt32					_freqManage;
+};
 
 inline bool RTMFPServer::running() {
 	return _mainThread.isRunning();

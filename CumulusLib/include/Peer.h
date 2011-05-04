@@ -24,14 +24,16 @@
 #include <vector>
 #include <list>
 
+#include "AESEngine.h"
+
 namespace Cumulus {
 
 class Group;
 class Peer : public Client {
 	friend class Group;
 public:
-	Peer(const Poco::Net::SocketAddress& address);
-	
+	Peer();
+	//Peer(const Poco::Net::SocketAddress& address);
 	virtual ~Peer();
 
 	const Poco::Net::SocketAddress	address;
@@ -54,6 +56,5 @@ private:
 inline Poco::UInt16 Peer::getPing() const {
 	return _ping;
 }
-
 
 } // namespace Cumulus

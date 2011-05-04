@@ -28,8 +28,8 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerHandler& serverHandler) : Session(0,0,Peer(SocketAddress()),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket,serverHandler),
-	_gateway(gateway),_signature("\x03\x1a\x00\x00\x02\x1e\x00\x81\x02\x0d\x02",11) {
+Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerHandler& serverHandler) : Session(0,0,Peer(),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket,serverHandler),
+	_gateway(gateway) {
 	
 	memcpy(_certificat,"\x01\x0A\x41\x0E",4);
 	RandomInputStream().read((char*)&_certificat[4],64);
@@ -46,12 +46,48 @@ Handshake::~Handshake() {
 	clear();
 }
 
+void Handshake::manage() {
+	// delete obsolete cookie
+	map<string,Cookie*>::const_iterator it=_cookies.begin();
+	while(it!=_cookies.end()) {
+		if(it->second->obsolete()) {
+			delete it->second;
+			_cookies.erase(it++);
+		} else
+			++it;
+	}
+}
+
+void Handshake::commitCookie(const Session& session) {
+	(bool&)session.checked = true;
+	map<string,Cookie*>::const_iterator it;
+	for(it=_cookies.begin();it!=_cookies.end();++it) {
+		Cookie* pCookie = it->second;
+		if(pCookie->id==session.id()) {
+			_cookies.erase(it);
+			return;
+		}
+	}
+	WARN("Cookie of the session '%d' not found");
+}
+
 void Handshake::clear() {
-	// delete cookies // TODO quand effacer les vieux cookies jamais utilisé?
+	// delete cookies
 	map<string,Cookie*>::const_iterator it;
 	for(it=_cookies.begin();it!=_cookies.end();++it)
 		delete it->second;
 	_cookies.clear();
+}
+
+void Handshake::createCookie(PacketWriter& writer,Cookie* pCookie) {
+	// New Cookie
+	char cookie[65];
+	RandomInputStream ris;
+	ris.read(cookie,64);
+	cookie[64]='\0';
+	writer.write8(64);
+	writer.writeRaw(cookie,64);
+	_cookies[cookie] = pCookie;
 }
 
 void Handshake::packetHandler(PacketReader& packet) {
@@ -102,24 +138,15 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			request.readRaw(16,tag);
 			response.writeString8(tag);
 
-			// UDP hole punching
-
+			
 			if(type == 0x0f)
 				return _gateway.p2pHandshake(tag,response,peer().address,(const UInt8*)epd.c_str());
 
 			if(type == 0x0a){
 				/// Handshake
 	
-				// RESPONSE 38
-
 				// New Cookie
-				char cookie[65];
-				RandomInputStream ris;
-				ris.read(cookie,64);
-				cookie[64]='\0';
-				response.write8(64);
-				response.writeRaw(cookie,64);
-				_cookies[cookie] = new Cookie(epd);
+				createCookie(response,new Cookie(epd));
 				 
 				// instance id (certificat in the middle)
 				response.writeRaw(_certificat,sizeof(_certificat));
@@ -132,53 +159,40 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 		}
 		case 0x38: {
 			_farId = request.read32();
-			string cookie;
-			request.readRaw(request.read8(),cookie);
+			string idCookie;
+			request.readString(idCookie);
 
-			map<string,Cookie*>::iterator itCookie = _cookies.find(cookie.c_str());
+			map<string,Cookie*>::iterator itCookie = _cookies.find(idCookie.c_str());
 			if(itCookie==_cookies.end()) {
-				ERROR("Handshake cookie '%s' unknown",cookie.c_str());
+				ERROR("Handshake cookie '%s' unknown",idCookie.c_str());
 				return 0;
 			}
+			Cookie& cookie(*itCookie->second);
 
-			request.read8(); // why 0x81?
+			if(cookie.id==0) {
 
-			// signature
-			string farSignature;
-			request.readString8(farSignature); // 81 02 1D 02 stable
+				UInt32 size = request.read7BitValue();
+				// peerId = SHA256(farPubKey)
+				EVP_Digest(request.current(),size,(UInt8*)peer().id,NULL,EVP_sha256(),NULL);
 
-			// farPubKeyPart
-			UInt8 farPubKeyPart[128];
-			request.readRaw((char*)farPubKeyPart,sizeof(farPubKeyPart));
+				request.next(size-KEY_SIZE);
+				UInt8 publicKey[KEY_SIZE];
+				request.readRaw(publicKey,KEY_SIZE);
 
-			string farCertificat;
-			request.readString8(farCertificat);
-			
-			// peerId = SHA256(farSignature+farPubKey)
-			string temp(farSignature);
-			temp.append((char*)farPubKeyPart,sizeof(farPubKeyPart));
-			EVP_Digest(temp.c_str(),temp.size(),(UInt8*)peer().id,NULL,EVP_sha256(),NULL);
-			
-			// Compute Diffie-Hellman secret
-			UInt8 pubKey[128];
-			UInt8 sharedSecret[128];
-			RTMFP::EndDiffieHellman(RTMFP::BeginDiffieHellman(pubKey),farPubKeyPart,sharedSecret);
+				size = request.read7BitValue();
 
-			// Compute Keys
-			UInt8 requestKey[AES_KEY_SIZE];
-			UInt8 responseKey[AES_KEY_SIZE];
-			RTMFP::ComputeAsymetricKeys(sharedSecret,pubKey,_signature,farCertificat,requestKey,responseKey);
+				UInt8 decryptKey[KEY_SIZE];
+				UInt8 encryptKey[KEY_SIZE];
+				cookie.computeKeys(publicKey,request.current(),size,decryptKey,encryptKey);
 
-			// RESPONSE
-			Util::UnpackUrl(itCookie->second->queryUrl,(string&)peer().path,(map<string,string>&)peer().parameters);
-			response << _gateway.createSession(_farId,peer(),requestKey,responseKey);
-			response.write8(0x81);
-			response.writeString8(_signature);
-			response.writeRaw((char*)pubKey,sizeof(pubKey));
-			response.write8(0x58);
+				// Fill peer infos
+				Util::UnpackUrl(cookie.queryUrl,(string&)peer().path,(map<string,string>&)peer().parameters);
 
-			// remove cookie
-			_cookies.erase(itCookie);
+				// RESPONSE
+				(UInt32&)cookie.id = _gateway.createSession(_farId,peer(),decryptKey,encryptKey,*itCookie->second);
+				cookie.write(response);
+			} else
+				cookie.write(response);
 
 			return 0x78;
 		}

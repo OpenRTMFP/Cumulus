@@ -33,6 +33,7 @@ public:
 	virtual ~PacketReader();
 
 	Poco::UInt32 read7BitValue();
+	void		 readString(std::string& value);
 	void readRaw(Poco::UInt8* value,int size);
 	void readRaw(char* value,int size);
 	void readRaw(int size,std::string& value);
@@ -70,6 +71,9 @@ inline void PacketReader::readString8(std::string& value) {
 }
 inline void PacketReader::readString16(std::string& value) {
 	readRaw(read16(),value);
+}
+inline void PacketReader::readString(std::string& value) {
+	readRaw(read7BitValue(),value);
 }
 
 inline int PacketReader::available() {

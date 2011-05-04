@@ -61,6 +61,8 @@ Session* RTMFPServer::findSession(UInt32 id) {
 	Session* pSession = _sessions.find(id);
 	if(pSession) {
 		DEBUG("Session d'identification '%u'",id);
+		if(!pSession->checked)
+			_handshake.commitCookie(*pSession);
 		return pSession;
 	}
 
@@ -68,19 +70,19 @@ Session* RTMFPServer::findSession(UInt32 id) {
 	return NULL;
 }
 
-
-void RTMFPServer::start(UInt16 port,const SocketAddress* pCirrus) {
+void RTMFPServer::start(RTMFPServerParams& params) {
 	ScopedLock<FastMutex> lock(_mutex);
 	if(_mainThread.isRunning()) {
 		ERROR("RTMFPServer server is yet running, call stop method before");
 		return;
 	}
-	_port = port;
-	((Poco::UInt32&)_sessions.freqManage) = 2000000;
-	if(pCirrus) {
-		_pCirrus = new Cirrus(*pCirrus,_sessions);
-		((Poco::UInt32&)_sessions.freqManage) = 0; // no waiting, direct process in the middle case!
+	_port = params.port;
+	_freqManage = 2000000; // 2 sec by default
+	if(params.pCirrus) {
+		_pCirrus = new Target(*params.pCirrus);
+		_freqManage = 0; // no waiting, direct process in the middle case!
 	}
+	_middle = params.middle;
 	_terminate = false;
 	_mainThread.start(*this);
 	
@@ -144,8 +146,6 @@ void RTMFPServer::run() {
 		if(!pSession)
 			continue;
 
-		if(!pSession->_testDecode && Logs::GetLevel()>=Logger::PRIO_DEBUG)
-			Logs::Dump(packet,"Packet crypted:");
 		if(!pSession->decode(packet,sender)) {
 			Logs::Dump(packet,"Packet decrypted:");
 			ERROR("Decrypt error");
@@ -166,24 +166,6 @@ void RTMFPServer::run() {
 
 	NOTE("RTMFP server stops");
 }
-
-
-UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* decryptKey,const UInt8* encryptKey) {
-	while(_nextIdSession==0 || _sessions.find(_nextIdSession))
-		++_nextIdSession;
-
-	if(_pCirrus) {
-		Middle* pMiddle = new Middle(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,_handler,*_pCirrus);
-		_sessions.add(pMiddle);
-		DEBUG("500ms sleeping to wait cirrus handshaking");
-		Thread::sleep(500); // to wait the cirrus handshake
-		pMiddle->manage();
-	} else
-		_sessions.add(new Session(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,_handler));
-
-	return _nextIdSession;
-}
-
 
 UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const SocketAddress& address,const UInt8* peerIdWanted) {
 
@@ -214,7 +196,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 		request.writeRaw(pSessionWanted ? ((Middle*)pSessionWanted)->middlePeer().id : peerIdWanted,32);
 		request.writeRaw(tag);
 
-		((Middle*)pSession)->sendHandshakeToCirrus(0x30);
+		((Middle*)pSession)->sendHandshakeToTarget(0x30);
 		// no response here!
 		return 0;
 	}
@@ -226,6 +208,16 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	} else if(pSessionWanted->failed()) {
 		DEBUG("UDP Hole punching : session wanted is deleting");
 		return 0;
+	}
+
+	if(_middle) {
+		if(pSessionWanted->pTarget) {
+			_handshake.createCookie(response,new Cookie(*pSessionWanted->pTarget));
+			response.writeRaw("\x81\x02\x1D\x02");
+			response.writeRaw(pSessionWanted->pTarget->publicKey,KEY_SIZE);
+			return 0x70;
+		} else
+			ERROR("Peer/peer dumped exchange impossible : no corresponding 'Target' with the session wanted");
 	}
 	
 	/// Udp hole punching normal process
@@ -242,6 +234,46 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	
 	return 0x71;
 
+}
+
+UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* decryptKey,const UInt8* encryptKey,Cookie& cookie) {
+	while(_nextIdSession==0 || _sessions.find(_nextIdSession))
+		++_nextIdSession;
+
+	Target* pTarget=_pCirrus;
+
+	if(_middle) {
+		if(!cookie.pTarget) {
+			cookie.pTarget = new Target(peer.address,&cookie);
+			memcpy((UInt8*)cookie.pTarget->peerId,peer.id,32);
+			memcpy((UInt8*)peer.id,cookie.pTarget->id,32);
+			NOTE("Mode 'man in the middle' : to connect to peer '%s' use the id :\n%s",Util::FormatHex(cookie.pTarget->peerId,32).c_str(),Util::FormatHex(cookie.pTarget->id,32).c_str());
+		} else
+			pTarget = cookie.pTarget;
+	}
+
+	Session* pSession;
+	if(pTarget) {
+		pSession = new Middle(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,_handler,_sessions,*pTarget);
+		DEBUG("500ms sleeping to wait cirrus handshaking");
+		Thread::sleep(500); // to wait the cirrus handshake
+		pSession->manage();
+	} else {
+		pSession = new Session(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,_handler);
+		pSession->pTarget = cookie.pTarget;
+	}
+
+	_sessions.add(pSession);
+
+	return _nextIdSession;
+}
+
+void RTMFPServer::manage() {
+	if(!_timeLastManage.isElapsed(_freqManage))
+		return;
+	_timeLastManage.update();
+	_handshake.manage();
+	_sessions.manage();
 }
 
 

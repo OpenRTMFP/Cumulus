@@ -17,35 +17,7 @@ Usage
 
 ### CumulusService
 
-CumulusService executable includes the following argument launch options, for developement and installation usage:
-
-- **registerService**,
-register the application as a service.
-
-- **unregisterService**,
-unregister the application as a service.
-
-- **displayName**,
-specify a display name for the service (only with /registerService).
-
-- **startup=automatic|manual**,
-specify the startup mode for the service (only with /registerService).
-
-- **cirrus=address**,
-cirrus address to activate a 'man-in-the-middle' developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers, "p2p.rtmfp.net:10007" for example.
-Adding the *dump* option in 'all' mode displays the middle packet process in your logs (see *dump* argument).
-
-- **dump[=all]**,
-enables packet traces in logs. Used usually with *cirrus=address* option to observe flash/cirrus exchange.
-Optional argument 'all' displays all packet process like middle packet process in 'man-in-the-middle' mode (see *cirrus=address* argument).
-
-- **log=level**,
-log level argument beetween 0 and 8 : none, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (info), all logs until info level are displayed.
-
-- **help**,
-displays help information about command-line usage.
-
-Command-line way is preferred during development and test usage. To statically configure the service the better practice is a optionnal configuration file to the installation directory.
+ComulusService is statically configured by a optionnal configuration file to the installation directory.
 The possible configurations are:
 
 - **port**,
@@ -98,6 +70,40 @@ The configuration file must have *CumulusService* as base name and can be a *ini
 	auth.whitelist = true
 
 If this configuration file doesn't exist, default values will be used.
+
+CumulusService includes some argument launch options. Command-line way is preferred during development and test usage.
+The following arguments are availables:
+
+- **registerService**,
+register the application as a service.
+
+- **unregisterService**,
+unregister the application as a service.
+
+- **displayName**,
+specify a display name for the service (only with /registerService).
+
+- **startup=automatic|manual**,
+specify the startup mode for the service (only with /registerService).
+
+- **log=level**,
+log level argument beetween 0 and 8 : none, fatal, critic, error, warn, note, info, debug, trace. Default value is 6 (info), all logs until info level are displayed.
+
+- **dump[=middle|all]**,
+enables packet traces in logs. Optional arguments are 'middle' or 'all' respectively to displays just middle packet process or all packet process.
+If no argument is given, just outside packet process will be dumped.
+
+- **cirrus=address**,
+cirrus address to activate a 'man-in-the-middle' developer mode in bypassing flash packets to the official cirrus server of your choice, it's a instable mode to help Cumulus developers, "p2p.rtmfp.net:10007" for example.
+By adding the 'dump' argument, you will able to display Cirrus/Flash packet exchange in your logs (see 'dump' argument).
+
+- **middle**,
+Enables a 'man-in-the-middle' developer mode between two peers. It's a instable mode to help Cumulus developers.
+By adding the 'dump' argument, you will able to display Flash/Flash packet exchange in your logs (see 'dump' argument).
+
+- **help**,
+displays help information about command-line usage.
+
 
 ### Flash side
 

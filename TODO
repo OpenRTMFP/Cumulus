@@ -14,4 +14,3 @@
 
 - Vérifier la sécurité, je ne dois pas être capable moi même d'intercaler un serveur en man-in-the-middle mode pour comprendre les échanges entre
 un client flash et son application serveur Cumulus. Peut être dois je considérer l'addresse d'appel dans le handshake pour celà?
-- Si un paquet à envoyé est trop gros (ou juste pour les NetStream), dois je éviter le timeecho?

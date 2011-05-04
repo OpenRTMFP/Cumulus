@@ -24,6 +24,7 @@
 #include "RTMFP.h"
 #include "Flow.h"
 #include "FlowNull.h"
+#include "Target.h"
 #include "Poco/Timestamp.h"
 #include "Poco/Net/DatagramSocket.h"
 
@@ -62,7 +63,10 @@ public:
 	
 	void	fail(const std::string& msg);
 
-	bool	_testDecode; // TODO enlever!
+	const bool checked;
+
+	// For middle peer/peer
+	Target*	pTarget;
 protected:
 	void			setFailed(const std::string& msg);
 	virtual void	fail();

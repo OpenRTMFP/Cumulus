@@ -433,14 +433,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\Cirrus.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Cirrus.h"
-					>
-				</File>
-				<File
 					RelativePath=".\sources\Util.cpp"
 					>
 				</File>
@@ -565,21 +557,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\Middle.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Middle.h"
-					>
-					<FileConfiguration
-						Name="debug_static|Win32"
-						>
-						<Tool
-							Name="VCCustomBuildTool"
-						/>
-					</FileConfiguration>
-				</File>
-				<File
 					RelativePath=".\sources\Session.cpp"
 					>
 				</File>
@@ -681,6 +658,33 @@
 				</File>
 				<File
 					RelativePath=".\include\Subscription.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Middle"
+				>
+				<File
+					RelativePath=".\sources\Middle.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Middle.h"
+					>
+					<FileConfiguration
+						Name="debug_static|Win32"
+						>
+						<Tool
+							Name="VCCustomBuildTool"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\sources\Target.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Target.h"
 					>
 				</File>
 			</Filter>

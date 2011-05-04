@@ -15,11 +15,11 @@
 	This file is a part of Cumulus.
 */
 
-#include "Cirrus.h"
-#include "Logs.h"
-#include "Util.h"
-#include "Middle.h"
-
+#include "Target.h"
+#include "RTMFP.h"
+#include "Cookie.h"
+#include "string.h"
+#include <openssl/evp.h>
 
 using namespace std;
 using namespace Poco;
@@ -27,25 +27,24 @@ using namespace Net;
 
 namespace Cumulus {
 
-Cirrus::Cirrus(const SocketAddress& address,Sessions& sessions) : _sessions(sessions),_address(address) {
-	if(_address.port()==0)
-		_address = SocketAddress(_address.host(),RTMFP_DEFAULT_PORT);
-}
-
-
-Cirrus::~Cirrus() {
-}
-
-
-const Middle* Cirrus::findMiddle(const UInt8* peerId) {
-	Sessions::Iterator it;
-	for(it=_sessions.begin();it!=_sessions.end();++it) {
-		Middle* pMiddle = (Middle*)it->second;
-		if(pMiddle->middlePeer() == peerId)
-			return pMiddle;
+Target::Target(const SocketAddress& address,Cookie* pCookie) : address(address),isPeer(pCookie?true:false),id(),peerId(),publicKey(),pDH(pCookie?pCookie->_pDH:NULL) {
+	if(address.port()==0)
+		((SocketAddress&)address) = SocketAddress(address.host(),RTMFP_DEFAULT_PORT);
+	if(isPeer) {
+		memcpy((UInt8*)publicKey,&pCookie->_nonce[11],KEY_SIZE);
+		((vector<UInt8>&)pCookie->_nonce)[9] = 0x1D;
+		EVP_Digest(&pCookie->_nonce[7],pCookie->_nonce.size()-7,(UInt8*)id,NULL,EVP_sha256(),NULL);
+		((vector<UInt8>&)pCookie->_nonce)[9] = 0x0D;
+		pCookie->_pDH = NULL;
 	}
-	return NULL;
 }
+
+
+Target::~Target() {
+	if(pDH)
+		RTMFP::EndDiffieHellman(pDH);
+}
+
 
 
 } // namespace Cumulus

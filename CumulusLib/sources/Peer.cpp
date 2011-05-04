@@ -27,8 +27,11 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Peer::Peer(const Poco::Net::SocketAddress& address):_ping(0),address(address) {
+Peer::Peer():_ping(0) {
 }
+
+/*Peer::Peer(const Poco::Net::SocketAddress& address):_ping(0),address(address) {
+}*/
 
 Peer::~Peer() {
 	unsubscribeGroups();

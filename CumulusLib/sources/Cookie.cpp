@@ -16,20 +16,46 @@
 */
 
 #include "Cookie.h"
-
+#include "Util.h"
+#include "Poco/RandomStream.h"
 
 using namespace std;
+using namespace Poco;
 
 namespace Cumulus {
 
-Cookie::Cookie(const string& queryUrl) : queryUrl(queryUrl) {
-	
+Cookie::Cookie(const string& queryUrl) : _nonce(KEY_SIZE+11),pTarget(NULL),id(0),queryUrl(queryUrl),_writer(_buffer,sizeof(_buffer)) {
+	memcpy(&_nonce[0],"\x03\x1A\x00\x00\x02\x1E\x00\x81\x02\x0D\x02",11);
+	_pDH = RTMFP::BeginDiffieHellman(&_nonce[11]);
 }
 
+Cookie::Cookie(Target& target) : _nonce(73),_pDH(target.pDH),pTarget(&target),id(0),_writer(_buffer,sizeof(_buffer)) {
+	memcpy(&_nonce[0],"\x03\x1A\x00\x00\x02\x1E\x00\x41\x0E",9);
+	RandomInputStream().read((char*)&_nonce[9],64);
+}
 
 Cookie::~Cookie() {
+	if(!pTarget && _pDH)
+		RTMFP::EndDiffieHellman(_pDH);
 }
 
+void Cookie::computeKeys(const UInt8* initiatorKey,const UInt8* initiatorNonce,UInt16 initNonceSize,UInt8* decryptKey,UInt8* encryptKey) {
+	// Compute Diffie-Hellman secret
+	UInt8 sharedSecret[KEY_SIZE];
+	RTMFP::ComputeDiffieHellmanSecret(_pDH,initiatorKey,sharedSecret);
+	// Compute Keys
+	RTMFP::ComputeAsymetricKeys(sharedSecret,initiatorNonce,initNonceSize,&_nonce[0],_nonce.size(),decryptKey,encryptKey);
+}
+
+void Cookie::write(PacketWriter& writer) {
+	if(_writer.length()==0) {
+		_writer.write32(id);
+		_writer.write7BitValue(_nonce.size());
+		_writer.writeRaw(&_nonce[0],_nonce.size());
+		_writer.write8(0x58);
+	}
+	writer.writeRaw(_writer.begin(),_writer.length());
+}
 
 
 } // namespace Cumulus

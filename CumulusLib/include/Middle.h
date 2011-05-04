@@ -19,7 +19,8 @@
 
 #include "Cumulus.h"
 #include "Session.h"
-#include "Cirrus.h"
+#include "Sessions.h"
+#include "Target.h"
 #include "Poco/URI.h"
 #include <openssl/dh.h>
 
@@ -35,15 +36,16 @@ public:
 			const Poco::UInt8* encryptKey,
 			Poco::Net::DatagramSocket& socket,
 			ServerHandler& serverHandler,
-			Cirrus& cirrus);
+			const Sessions&	sessions,
+			Target& target);
 	~Middle();
 
 	const Peer&			middlePeer();
 
-	void				cirrusPacketHandler(PacketReader& packet);
+	void				targetPacketHandler(PacketReader& packet);
 
 	PacketWriter&		handshaker();
-	void				sendHandshakeToCirrus(Poco::UInt8 type);
+	void				sendHandshakeToTarget(Poco::UInt8 type);
 
 	void				manage();
 	void				fail();
@@ -51,10 +53,10 @@ public:
 private:
 	PacketWriter&		writer();
 
-	void				cirrusHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
+	void				targetHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
 	PacketWriter&		requester();
 	void				packetHandler(PacketReader& packet);
-	void				sendToCirrus();
+	void				sendToTarget();
 
 	AESEngine*				_pMiddleAesDecrypt;
 	AESEngine*				_pMiddleAesEncrypt;
@@ -62,9 +64,11 @@ private:
 	std::string					_queryUrl;
 	Poco::UInt32				_middleId;
 	Peer						_middlePeer;
-	std::string					_middleCertificat;
+	Poco::UInt8					_middleCertificat[76];
 	DH*							_pMiddleDH;
-	Cirrus&						_cirrus;
+	Target&						_target;
+	bool						isPeer;
+	Poco::UInt8					_sharedSecret[KEY_SIZE];
 
 	Poco::Net::DatagramSocket	_socket;
 	Poco::Timespan				_span;
@@ -72,6 +76,7 @@ private:
 
 	bool						_firstResponse;
 
+	const Sessions&				_sessions;
 };
 
 inline const Peer& Middle::middlePeer() {

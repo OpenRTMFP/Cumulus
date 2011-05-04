@@ -38,7 +38,7 @@ Session::Session(UInt32 id,
 				 const UInt8* encryptKey,
 				 DatagramSocket& socket,
 				 ServerHandler& serverHandler) : 
-		_id(id),_farId(farId),_socket(socket),_testDecode(false),
+		_id(id),_farId(farId),_socket(socket),pTarget(NULL),checked(false),
 		_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_serverHandler(serverHandler),_peer(peer),_flowNull(_peer,*this,_serverHandler),_died(false),_failed(false),_timesFailed(0),_timeSent(0),_timesKeepalive(0),_writer(_buffer,sizeof(_buffer)) {
 	_writer.next(11);
 	_writer.limit(RTMFP_MAX_PACKET_LENGTH); // set normal limit
@@ -54,14 +54,15 @@ Session::~Session() {
 	for(it=_flows.begin();it!=_flows.end();++it)
 		delete it->second;
 	_flows.clear();
+	if(pTarget)
+		delete pTarget;
 }
 
 bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
 	((SocketAddress&)_peer.address) = sender;
-	bool result = RTMFP::Decode(_aesDecrypt,packet);
-	if(result)
-		_testDecode = true;
-	return result;
+	if(pTarget)
+		((SocketAddress&)pTarget->address) = sender;
+	return RTMFP::Decode(_aesDecrypt,packet);
 }
 
 void Session::kill() {
@@ -202,6 +203,7 @@ void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,S
 
 void Session::flush(UInt8 flags) {
 	PacketWriter& packet(writer());
+	int temp = packet.length();
 	if(packet.length()>=RTMFP_MIN_PACKET_SIZE) {
 
 		packet.limit(); // no limit for sending!
@@ -257,6 +259,7 @@ PacketWriter& Session::writer() {
 		WARN("Writing packet failed : the writer has certainly exceeded the size set");
 		_writer.reset(11);
 	}
+	int lenght = _writer.length();
 	_writer.limit(RTMFP_MAX_PACKET_LENGTH);
 	return _writer;
 }

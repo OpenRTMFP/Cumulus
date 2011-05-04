@@ -26,8 +26,8 @@
 namespace Cumulus {
 
 #define RTMFP_SYMETRIC_KEY (Poco::UInt8*)"Adobe Systems 02"
-#define RTMFP_DEFAULT_PORT 1935
-#define RTMFP_MIN_PACKET_SIZE 12
+#define RTMFP_DEFAULT_PORT		1935
+#define RTMFP_MIN_PACKET_SIZE	12
 #define RTMFP_MAX_PACKET_LENGTH 1182
 
 class RTMFP
@@ -44,12 +44,13 @@ public:
 	static Poco::UInt16				CheckSum(PacketReader& packet);
 
 	static DH*						BeginDiffieHellman(Poco::UInt8* pubKey);
+	static void						ComputeDiffieHellmanSecret(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt8* sharedSecret);
 	static void						EndDiffieHellman(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt8* sharedSecret);
+	static void						EndDiffieHellman(DH* pDH);
 
 	static void						ComputeAsymetricKeys(const Poco::UInt8* sharedSecret,
-														 const Poco::UInt8* serverPubKey,
-														 const std::string& serverSignature,
-														 const std::string& clientCertificat,
+														const Poco::UInt8* initiatorNonce,Poco::UInt16 initNonceSize,
+														const Poco::UInt8* responderNonce,Poco::UInt16 respNonceSize,
 														 Poco::UInt8* requestKey,
 														 Poco::UInt8* responseKey);
 	static Poco::UInt16				TimeNow();
@@ -63,6 +64,10 @@ private:
 	RTMFP();
 	~RTMFP();
 };
+
+inline void RTMFP::EndDiffieHellman(DH* pDH) {
+	DH_free(pDH);
+}
 
 inline bool RTMFP::Decode(PacketReader& packet) {
 	return Decode(s_aesDecrypt,packet);
