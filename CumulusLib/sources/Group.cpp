@@ -16,8 +16,8 @@
 */
 
 #include "Group.h"
-#include "string.h"
 #include "Logs.h"
+#include "string.h"
 
 using namespace std;
 using namespace Poco;

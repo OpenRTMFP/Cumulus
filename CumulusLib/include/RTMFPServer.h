@@ -48,7 +48,7 @@ public:
 	RTMFPServer(ClientHandler& clientHandler,Poco::UInt8 keepAliveServer=15,Poco::UInt8 keepAlivePeer=10);
 	virtual ~RTMFPServer();
 
-	void start(RTMFPServerParams& params=RTMFPServerParams());
+	void start(RTMFPServerParams& params);
 	void stop();
 	bool running();
 

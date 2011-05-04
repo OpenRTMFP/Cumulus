@@ -19,7 +19,6 @@
 #include "Group.h"
 #include "Logs.h"
 #include "Util.h"
-#include "string.h"
 
 using namespace std;
 using namespace Poco;

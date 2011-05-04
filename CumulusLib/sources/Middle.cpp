@@ -22,8 +22,8 @@
 #include "AMFWriter.h"
 #include "AMFReader.h"
 #include "Poco/RandomStream.h"
-#include "string.h"
 #include <openssl/evp.h>
+#include "string.h"
 
 using namespace std;
 using namespace Poco;

@@ -18,8 +18,8 @@
 #include "Flow.h"
 #include "Util.h"
 #include "Logs.h"
-#include "string.h"
 #include "Session.h"
+#include "string.h"
 
 #define EMPTY	0x00
 #define AUDIO	0x08

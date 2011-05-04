@@ -48,7 +48,7 @@ Handshake::~Handshake() {
 
 void Handshake::manage() {
 	// delete obsolete cookie
-	map<string,Cookie*>::const_iterator it=_cookies.begin();
+	map<string,Cookie*>::iterator it=_cookies.begin();
 	while(it!=_cookies.end()) {
 		if(it->second->obsolete()) {
 			delete it->second;
@@ -60,7 +60,7 @@ void Handshake::manage() {
 
 void Handshake::commitCookie(const Session& session) {
 	(bool&)session.checked = true;
-	map<string,Cookie*>::const_iterator it;
+	map<string,Cookie*>::iterator it;
 	for(it=_cookies.begin();it!=_cookies.end();++it) {
 		Cookie* pCookie = it->second;
 		if(pCookie->id==session.id()) {
@@ -68,7 +68,7 @@ void Handshake::commitCookie(const Session& session) {
 			return;
 		}
 	}
-	WARN("Cookie of the session '%d' not found");
+	WARN("Cookie of the session '%d' not found",session.id());
 }
 
 void Handshake::clear() {
