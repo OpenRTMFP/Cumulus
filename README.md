@@ -98,7 +98,7 @@ cirrus address to activate a 'man-in-the-middle' developer mode in bypassing fla
 By adding the 'dump' argument, you will able to display Cirrus/Flash packet exchange in your logs (see 'dump' argument).
 
 - **middle**,
-Enables a 'man-in-the-middle' developer mode between two peers. It's a instable mode to help Cumulus developers.
+enables a 'man-in-the-middle' developer mode between two peers. It's a instable mode to help Cumulus developers.
 By adding the 'dump' argument, you will able to display Flash/Flash packet exchange in your logs (see 'dump' argument).
 
 - **help**,
