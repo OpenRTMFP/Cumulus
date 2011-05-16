@@ -107,7 +107,8 @@ void Streams::destroy(UInt32 id) {
 	while(it!=_publications.end()) {
 		if(it->second->publisherId==id) {
 			((UInt8&)it->second->publisherId) = 0;
-			cleanPublication(it++);
+			PublicationIt it2(it++); // Causes a Unix std bug
+			cleanPublication(it2);
 		} else
 			++it;
 	}
