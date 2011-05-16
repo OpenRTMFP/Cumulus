@@ -26,7 +26,7 @@ namespace Cumulus {
 
 class FlowConnection : public Flow {
 public:
-	FlowConnection(Poco::UInt8 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
+	FlowConnection(Poco::UInt32 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
 	virtual ~FlowConnection();
 
 	void complete();

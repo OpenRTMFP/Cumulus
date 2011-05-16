@@ -32,7 +32,7 @@ using namespace Poco;
 namespace Cumulus {
 
 
-Flow::Flow(UInt8 id,const string& signature,const string& name,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : id(id),_stage(0),peer(peer),serverHandler(serverHandler),_completed(false),_name(name),_signature(signature),_pBuffer(NULL),_sizeBuffer(0),_band(band),writer(*new FlowWriter(id,signature,band)) {
+Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : id(id),_stage(0),peer(peer),serverHandler(serverHandler),_completed(false),_name(name),_signature(signature),_pBuffer(NULL),_sizeBuffer(0),_band(band),writer(*new FlowWriter(id,signature,band)) {
 }
 
 Flow::~Flow() {

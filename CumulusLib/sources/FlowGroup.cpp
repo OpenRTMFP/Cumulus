@@ -27,7 +27,7 @@ namespace Cumulus {
 string FlowGroup::s_signature("\x00\x47\x43",3);
 string FlowGroup::s_name("NetGroup");
 
-FlowGroup::FlowGroup(UInt8 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,s_signature,s_name,peer,serverHandler,band),_pGroup(NULL) {
+FlowGroup::FlowGroup(UInt32 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,s_signature,s_name,peer,serverHandler,band),_pGroup(NULL) {
 }
 
 FlowGroup::~FlowGroup() {

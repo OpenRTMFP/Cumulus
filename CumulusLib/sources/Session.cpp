@@ -482,7 +482,7 @@ FlowWriter& Session::flowWriter(Poco::UInt32 id) {
 	map<UInt32,FlowWriter*>::const_iterator it = _flowWriters.find(id);
 	if(it==_flowWriters.end()) {
 		WARN("FlowWriter %u unfound",id);
-		return *_flowWriters[0];
+		return _pFlowNull->writer();
 	}
 	return *it->second;
 }
@@ -522,13 +522,10 @@ Flow* Session::createFlow(UInt32 id,const string& signature) {
 }
 
 void Session::initFlowWriter(FlowWriter& flowWriter) {
-	UInt32 id = 0;
-	if(FlowNull::s_signature!=flowWriter.signature) {
-		while(_nextFlowWriterId==0 || _flowWriters.find(_nextFlowWriterId)!=_flowWriters.end())
-			++_nextFlowWriterId;
-		(UInt32&)flowWriter.id = id = _nextFlowWriterId;
-	}
-	_flowWriters[id] = &flowWriter;
+	while(_nextFlowWriterId==0 || _flowWriters.find(_nextFlowWriterId)!=_flowWriters.end())
+		++_nextFlowWriterId;
+	(UInt32&)flowWriter.id = _nextFlowWriterId;
+	_flowWriters[_nextFlowWriterId] = &flowWriter;
 }
 
 

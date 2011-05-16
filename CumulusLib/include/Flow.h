@@ -27,7 +27,7 @@ namespace Cumulus {
 
 class Flow {
 public:
-	Flow(Poco::UInt8 id,const std::string& signature,const std::string& name,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
+	Flow(Poco::UInt32 id,const std::string& signature,const std::string& name,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
 	virtual ~Flow();
 
 	const Poco::UInt32		id;

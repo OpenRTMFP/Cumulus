@@ -28,7 +28,7 @@ namespace Cumulus {
 string FlowConnection::s_signature("\x00\x54\x43\x04\x00",5);
 string FlowConnection::s_name("NetConnection");
 
-FlowConnection::FlowConnection(UInt8 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,s_signature,s_name,peer,serverHandler,band) {
+FlowConnection::FlowConnection(UInt32 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,s_signature,s_name,peer,serverHandler,band) {
 }
 
 FlowConnection::~FlowConnection() {
