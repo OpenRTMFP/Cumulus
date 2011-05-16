@@ -27,7 +27,7 @@ namespace Cumulus {
 string FlowGroup::s_signature("\x00\x47\x43",3);
 string FlowGroup::s_name("NetGroup");
 
-FlowGroup::FlowGroup(UInt8 id,Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(id,s_signature,s_name,peer,session,serverHandler),_pGroup(NULL) {
+FlowGroup::FlowGroup(UInt8 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,s_signature,s_name,peer,serverHandler,band),_pGroup(NULL) {
 }
 
 FlowGroup::~FlowGroup() {
@@ -61,10 +61,10 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 				return;
 
 			while(!_bestPeers.empty()) {
-				BinaryWriter& response(writeRawMessage(true));
+				BinaryWriter& response(writer.writeRawMessage(true));
 			
 				response.write8(0x0b); // unknown
-				response.writeRaw(_bestPeers.front()->id,32);
+				response.writeRaw(_bestPeers.front()->id,ID_SIZE);
 				_bestPeers.pop_front();
 			}
 		}

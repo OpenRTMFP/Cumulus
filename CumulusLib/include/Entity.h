@@ -15,33 +15,26 @@
 	This file is a part of Cumulus.
 */
 
-#include "Client.h"
-#include "string.h"
+#pragma once
 
-using namespace Poco;
+#include "Cumulus.h"
 
 namespace Cumulus {
 
-Client::Client():id(),state(NONE) {
-}
+#define ID_SIZE 32
 
-Client::~Client() {
-}
+class CUMULUS_API Entity {
+public:
+	Entity();
+	virtual ~Entity();
 
-bool Client::operator==(const Client& other) const {
-	return memcmp(id,other.id,32)==0;
-}
-bool Client::operator==(const UInt8* id) const {
-	return memcmp(this->id,id,32)==0;
-}
+	bool operator==(const Entity& other) const;
+	bool operator==(const Poco::UInt8* id) const;
+	bool operator!=(const Entity& other) const;
+	bool operator!=(const Poco::UInt8* id) const;
 
-bool Client::operator!=(const Client& other) const {
-	return memcmp(id,other.id,32)!=0;
-}
-bool Client::operator!=(const UInt8* id) const {
-	return memcmp(this->id,id,32)!=0;
-}
-
+	const Poco::UInt8							id[ID_SIZE];
+};
 
 
 } // namespace Cumulus

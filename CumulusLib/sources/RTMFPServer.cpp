@@ -113,7 +113,7 @@ void RTMFPServer::run() {
 
 	while(!_terminate) {
 
-		_sessions.manage();
+		manage();
 
 		try {
 			if (!_socket.poll(span, Socket::SELECT_READ))
@@ -193,7 +193,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 		PacketWriter& request = ((Middle*)pSession)->handshaker();
 		request.write8(0x22);request.write8(0x21);
 		request.write8(0x0F);
-		request.writeRaw(pSessionWanted ? ((Middle*)pSessionWanted)->middlePeer().id : peerIdWanted,32);
+		request.writeRaw(pSessionWanted ? ((Middle*)pSessionWanted)->middlePeer().id : peerIdWanted,ID_SIZE);
 		request.writeRaw(tag);
 
 		((Middle*)pSession)->sendHandshakeToTarget(0x30);
@@ -245,9 +245,9 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 	if(_middle) {
 		if(!cookie.pTarget) {
 			cookie.pTarget = new Target(peer.address,&cookie);
-			memcpy((UInt8*)cookie.pTarget->peerId,peer.id,32);
-			memcpy((UInt8*)peer.id,cookie.pTarget->id,32);
-			NOTE("Mode 'man in the middle' : to connect to peer '%s' use the id :\n%s",Util::FormatHex(cookie.pTarget->peerId,32).c_str(),Util::FormatHex(cookie.pTarget->id,32).c_str());
+			memcpy((UInt8*)cookie.pTarget->peerId,peer.id,ID_SIZE);
+			memcpy((UInt8*)peer.id,cookie.pTarget->id,ID_SIZE);
+			NOTE("Mode 'man in the middle' : to connect to peer '%s' use the id :\n%s",Util::FormatHex(cookie.pTarget->peerId,ID_SIZE).c_str(),Util::FormatHex(cookie.pTarget->id,ID_SIZE).c_str());
 		} else
 			pTarget = cookie.pTarget;
 	}

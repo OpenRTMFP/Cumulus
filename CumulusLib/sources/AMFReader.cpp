@@ -52,6 +52,15 @@ double AMFReader::readNumber() {
 	return result;
 }
 
+bool AMFReader::readBool() {
+	UInt8 c = _reader.read8();
+	if(c!=AMF_BOOLEAN) {
+		ERROR("byte '%02x' is not a AMF boolean marker",c);
+		return false;
+	}
+	return _reader.read8()==0x00 ? true : false;
+}
+
 
 void AMFReader::skipNull() {
 	while(AMF_NULL == _reader.read8() && _reader.available());

@@ -26,8 +26,7 @@
 
 namespace Cumulus {
 
-class ServerHandler
-{
+class ServerHandler : public Entity {
 public:
 	ServerHandler(Poco::UInt8 keepAliveServer,Poco::UInt8 keepAlivePeer,ClientHandler* pClientHandler);
 	virtual ~ServerHandler();
@@ -40,12 +39,12 @@ public:
 
 	Streams				streams;
 
-	const Poco::UInt8   id[32];
 	const Poco::UInt32	keepAlivePeer;
 	const Poco::UInt32	keepAliveServer;
 private:
 	ClientHandler*					_pClientHandler;
 	std::list<Group*>				_groups;
+	
 };
 
 

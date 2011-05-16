@@ -45,6 +45,14 @@ void AMFWriter::writeBool(bool value){
 	_writer << value;
 }
 
+void AMFWriter::write(const char* value,UInt16 size) {
+	if(size==0) {
+		_writer.write8(AMF_UNDEFINED);
+		return;
+	}
+	_writer.write8(AMF_STRING); // marker
+	_writer.writeString16(value,size);
+}
 void AMFWriter::write(const string& value) {
 	if(value.empty()) {
 		_writer.write8(AMF_UNDEFINED);
@@ -107,6 +115,11 @@ void AMFWriter::writeObjectProperty(const string& name,const vector<UInt8>& data
 void AMFWriter::writeObjectProperty(const string& name,const string& value) {
 	_writer.writeString16(name);
 	write(value);
+}
+
+void AMFWriter::writeObjectProperty(const string& name,const char* value,UInt16 size) {
+	_writer.writeString16(name);
+	write(value,size);
 }
 
 void AMFWriter::writeByteArray(const vector<UInt8>& data) {

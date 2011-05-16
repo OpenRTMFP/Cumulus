@@ -23,9 +23,9 @@ using namespace Poco;
 namespace Cumulus {
 
 ServerHandler::ServerHandler(UInt8 keepAliveServer,UInt8 keepAlivePeer,ClientHandler* pClientHandler) :
-		keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),
-		keepAlivePeer(keepAlivePeer<5 ? 5000 : keepAlivePeer*1000),
-		_pClientHandler(pClientHandler),id() {
+	keepAliveServer(keepAliveServer<5 ? 5000 : keepAliveServer*1000),
+	keepAlivePeer(keepAlivePeer<5 ? 5000 : keepAlivePeer*1000),
+	_pClientHandler(pClientHandler) {
 	
 }
 
@@ -38,6 +38,7 @@ ServerHandler::~ServerHandler() {
 	_groups.clear();
 }
 
+
 Group& ServerHandler::group(const vector<UInt8>& id) {
 	Group* pGroup;
 	list<Group*>::iterator it=((ServerHandler*)this)->_groups.begin();
@@ -48,7 +49,7 @@ Group& ServerHandler::group(const vector<UInt8>& id) {
 		// delete a possible empty group in same time
 		if(pGroup->empty()) {
 			delete pGroup;
-			((ServerHandler*)this)->_groups.erase(it++);
+			_groups.erase(it++);
 			continue;
 		}
 		++it;

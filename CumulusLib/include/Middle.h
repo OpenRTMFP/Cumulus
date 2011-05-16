@@ -67,7 +67,7 @@ private:
 	Poco::UInt8					_middleCertificat[76];
 	DH*							_pMiddleDH;
 	Target&						_target;
-	bool						isPeer;
+	bool						_isPeer;
 	Poco::UInt8					_sharedSecret[KEY_SIZE];
 
 	Poco::Net::DatagramSocket	_socket;

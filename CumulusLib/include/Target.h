@@ -18,23 +18,23 @@
 #pragma once
 
 #include "Cumulus.h"
+#include "Entity.h"
 #include "RTMFP.h"
 #include "Poco/Net/SocketAddress.h"
 
 namespace Cumulus {
 
 class Cookie;
-class Target {
+class Target : public Entity {
 public:
 	Target(const Poco::Net::SocketAddress& address,Cookie* pCookie=NULL);
 	virtual ~Target();
 
 	const Poco::Net::SocketAddress	address;
 	const bool						isPeer;
-	const Poco::UInt8				peerId[32];
+	const Poco::UInt8				peerId[ID_SIZE];
 
-	const Poco::UInt8				id[32];
-	const Poco::UInt8				publicKey[KEY_SIZE];
+	const Poco::UInt8				publicKey[KEY_SIZE+4];
 	DH*								pDH;
 };
 

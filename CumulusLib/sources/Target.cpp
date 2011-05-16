@@ -21,15 +21,15 @@
 #include <openssl/evp.h>
 #include "string.h"
 
-using namespace std;
 using namespace Poco;
 using namespace Net;
+using namespace std;
 
 namespace Cumulus {
 
-Target::Target(const SocketAddress& address,Cookie* pCookie) : address(address),isPeer(pCookie?true:false),id(),peerId(),publicKey(),pDH(pCookie?pCookie->_pDH:NULL) {
+Target::Target(const SocketAddress& address,Cookie* pCookie) : address(address),publicKey(),isPeer(pCookie?true:false),peerId(),pDH(pCookie?pCookie->_pDH:NULL) {
 	if(address.port()==0)
-		((SocketAddress&)address) = SocketAddress(address.host(),RTMFP_DEFAULT_PORT);
+		((SocketAddress&)this->address) = SocketAddress(address.host(),RTMFP_DEFAULT_PORT);
 	if(isPeer) {
 		memcpy((UInt8*)publicKey,&pCookie->_nonce[11],KEY_SIZE);
 		((vector<UInt8>&)pCookie->_nonce)[9] = 0x1D;

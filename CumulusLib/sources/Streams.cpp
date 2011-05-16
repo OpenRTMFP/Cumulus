@@ -29,77 +29,88 @@ Streams::Streams() : _nextId(0) {
 
 Streams::~Streams() {
 	// delete subscriptions
-	SubscriptionIt it;
-	for(it=_subscriptions.begin();it!=_subscriptions.end();++it)
+	PublicationIt it;
+	for(it=_publications.begin();it!=_publications.end();++it)
 		delete it->second;
 }
 
-Streams::SubscriptionIt Streams::subscriptionIt(const string& name) {
+
+Streams::PublicationIt Streams::publicationIt(const string& name) {
 	// Return a suscription iterator and create the subscrition if it doesn't exist
-	SubscriptionIt it = _subscriptions.find(name);
-	if(it != _subscriptions.end())
+	PublicationIt it = _publications.find(name);
+	if(it != _publications.end())
 		return it;
-	return _subscriptions.insert(pair<string,Subscription*>(name,new Subscription())).first;
+	return _publications.insert(pair<string,Publication*>(name,new Publication())).first;
 }
 
-void Streams::cleanSubscription(SubscriptionIt& it) {
+void Streams::cleanPublication(PublicationIt& it) {
 	// Delete susbscription is no more need
-	if(it->second->count()==0 && it->second->idPublisher==0)
-		_subscriptions.erase(it);
+	if(it->second->count()==0 && it->second->publisherId==0) {
+		delete it->second;
+		_publications.erase(it);
+	}
 }
 
 bool Streams::publish(UInt32 id,const string& name) {
-	SubscriptionIt it = subscriptionIt(name);
-	if(it->second->idPublisher!=0)
+	PublicationIt it = publicationIt(name);
+	if(it->second->publisherId!=0)
 		return false; // has already a publisher
-	((UInt8&)it->second->idPublisher) = id;
+	((UInt8&)it->second->publisherId) = id;
 	return true;
 }
 
 void Streams::unpublish(UInt32 id,const string& name) {
-	SubscriptionIt it = subscriptionIt(name);
-	if(it->second->idPublisher!=id) {
-		WARN("Unpublish '%s' operation with a '%d' id different than its publisher '%d' id",name.c_str(),id,it->second->idPublisher);
+	PublicationIt it = _publications.find(name);
+	if(it == _publications.end()) {
+		DEBUG("The stream '%s' with a %u id doesn't exist, unpublish useless",name.c_str(),id);
 		return;
 	}
-	((UInt8&)it->second->idPublisher) = 0;
-	cleanSubscription(it);
+	if(it->second->publisherId!=id) {
+		WARN("Unpublish '%s' operation with a %u id different than its publisher %u id",name.c_str(),id,it->second->publisherId);
+		return;
+	}
+	((UInt8&)it->second->publisherId) = 0;
+	cleanPublication(it);
 }
 
 void Streams::subscribe(const string& name,Listener& listener) {
-	subscriptionIt(name)->second->add(listener);
+	publicationIt(name)->second->add(listener);
 }
 
 void Streams::unsubscribe(const string& name,Listener& listener) {
-	SubscriptionIt it = subscriptionIt(name);
+	PublicationIt it = _publications.find(name);
+	if(it == _publications.end()) {
+		DEBUG("The stream '%s' doesn't exists, unsubscribe useless",name.c_str());
+		return;
+	}
 	it->second->remove(listener);
-	cleanSubscription(it);
+	cleanPublication(it);
 }
 
-Subscription* Streams::subscription(UInt32 id) {
-	SubscriptionIt it;
-	for(it=_subscriptions.begin();it!=_subscriptions.end();++it) {
-		if(it->second->idPublisher==id)
+Publication* Streams::publication(UInt32 id) {
+	PublicationIt it;
+	for(it=_publications.begin();it!=_publications.end();++it) {
+		if(it->second->publisherId==id)
 			return it->second;
 	}
 	return NULL;
 }
 
 UInt32 Streams::create() {
-	while(!_streams.insert(++_nextId).second);
+	while(!_streams.insert((++_nextId)==0 ? ++_nextId : _nextId).second);
 	return _nextId;
 }
 
 void Streams::destroy(UInt32 id) {
 	_streams.erase(id);
-	SubscriptionIt it;
-	for(it=_subscriptions.begin();it!=_subscriptions.end();++it) {
-		if(it->second->idPublisher==id) {
-			((UInt8&)it->second->idPublisher) = 0;
-			cleanSubscription(it);
-		}
+	PublicationIt it=_publications.begin();
+	while(it!=_publications.end()) {
+		if(it->second->publisherId==id) {
+			((UInt8&)it->second->publisherId) = 0;
+			cleanPublication(it++);
+		} else
+			++it;
 	}
-	
 }
 
 

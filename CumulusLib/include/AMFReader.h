@@ -29,6 +29,7 @@ public:
 	AMFReader(PacketReader& reader);
 	~AMFReader();
 
+	bool	readBool();
 	void	readObject(AMFObject& amfObject);
 	void	read(std::string& value);
 	double	readNumber();

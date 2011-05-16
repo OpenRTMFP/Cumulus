@@ -35,6 +35,7 @@ public:
 	// fast
 	void write(const std::string& name,double value);
 	void write(const std::string& name,const std::string& value);
+	void write(const std::string& name,const char* value,Poco::UInt16 size);
 	void write(const std::string& name,const std::vector<Poco::UInt8>& data);
 	
 private:
@@ -51,6 +52,9 @@ inline void AMFObjectWriter::write(const std::string& name,double value) {
 }
 inline void AMFObjectWriter::write(const std::string& name,const std::string& value) {
 	_writer.writeObjectProperty(name,value);
+}
+inline void AMFObjectWriter::write(const std::string& name,const char* value,Poco::UInt16 size) {
+	_writer.writeObjectProperty(name,value,size);
 }
 inline void AMFObjectWriter::write(const std::string& name,const std::vector<Poco::UInt8>& data) {
 	_writer.writeObjectProperty(name,data);

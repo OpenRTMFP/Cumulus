@@ -19,7 +19,7 @@
 
 #include "Cumulus.h"
 #include "Listener.h"
-#include "Subscription.h"
+#include "Publication.h"
 #include <set>
 #include <map>
 
@@ -40,16 +40,16 @@ public:
 	void			subscribe(const std::string& name,Listener& listener);
 	void			unsubscribe(const std::string& name,Listener& listener);
 
-	Subscription*	subscription(Poco::UInt32 id);
+	Publication*	publication(Poco::UInt32 id);
 
 private:
-	typedef std::map<std::string,Subscription*>::iterator SubscriptionIt;
+	typedef std::map<std::string,Publication*>::iterator PublicationIt;
 
-	SubscriptionIt  subscriptionIt(const std::string& name);
-	void			cleanSubscription(SubscriptionIt& it);
+	PublicationIt   publicationIt(const std::string& name);
+	void			cleanPublication(PublicationIt& it);
 
 	std::set<Poco::UInt32>				_streams;
-	std::map<std::string,Subscription*>	_subscriptions;
+	std::map<std::string,Publication*>	_publications;
 	Poco::UInt32						_nextId;
 
 };

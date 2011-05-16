@@ -28,7 +28,7 @@ namespace Cumulus {
 #define RTMFP_SYMETRIC_KEY (Poco::UInt8*)"Adobe Systems 02"
 #define RTMFP_DEFAULT_PORT		1935
 #define RTMFP_MIN_PACKET_SIZE	12
-#define RTMFP_MAX_PACKET_LENGTH 1182
+#define RTMFP_MAX_PACKET_LENGTH 1192
 
 class RTMFP
 {

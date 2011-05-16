@@ -16,7 +16,6 @@
 */
 
 #include "Cookie.h"
-#include "Util.h"
 #include "Poco/RandomStream.h"
 #include "string.h"
 

@@ -15,7 +15,9 @@
 	This file is a part of Cumulus.
 */
 
-#include "Subscription.h"
+#include "Publication.h"
+#include "Poco/StreamCopier.h"
+#include "Logs.h"
 
 using namespace std;
 using namespace Poco;
@@ -23,15 +25,15 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Subscription::Subscription():idPublisher(0) {
+Publication::Publication():publisherId(0) {
 	
 }
 
 
-Subscription::~Subscription() {
+Publication::~Publication() {
 }
 
-void Subscription::pushRawPacket(UInt8 type,PacketReader& packet) {
+void Publication::pushRawPacket(UInt8 type,PacketReader& packet) {
 	list<Listener*>::const_iterator it;
 	int pos = packet.position();
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
@@ -40,7 +42,8 @@ void Subscription::pushRawPacket(UInt8 type,PacketReader& packet) {
 	}
 }
 
-void Subscription::pushAudioPacket(PacketReader& packet) {
+void Publication::pushAudioPacket(PacketReader& packet) {
+	UInt32 time = packet.read32(); // TODO?
 	list<Listener*>::const_iterator it;
 	int pos = packet.position();
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
@@ -49,7 +52,8 @@ void Subscription::pushAudioPacket(PacketReader& packet) {
 	}
 }
 
-void Subscription::pushVideoPacket(PacketReader& packet) {
+void Publication::pushVideoPacket(PacketReader& packet) {
+	UInt32 time = packet.read32(); // TODO?
 	list<Listener*>::const_iterator it;
 	int pos = packet.position();
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
@@ -58,7 +62,7 @@ void Subscription::pushVideoPacket(PacketReader& packet) {
 	}
 }
 
-void Subscription::add(Listener& listener) {
+void Publication::add(Listener& listener) {
 	list<Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
 		if((&listener)==*it)
@@ -67,7 +71,7 @@ void Subscription::add(Listener& listener) {
 	_listeners.push_back(&listener);
 }
 
-void Subscription::remove(Listener& listener) {
+void Publication::remove(Listener& listener) {
 	list<Listener*>::iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
 		if((&listener)==*it) {

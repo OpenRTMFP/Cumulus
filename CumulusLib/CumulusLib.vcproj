@@ -381,6 +381,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\include\BandWriter.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\BinaryStream.cpp"
 					>
 				</File>
@@ -453,10 +457,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\Client.cpp"
-					>
-				</File>
-				<File
 					RelativePath=".\include\Client.h"
 					>
 				</File>
@@ -466,6 +466,14 @@
 				</File>
 				<File
 					RelativePath=".\include\ClientHandler.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Entity.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Entity.h"
 					>
 				</File>
 				<File
@@ -617,6 +625,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\FlowWriter.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\FlowWriter.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\Message.cpp"
 					>
 				</File>
@@ -645,19 +661,19 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\Publication.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Publication.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\Streams.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\include\Streams.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\Subscription.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Subscription.h"
 					>
 				</File>
 			</Filter>

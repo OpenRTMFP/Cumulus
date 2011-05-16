@@ -26,10 +26,16 @@ namespace Cumulus {
 string FlowNull::s_name;
 string FlowNull::s_signature;
 
-FlowNull::FlowNull(Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(0,s_signature,s_name,peer,session,serverHandler) {
+FlowNull::FlowNull(Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(0,s_signature,s_name,peer,serverHandler,band) {
 }
 
 FlowNull::~FlowNull() {
+}
+
+
+void FlowNull::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
+	Flow::messageHandler(stage,message,flags);
+	fail("Flow unknown certainly already consumed");
 }
 
 } // namespace Cumulus

@@ -25,15 +25,14 @@
 #include "Flow.h"
 #include "FlowNull.h"
 #include "Target.h"
+#include "BandWriter.h"
+#include "FlowWriter.h"
 #include "Poco/Timestamp.h"
 #include "Poco/Net/DatagramSocket.h"
 
-#define SYMETRIC_ENCODING	0x01
-#define WITHOUT_ECHO_TIME   0x02
-
 namespace Cumulus {
 
-class Session {
+class Session : public BandWriter {
 public:
 
 	Session(Poco::UInt32 id,
@@ -54,9 +53,11 @@ public:
 	bool				died() const;
 	bool				failed() const;
 	virtual void		manage();
-	void				flush(Poco::UInt8 flags=0);
-	PacketWriter&		writeMessage(Poco::UInt8 type,Poco::UInt16 length);
+
+	//Flow&	newFlow(const std::string& signature);
+
 	PacketWriter&		writer();
+	void				flush(Poco::UInt8 flags=0);
 
 	void	p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag,Session* pSession);
 	bool	decode(PacketReader& packet,const Poco::Net::SocketAddress& sender);
@@ -79,17 +80,25 @@ protected:
 	Poco::UInt16			_timeSent; // Protected for Middle session
 
 private:
+	// Implementation of BandWriter
+	void				initFlowWriter(FlowWriter& flowWriter);
+
+	PacketWriter&		writeMessage(Poco::UInt8 type,Poco::UInt16 length);
+
 	void				keepAlive();
 
-	Flow&				flow(Poco::UInt8 id);
-	Flow*				createFlow(const std::string& signature,Poco::UInt8 id);
+	FlowWriter&			flowWriter(Poco::UInt32 id);
+	Flow&				flow(Poco::UInt32 id);
+	Flow*				createFlow(Poco::UInt32 id,const std::string& signature);
 	
 	bool						_failed;
 	Poco::UInt8					_timesFailed;
 	Poco::UInt8					_timesKeepalive;
 
-	std::map<Poco::UInt8,Flow*> _flows;	
-	FlowNull					_flowNull;
+	std::map<Poco::UInt32,Flow*>		_flows;
+	FlowNull*							_pFlowNull;
+	std::map<Poco::UInt32,FlowWriter*>	_flowWriters;
+	Poco::UInt32						_nextFlowWriterId;
 
 	Poco::UInt32				_id;
 

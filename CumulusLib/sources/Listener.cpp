@@ -19,21 +19,43 @@
 #include "Poco/StreamCopier.h"
 
 using namespace Poco;
+using namespace std;
 
 namespace Cumulus {
 
-Listener::Listener() {
-	
+Listener::Listener(UInt32 flowId,const string& signature,BandWriter& band) : FlowWriter(flowId,signature,band) {
+	/*BinaryWriter& data = writeRawMessage(); TODO added it? useful?
+	data.write16(0x22);
+	data.write32(0);
+	data.write32(0x02);*/
 }
 
 Listener::~Listener() {
 }
 
 void Listener::pushRawPacket(UInt8 type,PacketReader& packet) {
-	BinaryWriter& data = writer();
+	BinaryWriter& data = writeRawMessage(true);
 	data.write8(type);
 	if(type==0x04)
 		data.write32(0);
+	StreamCopier::copyStream(packet.stream(),data.stream());
+	flush();
+}
+
+void Listener::pushVideoPacket(PacketReader& packet) {
+	BinaryWriter& data = writeRawMessage(true);
+	data.write8(0x09);
+	UInt32 elapsed = (UInt32)(_time.elapsed()/1000);
+	data.write32(elapsed);
+	StreamCopier::copyStream(packet.stream(),data.stream());
+	flush();
+}
+
+void Listener::pushAudioPacket(PacketReader& packet) {
+	BinaryWriter& data = writeRawMessage(true);
+	data.write8(0x08);
+	UInt32 elapsed = (UInt32)(_time.elapsed()/1000);
+	data.write32(elapsed);
 	StreamCopier::copyStream(packet.stream(),data.stream());
 	flush();
 }

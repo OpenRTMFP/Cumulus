@@ -38,11 +38,13 @@ public:
 	void beginObject();
 	void writeObjectProperty(const std::string& name,double value);
 	void writeObjectProperty(const std::string& name,const std::string& value);
+	void writeObjectProperty(const std::string& name,const char* value,Poco::UInt16 size);
 	void writeObjectProperty(const std::string& name,const std::vector<Poco::UInt8>& data);
 	void endObject();
 
 	void writeNumber(double value);
 	void write(const std::string& value);
+	void write(const char* value,Poco::UInt16 size);
 	void writeBool(bool value);
 	void writeNull();
 	void writeByteArray(const std::vector<Poco::UInt8>& data);

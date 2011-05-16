@@ -18,29 +18,23 @@
 #pragma once
 
 #include "Cumulus.h"
+#include "Entity.h"
 #include "Poco/URI.h"
 #include <map>
 
 namespace Cumulus {
 
 
-class CUMULUS_API Client {
+class Client : public Entity {
 public:
-	Client();
-	virtual ~Client();
+	Client():state(NONE) {}
+	virtual ~Client() {}
 
 	enum ClientState {
 		NONE,
 		ACCEPTED,
 		REJECTED
 	};
-
-	bool operator==(const Client& other) const;
-	bool operator==(const Poco::UInt8* id) const;
-	bool operator!=(const Client& other) const;
-	bool operator!=(const Poco::UInt8* id) const;
-
-	const Poco::UInt8							id[32];
 
 	const Poco::URI								swfUrl;
 	const Poco::URI								pageUrl;

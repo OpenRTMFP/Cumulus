@@ -39,7 +39,7 @@ Middle::Middle(UInt32 id,
 				DatagramSocket& socket,
 				ServerHandler& serverHandler,
 				const Sessions&	sessions,
-				Target& target) : Session(id,farId,peer,decryptKey,encryptKey,socket,serverHandler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),isPeer(target.isPeer),
+				Target& target) : Session(id,farId,peer,decryptKey,encryptKey,socket,serverHandler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
 					_middleId(0),_sessions(sessions),_firstResponse(false),_queryUrl("rtmfp://"+target.address.toString()+peer.path),_middlePeer(peer),_target(target) {
 
 	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.parameters);
@@ -57,14 +57,14 @@ Middle::Middle(UInt32 id,
 
 	PacketWriter& packet = handshaker();
 
-	if(target.isPeer) {
+	if(_isPeer) {
 		_pMiddleDH = target.pDH;
-		memcpy((UInt8*)_middlePeer.id,target.id,32);
+		memcpy((UInt8*)_middlePeer.id,target.id,ID_SIZE);
 
 		packet.write8(0x22);
 		packet.write8(0x21);
 		packet.write8(0x0F);
-		packet.writeRaw(target.peerId,32);
+		packet.writeRaw(target.peerId,ID_SIZE);
 	} else {
 		packet.write8(_queryUrl.size()+2);
 		packet.write8(_queryUrl.size()+1);
@@ -104,7 +104,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 
 			string targetCertificat;
 			UInt8 nonce[KEY_SIZE+4]={0x81,0x02,0x1D,0x02};
-			if(isPeer) {
+			if(_isPeer) {
 				packet.next(4);
 				memcpy(&nonce[4],_target.publicKey,KEY_SIZE);
 				RTMFP::ComputeDiffieHellmanSecret(_pMiddleDH,packet.current(),_sharedSecret);
@@ -172,7 +172,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 			vector<UInt8> targetNonce(packet.read7BitValue());
 			packet.readRaw(&targetNonce[0],targetNonce.size());
 			
-			if(!isPeer)
+			if(!_isPeer)
 				RTMFP::EndDiffieHellman(_pMiddleDH,&targetNonce[targetNonce.size()-128],_sharedSecret);
 
 			UInt8 requestKey[AES_KEY_SIZE];
@@ -208,12 +208,14 @@ void Middle::sendHandshakeToTarget(UInt8 type) {
 PacketWriter& Middle::requester() {
 	PacketWriter& writer(Session::writer());
 	writer.clear(6);
+	writer.limit(PACKETSEND_SIZE-4);
 	return writer;
 }
 
 PacketWriter& Middle::writer() {
 	PacketWriter& writer(Session::writer());
 	writer.clear(11);
+	writer.limit(PACKETSEND_SIZE-4);
 	return writer;
 }
 
@@ -253,7 +255,7 @@ void Middle::packetHandler(PacketReader& packet) {
 				UInt8 idFlow = content.read8();out.write8(idFlow);
 				UInt8 stage = content.read8();out.write8(stage);
 
-				if(!isPeer && idFlow==0x02 && stage==0x01) {
+				if(!_isPeer && idFlow==0x02 && stage==0x01) {
 					/// Replace NetConnection infos
 
 					out.writeRaw(content.current(),14);content.next(14);
@@ -317,12 +319,12 @@ void Middle::sendToTarget() {
 void Middle::targetPacketHandler(PacketReader& packet) {
 
 	if(_firstResponse)
-		_recvTimestamp.update(); // To emulate a long ping corresponding, otherwise client send muyltiple times each packet
+		_recvTimestamp.update(); // To emulate a long ping corresponding, otherwise client send multiple times each packet
 	_firstResponse = false;
 
 	UInt8 marker = packet.read8();
 	
-	packet.read16(); // time
+	UInt16 timestamp = packet.read16(); // time
 
 	if((marker|0xF0) == 0xFE)
 		_timeSent = packet.read16(); // time echo
@@ -337,28 +339,29 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 	UInt8 nbPeerSent = 0;
 
 	while(type!=0xFF) {
+		int posType = packetOut.position();
 		packetOut.write8(type);
 
 		UInt16 size = packet.read16();
 		PacketReader content(packet.current(),size);packetOut.write16(size);
 		
 		if(type==0x10 || type==0x11) {
-			packetOut.write8(content.read8());
+			UInt8 flag = content.read8();packetOut.write8(flag);
 			if(type==0x10) {
 				idFlow = content.read8();packetOut.write8(idFlow);
 				stage = content.read8();packetOut.write8(stage);
-			}
+			} else
+				++stage;
 			if(stage==0x01 && ((marker==0x4e && idFlow==0x03) || (marker==0x8e && idFlow==0x05))) {
-				/// Replace "middleId" by "peerId"
-				
+				/// Replace "middleId" by "peerId"	
 				if(type==0x10) {
 					UInt8 tmp[10];
 					content.readRaw(tmp,10);packetOut.writeRaw(tmp,10);
 				} else
 					packetOut.write8(content.read8());
 				
-				UInt8 middlePeerIdWanted[32];
-				content.readRaw(middlePeerIdWanted,32);
+				UInt8 middlePeerIdWanted[ID_SIZE];
+				content.readRaw(middlePeerIdWanted,ID_SIZE);
 
 				++nbPeerSent;
 
@@ -366,22 +369,22 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 				for(it=_sessions.begin();it!=_sessions.end();++it) {
 					Middle* pMiddle = (Middle*)it->second;
 					if(pMiddle->middlePeer() == middlePeerIdWanted) {
-						memcpy(middlePeerIdWanted,pMiddle->peer().id,32);
+						memcpy(middlePeerIdWanted,pMiddle->peer().id,ID_SIZE);
 						break;
 					}
 				}
-				packetOut.writeRaw(middlePeerIdWanted,32);	
+				packetOut.writeRaw(middlePeerIdWanted,ID_SIZE);	
 
 			}
 		} else if(type == 0x0F) {
 			packetOut.writeRaw(content.current(),3);content.next(3);
-			UInt8 peerId[32];
-			content.readRaw(peerId,32);
+			UInt8 peerId[ID_SIZE];
+			content.readRaw(peerId,ID_SIZE);
 
-			if(memcmp(peerId,peer().id,32)!=0 && memcmp(peerId,_middlePeer.id,32)!=0)
+			if(memcmp(peerId,peer().id,ID_SIZE)!=0 && memcmp(peerId,_middlePeer.id,ID_SIZE)!=0)
 				WARN("The p2pHandshake target packet doesn't match the peerId (or the middlePeerId)");
 			// Replace by the peer.id
-			packetOut.writeRaw(peer().id,32);
+			packetOut.writeRaw(peer().id,ID_SIZE);
 		}
 
 		packetOut.writeRaw(content.current(),content.available());
@@ -393,7 +396,6 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 	if(nbPeerSent>0)
 		INFO("%02x peers sending",nbPeerSent);
 
-	int temp = packetOut.length();
 	if(packetOut.length()>pos)
 		flush();
 }
@@ -404,59 +406,59 @@ void Middle::manage() {
 	if(died())
 		return;
 
-	if (_socket.available()==0)
-		return;
+	while(_socket.available()>0) {
 
-	int len = 0;
-	try {
-		len = _socket.receiveBytes(_buffer,sizeof(_buffer));
-	} catch(Exception& ex) {
-		ERROR("Middle socket reception error : %s",ex.displayText().c_str());
-		return;
-	}
-
-	PacketReader packet(_buffer,len);
-
-	if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
-		ERROR("Target to middle : invalid packet");
-		return;
-	}
-
-	UInt32 id = RTMFP::Unpack(packet);
-
-	// Handshaking
-	if(id==0 || !_pMiddleAesDecrypt) {
-		if(!RTMFP::Decode(packet)) {
-			ERROR("Target handshake decrypt error");
+		int len = 0;
+		try {
+			len = _socket.receiveBytes(_buffer,sizeof(_buffer));
+		} catch(Exception& ex) {
+			ERROR("Middle socket reception error : %s",ex.displayText().c_str());
 			return;
 		}
 
-		Logs::Dump(packet,"Target to Middle handshaking:",true);
+		PacketReader packet(_buffer,len);
 
-		UInt8 marker = packet.read8();
-		if(marker!=0x0B) {
-			ERROR("Target handshake received with a marker different of '0b'");
+		if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
+			ERROR("Target to middle : invalid packet");
 			return;
 		}
 
-		packet.read16(); // time
+		UInt32 id = RTMFP::Unpack(packet);
 
-		UInt8 type = packet.read8();
-		UInt16 size = packet.read16();
-		PacketReader content(packet.current(),size);
-		targetHandshakeHandler(type,content);
-		return;
+		// Handshaking
+		if(id==0 || !_pMiddleAesDecrypt) {
+			if(!RTMFP::Decode(packet)) {
+				ERROR("Target handshake decrypt error");
+				return;
+			}
+
+			Logs::Dump(packet,"Target to Middle handshaking:",true);
+
+			UInt8 marker = packet.read8();
+			if(marker!=0x0B) {
+				ERROR("Target handshake received with a marker different of '0b'");
+				return;
+			}
+
+			packet.read16(); // time
+
+			UInt8 type = packet.read8();
+			UInt16 size = packet.read16();
+			PacketReader content(packet.current(),size);
+			targetHandshakeHandler(type,content);
+			return;
+		}
+
+		if(!RTMFP::Decode(*_pMiddleAesDecrypt,packet)) {
+			ERROR("Target to middle : Decrypt error");
+			return;
+		}
+
+		DEBUG("Target to middle : session d'identification '%u'",id);
+		Logs::Dump(packet,"Target to Middle:",true);
+
+		targetPacketHandler(packet);
 	}
-
-	if(!RTMFP::Decode(*_pMiddleAesDecrypt,packet)) {
-		ERROR("Target to middle : Decrypt error");
-		return;
-	}
-
-	DEBUG("Target to middle : session d'identification '%u'",id);
-	Logs::Dump(packet,"Target to Middle:",true);
-
-	targetPacketHandler(packet);
 
 }
 

@@ -38,7 +38,7 @@ Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerHandler& serv
 	// Display far id flash side
 	EVP_Digest(_certificat,sizeof(_certificat),(unsigned char *)serverHandler.id,NULL,EVP_sha256(),NULL);
 
-	INFO("Id of this cumulus server : %s",Util::FormatHex(serverHandler.id,32).c_str());
+	INFO("Id of this cumulus server : %s",Util::FormatHex(serverHandler.id,ID_SIZE).c_str());
 }
 
 
@@ -62,8 +62,8 @@ void Handshake::commitCookie(const Session& session) {
 	(bool&)session.checked = true;
 	map<string,Cookie*>::iterator it;
 	for(it=_cookies.begin();it!=_cookies.end();++it) {
-		Cookie* pCookie = it->second;
-		if(pCookie->id==session.id()) {
+		if(it->second->id==session.id()) {
+			delete it->second;
 			_cookies.erase(it);
 			return;
 		}
@@ -189,7 +189,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				Util::UnpackUrl(cookie.queryUrl,(string&)peer().path,(map<string,string>&)peer().parameters);
 
 				// RESPONSE
-				(UInt32&)cookie.id = _gateway.createSession(_farId,peer(),decryptKey,encryptKey,*itCookie->second);
+				(UInt32&)cookie.id = _gateway.createSession(_farId,peer(),decryptKey,encryptKey,cookie);
 				cookie.write(response);
 			} else
 				cookie.write(response);

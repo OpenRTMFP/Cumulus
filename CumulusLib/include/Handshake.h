@@ -32,18 +32,16 @@ public:
 
 	void	createCookie(PacketWriter& writer,Cookie* pCookie);
 	void	commitCookie(const Session& session);
-	void manage();
-	void clear();
+	void	manage();
+	void	clear();
+
 private:
 	void		packetHandler(PacketReader& packet);
 	Poco::UInt8	handshakeHandler(Poco::UInt8 id,PacketReader& request,PacketWriter& response);
-
-	// Cookie, in waiting of creation session
-	std::map<std::string,Cookie*>	_cookies;
-
-	Poco::UInt8					_certificat[77];
-
-	Gateway&		_gateway;
+	
+	std::map<std::string,Cookie*>	_cookies; // Cookie, in waiting of creation session
+	Poco::UInt8						_certificat[77];
+	Gateway&						_gateway;
 };
 
 

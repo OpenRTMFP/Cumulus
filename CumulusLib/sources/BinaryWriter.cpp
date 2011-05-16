@@ -39,7 +39,7 @@ void BinaryWriter::writeString(const string& value) {
 
 void BinaryWriter::writeString8(const char* value,UInt8 size) {
 	write8(size);
-	writeRaw(value);
+	writeRaw(value,size);
 }
 void BinaryWriter::writeString8(const string& value) {
 	write8(value.size());
@@ -47,7 +47,7 @@ void BinaryWriter::writeString8(const string& value) {
 }
 void BinaryWriter::writeString16(const char* value,UInt16 size) {
 	write16(size);
-	writeRaw(value);
+	writeRaw(value,size);
 }
 void BinaryWriter::writeString16(const string& value) {
 	write16(value.size());

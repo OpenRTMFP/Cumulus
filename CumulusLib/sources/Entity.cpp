@@ -15,26 +15,33 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "Entity.h"
+#include "string.h"
 
-#include "Cumulus.h"
-#include "FlowWriter.h"
-#include "Poco/Timestamp.h"
+using namespace Poco;
 
 namespace Cumulus {
 
-class Listener : public FlowWriter {
-public:
-	Listener(Poco::UInt32 flowId,const std::string& signature,BandWriter& band);
-	virtual ~Listener();
+Entity::Entity():id() {
+}
 
-	void pushRawPacket(Poco::UInt8 type,PacketReader& packet);
-	void pushAudioPacket(PacketReader& packet); 
-	void pushVideoPacket(PacketReader& packet);
+Entity::~Entity() {
+}
 
-private:
-	Poco::Timestamp			_time;
-};
+bool Entity::operator==(const Entity& other) const {
+	return memcmp(id,other.id,ID_SIZE)==0;
+}
+bool Entity::operator==(const UInt8* id) const {
+	return memcmp(this->id,id,ID_SIZE)==0;
+}
+
+bool Entity::operator!=(const Entity& other) const {
+	return memcmp(id,other.id,ID_SIZE)!=0;
+}
+bool Entity::operator!=(const UInt8* id) const {
+	return memcmp(this->id,id,ID_SIZE)!=0;
+}
+
 
 
 } // namespace Cumulus

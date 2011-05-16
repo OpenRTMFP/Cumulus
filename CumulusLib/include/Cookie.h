@@ -18,18 +18,15 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "RTMFP.h"
 #include "Target.h"
-#include "Peer.h"
 
 namespace Cumulus {
-
 
 class Cookie {
 	friend class Target;
 public:
-	Cookie(const std::string& queryUrl);
-	Cookie(Target& target);
+	Cookie(const std::string& queryUrl); // For normal cookie
+	Cookie(Target& target); // For a Man-In-The-Middle peer/peer cookie
 	virtual ~Cookie();
 
 	const std::string				queryUrl;

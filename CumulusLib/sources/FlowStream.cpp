@@ -27,89 +27,126 @@ namespace Cumulus {
 string FlowStream::s_signature("\x00\x54\x43\x04",4);
 string FlowStream::s_name("NetStream");
 
-FlowStream::FlowStream(UInt8 id,const string& signature,Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(id,_signature,s_name,peer,session,serverHandler),_signature(signature),_pSubscription(NULL),_state(IDLE) {
+FlowStream::FlowStream(UInt8 id,const string& signature,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,_signature,s_name,peer,serverHandler,band),_signature(signature),_pPublication(NULL),_pListener(NULL),_state(IDLE) {
 	PacketReader reader((const UInt8*)signature.c_str(),signature.length());
 	reader.next(4);
 	_index = reader.read7BitValue();
-	_pSubscription = serverHandler.streams.subscription(_index);
+	DEBUG("Index stream : %d",_index);
+	_pPublication = serverHandler.streams.publication(_index);
 }
 
 FlowStream::~FlowStream() {
 }
 
 void FlowStream::audioHandler(PacketReader& packet) {
-	if(_pSubscription && _pSubscription->idPublisher == _index)
-		_pSubscription->pushAudioPacket(packet);
+	if(_pPublication && _pPublication->publisherId == _index)
+		_pPublication->pushAudioPacket(packet);
 	else
-		fail();
+		fail("an audio packet has been received on a no subscriber FlowStream");
 }
 
 void FlowStream::videoHandler(PacketReader& packet) {
-	if(_pSubscription && _pSubscription->idPublisher == _index)
-		_pSubscription->pushVideoPacket(packet);
+	if(_pPublication && _pPublication->publisherId == _index)
+		_pPublication->pushVideoPacket(packet);
 	else
-		fail();
+		fail("a video packet has been received on a no subscriber FlowStream");
 }
 
 void FlowStream::rawHandler(UInt8 type,PacketReader& data) {
-	if(_pSubscription)
-		_pSubscription->pushRawPacket(type,data);
-	else
+//	if(_pPublication)
+//		_pPublication->pushRawPacket(type,data);
+//	else
 		Flow::rawHandler(type,data);
 }
 
 void FlowStream::complete() {
-	Flow::complete();
 	// Stop the current  job
 	if(_state==PUBLISHING)
-		serverHandler.streams.unpublish(_index,_name);
-	 else if(_state==PLAYING)
-		serverHandler.streams.unsubscribe(_name,*this);
+		serverHandler.streams.unpublish(_index,name);
+	else if(_state==PLAYING) {
+		serverHandler.streams.unsubscribe(name,*_pListener);
+		_pListener->close();
+	}
 	_state=IDLE;
+	Flow::complete();
 }
 
-void FlowStream::messageHandler(const string& name,AMFReader& message) {
+void FlowStream::messageHandler(const string& action,AMFReader& message) {
 
-	if(name=="publish") {
-		// Stop a precedent publishment
-		if(_state==PUBLISHING)
-			serverHandler.streams.unpublish(_index,_name);
-		_state = IDLE;
-
-		// TODO add a failed scenario?
-		string type;
-		message.read(_name);
-		if(message.available())
-			message.read(type); // TODO record!
-
-		if(serverHandler.streams.publish(_index,_name)) {
-			writeStatusResponse("Start","'" + _name +"' is now published");
-			_state = PUBLISHING;
-		} else
-			writeErrorResponse("'" + _name +"' is already publishing","BadName");
-
-	} else if(name=="play") {
+	if(action=="|RtmpSampleAccess") {
+		// TODO?
+		bool value1 = message.readBool();
+		bool value2 = message.readBool();
+	} else if(action=="play") {
 		// Stop a precedent playing
-		if(_state==PLAYING)
-			serverHandler.streams.unsubscribe(_name,*this);
+		if(_state==PLAYING) {
+			serverHandler.streams.unsubscribe(name,*_pListener);
+			_pListener->close();
+		}
 		_state = PLAYING;
 
 		// TODO add a failed scenario?
-		message.read(_name);
-		writeStatusResponse("Start","Started playing '" + _name +"'");
-		serverHandler.streams.subscribe(_name,*this);
-	} else if(name == "closeStream") {
+		message.read((string&)name);
+
+		BinaryWriter& writer1 = writer.writeRawMessage(true);
+		writer1.write8(0x0F);
+		writer1.write32(0x00);
+		writer1.write8(0x00);
+		AMFWriter amf(writer1);
+		amf.write("|RtmpSampleAccess");
+		amf.writeBool(false);
+		amf.writeBool(false);
+
+	/*	BinaryWriter& writer2 = writeRawMessage();
+		writer2.write16(0x00);
+		writer2.write32(0x02);*/
+
+		writer.writeStatusResponse("Reset","Playing and resetting '" + name +"'");
+
+		writer.writeStatusResponse("Start","Started playing '" + name +"'");
+
+		/*BinaryWriter& writer3 = writer.writeRawMessage(); TODO added? useful?
+		writer3.write16(0x22);
+		writer3.write32(0);
+		writer3.write32(0x02);*/
+
+		_pListener = &newFlowWriter<Listener>(_signature);
+		serverHandler.streams.subscribe(name,*_pListener);
+
+
+	} else if(action == "closeStream") {
 		// Stop the current  job
 		if(_state==PUBLISHING) {
-			serverHandler.streams.unpublish(_index,_name);
-			writeSuccessResponse("Stopped publishing '" + _name +"'"); // TODO doesn't work!
+			serverHandler.streams.unpublish(_index,name);
+			writer.writeSuccessResponse("Stopped publishing '" + name +"'"); // TODO doesn't work!
 		} else if(_state==PLAYING) {
-			serverHandler.streams.unsubscribe(_name,*this);
-			writeStatusResponse("Stop","Stopped playing '" + _name +"'"); // TODO doesn't work!
+			serverHandler.streams.unsubscribe(name,*_pListener);
+			_pListener->close();
+			writer.writeStatusResponse("Stop","Stopped playing '" + name +"'"); // TODO doesn't work!
 		}
 		_state=IDLE;
+	} else if(action=="publish") {
+
+		// Stop a precedent publishment
+		if(_state==PUBLISHING)
+			serverHandler.streams.unpublish(_index,name);
+		_state = IDLE;
+
+		string type;
+		message.read((string&)name);
+		if(message.available())
+			message.read(type); // TODO record!
+
+		// TODO add a failed scenario?
+
+		if(serverHandler.streams.publish(_index,name)) {
+			writer.writeStatusResponse("Start","'" + name +"' is now published");
+			_state = PUBLISHING;
+		} else
+			writer.writeErrorResponse("'" + name +"' is already publishing","BadName");
+
 	} else
-		Flow::messageHandler(name,message);
+		Flow::messageHandler(action,message);
 
 }
 

@@ -24,14 +24,19 @@ namespace Cumulus {
 
 class FlowNull : public Flow {
 public:
-	FlowNull(Peer& peer,Session& session,ServerHandler& serverHandler);
+	FlowNull(Peer& peer,ServerHandler& serverHandler,BandWriter& band);
 	virtual ~FlowNull();
+
+	void messageHandler(Poco::UInt32 stage,PacketReader& message,Poco::UInt8 flags);
+
+	void complete();
 
 	static std::string	s_signature;
 private:
+
 	static std::string	s_name;
 };
 
-
+inline void FlowNull::complete() {} // To overload the Flow definition, to avoid to set '_completed' for 'true', FlowNull must not be deleted!
 
 } // namespace Cumulus

@@ -16,8 +16,8 @@
 */
 
 #include "FlowConnection.h"
-#include "FlowStream.h"
 #include "Logs.h"
+#include "Util.h"
 
 using namespace std;
 using namespace Poco;
@@ -28,10 +28,18 @@ namespace Cumulus {
 string FlowConnection::s_signature("\x00\x54\x43\x04\x00",5);
 string FlowConnection::s_name("NetConnection");
 
-FlowConnection::FlowConnection(UInt8 id,Peer& peer,Session& session,ServerHandler& serverHandler) : Flow(id,s_signature,s_name,peer,session,serverHandler) {
+FlowConnection::FlowConnection(UInt8 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,s_signature,s_name,peer,serverHandler,band) {
 }
 
 FlowConnection::~FlowConnection() {
+}
+
+void FlowConnection::complete() {
+	// delete stream index remaining (which have not had time to send a 'destroyStream' message)
+	set<UInt32>::const_iterator it;
+	for(it=_streamIndex.begin();it!=_streamIndex.end();++it)
+		serverHandler.streams.destroy(*it);
+	Flow::complete();
 }
 
 
@@ -52,12 +60,12 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 			return;
 
 		// Check if the client is authorized
-		if(!((ServerHandler&)serverHandler).connection(peer))
+		if(!serverHandler.connection(peer))
 			return;
 		
 		((Client::ClientState&)peer.state) = Client::ACCEPTED;
 
-		AMFObjectWriter response(writeSuccessResponse("Connection succeeded"));
+		AMFObjectWriter response(writer.writeSuccessResponse("Connection succeeded"));
 		response.write("objectEncoding",3);
 		response.write("data",peer.data);
 
@@ -71,20 +79,25 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		}
 		peer.setPrivateAddress(address);
 		
-		BinaryWriter& response(writeRawMessage());
+		BinaryWriter& response(writer.writeRawMessage());
 		response.write16(0x29); // Unknown!
 		response.write32(serverHandler.keepAliveServer);
 		response.write32(serverHandler.keepAlivePeer);
 
+
+	} else if(name == "initStream") {
+		// TODO?
 	} else if(name == "createStream") {
 
-		AMFWriter& response(writeAMFMessage());
-		response.writeNumber(serverHandler.streams.create());
+		AMFWriter& response(writer.writeAMFResult());
+		response.writeNumber(*_streamIndex.insert(serverHandler.streams.create()).first);
 
 	} else if(name == "deleteStream") {
-		serverHandler.streams.destroy((UInt32)message.readNumber());
+		UInt32 index = (UInt32)message.readNumber();
+		_streamIndex.erase(index);
+		serverHandler.streams.destroy(index);
 	} else
-		writeErrorResponse("Method '" + name + "' not found");
+		writer.writeErrorResponse("Method '" + name + "' not found");
 }
 
 

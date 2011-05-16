@@ -18,32 +18,26 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Listener.h"
-#include <list>
+#include "PacketWriter.h"
+
+#define SYMETRIC_ENCODING	0x01
+#define WITHOUT_ECHO_TIME   0x02
 
 namespace Cumulus {
 
-class Subscription {
+class FlowWriter;
+class BandWriter {
 public:
-	Subscription();
-	virtual ~Subscription();
+	BandWriter() {}
+	virtual ~BandWriter() {}
 
-	void				pushRawPacket(Poco::UInt8 type,PacketReader& packet);
-	void				pushAudioPacket(PacketReader& packet);
-	void				pushVideoPacket(PacketReader& packet);
+	virtual void			initFlowWriter(FlowWriter& flowWriter)=0;
 
-	void				add(Listener& listener);
-	void				remove(Listener& listener);
-	Poco::UInt32		count();
+	virtual PacketWriter&	writer()=0;
+	virtual PacketWriter&	writeMessage(Poco::UInt8 type,Poco::UInt16 length)=0;
+	virtual void			flush(Poco::UInt8 flags=0)=0;
 	
-	const Poco::UInt32	idPublisher;
-private:
-	std::list<Listener*>	_listeners;
 };
-
-inline Poco::UInt32 Subscription::count() {
-	return _listeners.size();
-}
 
 
 } // namespace Cumulus

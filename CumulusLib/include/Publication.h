@@ -18,23 +18,32 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "FlowWriter.h"
-#include "Poco/Timestamp.h"
+#include "Listener.h"
+#include <list>
 
 namespace Cumulus {
 
-class Listener : public FlowWriter {
+class Publication {
 public:
-	Listener(Poco::UInt32 flowId,const std::string& signature,BandWriter& band);
-	virtual ~Listener();
+	Publication();
+	virtual ~Publication();
 
-	void pushRawPacket(Poco::UInt8 type,PacketReader& packet);
-	void pushAudioPacket(PacketReader& packet); 
-	void pushVideoPacket(PacketReader& packet);
+	void				pushRawPacket(Poco::UInt8 type,PacketReader& packet);
+	void				pushAudioPacket(PacketReader& packet);
+	void				pushVideoPacket(PacketReader& packet);
 
+	void				add(Listener& listener);
+	void				remove(Listener& listener);
+	Poco::UInt32		count();
+	
+	const Poco::UInt32	publisherId;
 private:
-	Poco::Timestamp			_time;
+	std::list<Listener*>	_listeners;
 };
+
+inline Poco::UInt32 Publication::count() {
+	return _listeners.size();
+}
 
 
 } // namespace Cumulus

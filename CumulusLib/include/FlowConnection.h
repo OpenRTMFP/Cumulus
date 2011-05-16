@@ -26,14 +26,18 @@ namespace Cumulus {
 
 class FlowConnection : public Flow {
 public:
-	FlowConnection(Poco::UInt8 id,Peer& peer,Session& session,ServerHandler& serverHandler);
+	FlowConnection(Poco::UInt8 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
 	virtual ~FlowConnection();
+
+	void complete();
 
 	static std::string	s_signature;
 
 private:
 	static std::string	s_name;
 	void	messageHandler(const std::string& name,AMFReader& message);
+
+	std::set<Poco::UInt32> _streamIndex;
 };
 
 } // namespace Cumulus

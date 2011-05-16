@@ -19,49 +19,31 @@
 
 #include "Cumulus.h"
 #include "PacketReader.h"
-#include "Message.h"
-#include "AMFReader.h"
-#include "AMFObjectWriter.h"
-#include "Trigger.h"
 #include "Peer.h"
-#include "Group.h"
 #include "ServerHandler.h"
-
-#define MESSAGE_HEADER			0x80
-#define MESSAGE_WITH_AFTERPART  0x10 
-#define MESSAGE_WITH_BEFOREPART	0x20
-#define MESSAGE_END				0x03
+#include "FlowWriter.h"
 
 namespace Cumulus {
 
-class Session;
 class Flow {
 public:
-	Flow(Poco::UInt8 id,const std::string& signature,const std::string& name,Peer& peer,Session& session,ServerHandler& serverHandler);
+	Flow(Poco::UInt8 id,const std::string& signature,const std::string& name,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
 	virtual ~Flow();
 
-	void messageHandler(Poco::UInt32 stage,PacketReader& message,Poco::UInt8 flags);
+	const Poco::UInt32		id;
 
-	void flush();
-	void flushMessages();
+	virtual void			messageHandler(Poco::UInt32 stage,PacketReader& message,Poco::UInt8 flags);
 
-	void acknowledgment(Poco::UInt32 stage);
-	bool consumed();
-	void fail();
-	void raise();
-	virtual void complete();
+	void			fail(const std::string& error);
+	void			flush();
 
-	Poco::UInt32		stageRcv();
-	Poco::UInt32		stageSnd();
+	template <class FlowWriterType>
+	FlowWriterType& newFlowWriter(const std::string& signature) {
+		return *(new FlowWriterType(id,signature,_band));
+	}
 
-	const Poco::UInt8		id;
-
-	BinaryWriter&			writeRawMessage(bool withoutHeader=false);
-	AMFWriter&				writeAMFMessage();
-
-	AMFObjectWriter			writeSuccessResponse(const std::string& description,const std::string& name="Success");
-	AMFObjectWriter			writeStatusResponse(const std::string& name,const std::string& description);
-	AMFObjectWriter			writeErrorResponse(const std::string& description,const std::string& name="Failed");
+	bool			consumed();
+	Poco::UInt32		stage();
 
 protected:
 	virtual void messageHandler(const std::string& name,AMFReader& message);
@@ -69,51 +51,33 @@ protected:
 	virtual void audioHandler(PacketReader& packet);
 	virtual void videoHandler(PacketReader& packet);
 
-
+	virtual void complete();
+	
 	Peer&					peer;
-
+	FlowWriter&				writer;
 	ServerHandler&			serverHandler;
 	
 private:
-	void raiseMessage();
-
-	void fillCode(const std::string& name,std::string& code);
-
-	Message&	createMessage();
-	Poco::UInt8 unpack(PacketReader& reader);
+	
+	Poco::UInt8			unpack(PacketReader& reader);
 
 	bool				_completed;
 	const std::string&	_name;
 	const std::string&	_signature;
-	Session&			_session;
+	BandWriter&			_band;
 
 	// Receiving
-	Poco::UInt32		_stageRcv;
+	Poco::UInt32		_stage;
 	Poco::UInt8*		_pBuffer;
 	Poco::UInt32		_sizeBuffer;
-
-	// Sending
-	Poco::UInt32			_stageSnd;
-	std::list<Message*>		_messages;
-	double					_callbackHandle;
-	std::string				_code;
-	Trigger					_trigger;
-	Message					_messageNull;
 };
 
-inline Poco::UInt32 Flow::stageRcv() {
-	return _stageRcv;
-}
-inline Poco::UInt32 Flow::stageSnd() {
-	return _stageSnd;
-}
-
-inline void Flow::complete() {
-	_completed = true;
+inline Poco::UInt32 Flow::stage() {
+	return _stage;
 }
 
 inline bool Flow::consumed() {
-	return _completed && _messages.empty();
+	return _completed;
 }
 
 } // namespace Cumulus
