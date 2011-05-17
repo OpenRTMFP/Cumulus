@@ -522,8 +522,7 @@ Flow* Session::createFlow(UInt32 id,const string& signature) {
 }
 
 void Session::initFlowWriter(FlowWriter& flowWriter) {
-	while(_nextFlowWriterId==0 || _flowWriters.find(_nextFlowWriterId)!=_flowWriters.end())
-		++_nextFlowWriterId;
+	while(++_nextFlowWriterId==0 || _flowWriters.find(_nextFlowWriterId)!=_flowWriters.end());
 	(UInt32&)flowWriter.id = _nextFlowWriterId;
 	_flowWriters[_nextFlowWriterId] = &flowWriter;
 }

@@ -66,8 +66,8 @@ private:
 
 	virtual Message&		createMessage();
 
-	bool					_closed;
 	
+	bool					_closed;
 	Poco::UInt32			_stage;
 	std::list<Message*>		_messages;
 	Trigger					_trigger;

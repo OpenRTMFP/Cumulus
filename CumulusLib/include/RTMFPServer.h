@@ -33,7 +33,7 @@
 
 namespace Cumulus {
 
-class CUMULUS_API RTMFPServerParams {
+class RTMFPServerParams {
 public:
 	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),pCirrus(NULL),middle(false) {
 	}

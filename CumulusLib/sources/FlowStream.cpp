@@ -118,7 +118,7 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		// Stop the current  job
 		if(_state==PUBLISHING) {
 			serverHandler.streams.unpublish(_index,name);
-			writer.writeSuccessResponse("Stopped publishing '" + name +"'"); // TODO doesn't work!
+			writer.writeSuccessResponse("Stopped publishing '" + name +"'"); // TODO doesn't work! NetStream.Unpublish.Success should be!
 		} else if(_state==PLAYING) {
 			serverHandler.streams.unsubscribe(name,*_pListener);
 			_pListener->close();
