@@ -23,7 +23,7 @@ using namespace std;
 
 namespace Cumulus {
 
-Listener::Listener(UInt32 flowId,const string& signature,BandWriter& band) : FlowWriter(flowId,signature,band) {
+Listener::Listener(UInt32 flowId,const string& signature,BandWriter& band) : FlowWriter(flowId,signature,band),_band(band) {
 	/*BinaryWriter& data = writeRawMessage(); TODO added it? useful?
 	data.write16(0x22);
 	data.write32(0);
@@ -31,6 +31,11 @@ Listener::Listener(UInt32 flowId,const string& signature,BandWriter& band) : Flo
 }
 
 Listener::~Listener() {
+}
+
+void Listener::flush() {
+	FlowWriter::flush();
+	_band.flush();
 }
 
 void Listener::pushRawPacket(UInt8 type,PacketReader& packet) {

@@ -33,7 +33,9 @@ public:
 	void pushVideoPacket(PacketReader& packet);
 
 private:
+	void flush();
 	Poco::Timestamp			_time;
+	BandWriter&				_band;
 };
 
 
