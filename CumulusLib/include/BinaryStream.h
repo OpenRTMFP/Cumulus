@@ -69,7 +69,7 @@ inline std::streamsize BinaryBuffer::xsgetn(char_type* p,std::streamsize count) 
         return _buf.sgetn(p,count);
 }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_MSC_VER)
 inline std::streamsize BinaryBuffer::_Xsgetn_s(char_type * _Ptr,size_t _Ptr_size, std::streamsize _Count) {
         return _buf._Sgetn_s(_Ptr,_Ptr_size,_Count);
 }
