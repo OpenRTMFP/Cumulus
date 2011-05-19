@@ -43,9 +43,9 @@ public:
 	Poco::UInt16	read16();
 	Poco::UInt32	read32();
 
-	int				available();
-	Poco::UInt8*	current();
-	int				position();
+	std::streamsize		available();
+	Poco::UInt8*		current();
+	int					position();
 
 	void			reset(int newPos=0);
 	void			shrink(int rest);

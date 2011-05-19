@@ -64,7 +64,7 @@ void BinaryWriter::writeRandom(UInt16 size) {
 void BinaryWriter::writeAddress(const Address& address,bool publicFlag) {
 	UInt8 flag = publicFlag ? 0x02 : 0x01;
 	if(address.host.size()==16) // IPv6
-		flag &= 0x80;
+		flag |= 0x80;
 	write8(flag);
 	for(int i=0;i<address.host.size();++i)
 		write8(address.host[i]);
@@ -76,7 +76,7 @@ void BinaryWriter::writeAddress(const SocketAddress& address,bool publicFlag) {
 	UInt8 size = 4;
 	IPAddress host = address.host();
 	if(host.family() == IPAddress::IPv6) {
-		flag &= 0x80;
+		flag |= 0x80;
 		size = 16;
 	}
 	const UInt8* bytes = reinterpret_cast<const UInt8*>(host.addr());

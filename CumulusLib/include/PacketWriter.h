@@ -32,11 +32,11 @@ public:
 	PacketWriter(PacketWriter&,int skip=0);
 	virtual ~PacketWriter();
 
-	Poco::UInt8*	begin();
-	int				length();
-	int				position();
+	Poco::UInt8*		begin();
+	std::streamsize		length();
+	int					position();
 	
-	int				available();
+	std::streamsize		available();
 
 	bool	good();
 	void	clear(int pos=0);
@@ -53,13 +53,13 @@ private:
 	int					_size;
 };
 
-inline int PacketWriter::available() {
+inline std::streamsize PacketWriter::available() {
 	return _memory.available();
 }
 inline bool PacketWriter::good() {
 	return _memory.good();
 }
-inline int PacketWriter::length() {
+inline std::streamsize PacketWriter::length() {
 	return _memory.written();
 }
 inline int PacketWriter::position() {

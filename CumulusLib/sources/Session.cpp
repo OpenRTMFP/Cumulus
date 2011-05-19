@@ -165,7 +165,7 @@ void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,S
 	DEBUG("Peer newcomer address send to peer '%u' connected",id());
 	
 	Address const* pAddress = NULL;
-	UInt16 size = 0x37 + (address.host().family() == IPAddress::IPv6 ? 16 : 4);
+	UInt16 size = 0x36;
 
 	if(pSession) {
 		map<string,UInt8>::iterator it =	_p2pHandshakeAttemps.find(tag);
@@ -184,11 +184,14 @@ void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,S
 		if(it->second > pSession->peer().privateAddress.size())
 			it->second=0;
 	}
+
+	if(!pAddress)
+		size += (address.host().family() == IPAddress::IPv6 ? 16 : 4);
 	
 	PacketWriter& writer = writeMessage(0x0F,size);
 
-	writer.write8(34);
-	writer.write8(33);
+	writer.write8(0x22);
+	writer.write8(0x21);
 
 	writer.write8(0x0F);
 	writer.writeRaw(_peer.id,ID_SIZE);
