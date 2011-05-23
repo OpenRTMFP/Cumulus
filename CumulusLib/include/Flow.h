@@ -63,7 +63,6 @@ private:
 
 	bool				_completed;
 	const std::string&	_name;
-	const std::string&	_signature;
 	BandWriter&			_band;
 
 	// Receiving

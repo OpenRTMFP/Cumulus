@@ -54,7 +54,7 @@ void BinaryWriter::writeString16(const string& value) {
 	writeRaw(value);
 }
 
-void BinaryWriter::writeRandom(UInt16 size) {
+void BinaryWriter::writeRandom(streamsize size) {
 	char * value = new char[size]();
 	RandomInputStream().read(value,size);
 	writeRaw(value,size);

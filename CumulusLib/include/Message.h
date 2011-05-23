@@ -35,9 +35,9 @@ public:
 	AMFWriter					amfWriter;
 	BinaryWriter				rawWriter;
 
-	int							available();
+	std::streamsize				available();
 	void						reset();
-	void						read(PacketWriter& writer,int size);
+	void						read(PacketWriter& writer,std::streamsize size);
 	std::list<Poco::UInt32>		fragments;
 	Poco::UInt32				startStage;
 
@@ -45,7 +45,7 @@ private:
 	BinaryStream				_stream;
 };
 
-inline int Message::available() {
+inline std::streamsize Message::available() {
 	return _stream.size();
 }
 

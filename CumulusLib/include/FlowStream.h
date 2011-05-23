@@ -48,7 +48,6 @@ private:
 	void videoHandler(PacketReader& packet);
 	void messageHandler(const std::string& action,AMFReader& message);
 
-	std::string		_signature;
 	Poco::UInt32	_index;
 
 	Publication*	_pPublication;

@@ -40,7 +40,7 @@ public:
 
 	const Poco::UInt32		id;
 	const Poco::UInt32		flowId;
-	const std::string&		signature;
+	const std::string		signature;
 
 	void flush();
 

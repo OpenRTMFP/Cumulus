@@ -32,9 +32,20 @@ FlowNull::FlowNull(Peer& peer,ServerHandler& serverHandler,BandWriter& band) : F
 FlowNull::~FlowNull() {
 }
 
-
 void FlowNull::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
 	Flow::messageHandler(stage,message,flags);
+	fail("Flow unknown certainly already consumed");
+}
+void FlowNull::rawHandler(UInt8 type,PacketReader& data) {
+	Flow::rawHandler(type,data);
+	fail("Flow unknown certainly already consumed");
+}
+void FlowNull::audioHandler(PacketReader& packet) {
+	Flow::audioHandler(packet);
+	fail("Flow unknown certainly already consumed");
+}
+void FlowNull::videoHandler(PacketReader& packet) {
+	Flow::videoHandler(packet);
 	fail("Flow unknown certainly already consumed");
 }
 

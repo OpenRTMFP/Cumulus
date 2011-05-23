@@ -42,7 +42,7 @@ void Message::reset() {
 	_stream.resetReading(fragment);
 }
 
-void Message::read(PacketWriter& writer,int size) {
+void Message::read(PacketWriter& writer,streamsize size) {
 	_stream.read((char*)(writer.begin()+writer.position()),size);
 	writer.next(size);
 }

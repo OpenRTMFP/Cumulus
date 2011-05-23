@@ -120,7 +120,7 @@ void FlowWriter::raiseMessage() {
 		message.reset();
 		
 		while(!end && message.fragments.end()!=itFrag++) {
-			int size = message.available();
+			streamsize size = message.available();
 			end = itFrag==message.fragments.end();
 			if(!end) {
 				size = (*itFrag)-fragment;
@@ -176,7 +176,7 @@ void FlowWriter::raiseMessage() {
 					size -= (signature.size()+1);
 					// No write this in the case where it's a new flow!
 					if(flowId>0) {
-						writer.write8(0x02); // following size
+						writer.write8(1+flowIdSize); // following size
 						writer.write8(0x0a); // Unknown!
 						size -= 2;
 						writer.write8(flowId);
@@ -273,7 +273,7 @@ void FlowWriter::flush() {
 					size -= (signature.size()+1);
 					// No write this in the case where it's a new flow!
 					if(flowId>0) {
-						writer.write8(0x02); // following size
+						writer.write8(1+flowIdSize); // following size
 						writer.write8(0x0a); // Unknown!
 						size -= 2;
 						writer.write8(flowId);

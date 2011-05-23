@@ -28,6 +28,9 @@ public:
 	virtual ~FlowNull();
 
 	void messageHandler(Poco::UInt32 stage,PacketReader& message,Poco::UInt8 flags);
+	void rawHandler(Poco::UInt8 type,PacketReader& data);
+	void audioHandler(PacketReader& packet);
+	void videoHandler(PacketReader& packet);
 
 	void				complete();
 	FlowWriter&			writer();

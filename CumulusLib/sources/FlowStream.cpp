@@ -27,7 +27,7 @@ namespace Cumulus {
 string FlowStream::s_signature("\x00\x54\x43\x04",4);
 string FlowStream::s_name("NetStream");
 
-FlowStream::FlowStream(UInt32 id,const string& signature,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,_signature,s_name,peer,serverHandler,band),_signature(signature),_pPublication(NULL),_pListener(NULL),_state(IDLE) {
+FlowStream::FlowStream(UInt32 id,const string& signature,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,signature,s_name,peer,serverHandler,band),_pPublication(NULL),_pListener(NULL),_state(IDLE) {
 	PacketReader reader((const UInt8*)signature.c_str(),signature.length());
 	reader.next(4);
 	_index = reader.read7BitValue();
@@ -110,7 +110,7 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		writer3.write32(0);
 		writer3.write32(0x02);*/
 
-		_pListener = &newFlowWriter<Listener>(_signature);
+		_pListener = &newFlowWriter<Listener>(writer.signature);
 		serverHandler.streams.subscribe(name,*_pListener);
 
 
