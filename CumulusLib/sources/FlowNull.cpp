@@ -17,7 +17,7 @@
 
 #include "FlowNull.h"
 #include "FlowWriter.h"
-#include "Poco/format.h"
+#include "Poco/Format.h"
 
 using namespace std;
 using namespace Poco;
