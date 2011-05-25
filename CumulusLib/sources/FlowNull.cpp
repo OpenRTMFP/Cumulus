@@ -16,6 +16,8 @@
 */
 
 #include "FlowNull.h"
+#include "FlowWriter.h"
+#include "Poco/format.h"
 
 using namespace std;
 using namespace Poco;
@@ -27,26 +29,20 @@ string FlowNull::s_name;
 string FlowNull::s_signature;
 
 FlowNull::FlowNull(Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(0,s_signature,s_name,peer,serverHandler,band) {
+	writer().close();
 }
 
 FlowNull::~FlowNull() {
 }
 
-void FlowNull::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
-	Flow::messageHandler(stage,message,flags);
-	fail("Flow unknown certainly already consumed");
+void FlowNull::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,UInt8 flags) {
+	fail(format("Message received for a Flow %u unknown",id));
+	(UInt32&)this->stage = stage;
 }
-void FlowNull::rawHandler(UInt8 type,PacketReader& data) {
-	Flow::rawHandler(type,data);
-	fail("Flow unknown certainly already consumed");
-}
-void FlowNull::audioHandler(PacketReader& packet) {
-	Flow::audioHandler(packet);
-	fail("Flow unknown certainly already consumed");
-}
-void FlowNull::videoHandler(PacketReader& packet) {
-	Flow::videoHandler(packet);
-	fail("Flow unknown certainly already consumed");
+
+void FlowNull::commit() {
+	(UInt32&)id=0;
+	Flow::commit();
 }
 
 } // namespace Cumulus

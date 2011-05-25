@@ -44,7 +44,7 @@ public:
 
 	void flush();
 
-	void acknowledgment(Poco::UInt32 stage);
+	void acknowledgment(Poco::UInt32 stage,bool noMore=false);
 	void raise();
 
 	void close();
@@ -63,8 +63,9 @@ public:
 	
 private:
 	void					raiseMessage();
-
 	virtual Message&		createMessage();
+
+	void					clearMessages();
 
 	
 	bool					_closed;
@@ -74,6 +75,7 @@ private:
 	BandWriter&				_band;
 	Message					_messageNull;
 
+	bool					_bound;
 	// For single thread AMF response!
 	double					_callbackHandle;
 	std::string				_code;
@@ -86,7 +88,7 @@ inline Poco::UInt32 FlowWriter::stage() {
 	return _stage;
 }
 inline bool FlowWriter::consumed() {
-	return _closed && _messages.empty();
+	return _closed && !_bound && _messages.empty();
 }
 
 } // namespace Cumulus

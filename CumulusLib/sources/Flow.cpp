@@ -31,29 +31,37 @@ using namespace Poco;
 
 namespace Cumulus {
 
+class Fragment : public Buffer<UInt8> {
+public:
+	Fragment(PacketReader& data,UInt8 flags) : flags(flags),Buffer<UInt8>(data.available()) {
+		data.readRaw(begin(),size());
+	}
+	Poco::UInt8					flags;
+};
 
-Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : id(id),_stage(0),peer(peer),serverHandler(serverHandler),_completed(false),_name(name),_pBuffer(NULL),_sizeBuffer(0),_band(band),writer(*new FlowWriter(id,signature,band)) {
+
+Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : id(id),stage(0),peer(peer),serverHandler(serverHandler),_completed(false),_name(name),_pBuffer(NULL),_band(band),writer(*new FlowWriter(id,signature,band)) {
+	writer._bound=true;
 }
 
 Flow::~Flow() {
 	complete();
+
+	// delete fragments
+	map<UInt32,Fragment*>::const_iterator it;
+	for(it=_fragments.begin();it!=_fragments.end();++it)
+		delete it->second;
+
 	// delete receive buffer
-	if(_sizeBuffer>0) {
-		delete [] _pBuffer;
-		_sizeBuffer=0;
-	}
+	if(_pBuffer)
+		delete _pBuffer;
 }
 
 void Flow::complete() {
 	if(!_completed && id>0)
 		DEBUG("Flow '%u' consumed",id);
+	writer._bound = false;
 	_completed=true;
-}
-
-void Flow::flush() {
-	writer.flush();
-	if(_completed)
-		writer.close();
 }
 
 void Flow::fail(const string& error) {
@@ -93,47 +101,92 @@ UInt8 Flow::unpack(PacketReader& reader) {
 	return type;
 }
 
-void Flow::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
+void Flow::commit() {
+	// ACK
+	PacketWriter& ack = _band.writeMessage(0x51,1+Util::Get7BitValueSize(id)+Util::Get7BitValueSize(stage));
+	ack.write7BitValue(id);
+	ack.write8(id==0 ? 0 : 0x3f);
+	ack.write7BitValue(stage);
+
+	writer.flush();
+	if(_completed)
+		writer.close();
+}
+
+void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,UInt8 flags) {
 	if(_completed)
 		return;
 
-	if(stage<=_stage) {
+	if(deltaNAck>stage) {
+		ERROR("DeltaNAck %u superior than stage %u on the flow %u",deltaNAck,stage,id);
+		deltaNAck=stage;
+	}
+
+	UInt32 stageNAck = stage-deltaNAck;
+	if( this->stage <stageNAck) {
+		map<UInt32,Fragment*>::const_iterator it=_fragments.begin();
+		if(it!=_fragments.end() && it->first <= stageNAck) 
+			stageNAck = it->first-1;
+		WARN("Flow %u has lost %u packets",id,( this->stage -stageNAck));
+		(UInt32&)this->stage = stageNAck;
+	}
+
+	if(stage<= this->stage) {
 		DEBUG("Stage %u on flow %u has already been received",stage,id);
 		return;
 	}
-	_stage = stage;
 
+	if(stage>(this->stage+1)) {
+		if(_fragments.find(stage) == _fragments.end())
+			_fragments[stage] = new Fragment(fragment,flags);
+		else
+			DEBUG("Stage %u on flow %u has already been received",stage,id);
+	} else {
+		(UInt32&)this->stage += 1;
+		fragmentSortedHandler(fragment,flags);
+		map<UInt32,Fragment*>::iterator it=_fragments.begin();
+		while(it!=_fragments.end()) {
+			if( it->first >(this->stage+1))
+				break;
+			PacketReader reader(it->second->begin(),it->second->size());
+			(UInt32&)this->stage += 1;
+			fragmentSortedHandler(reader,it->second->flags);
+			delete it->second;
+			_fragments.erase(it++);
+		}
+
+	}
+}
+
+void Flow::fragmentSortedHandler(PacketReader& fragment,UInt8 flags) {
 	PacketReader* pMessage(NULL);
 	if(flags&MESSAGE_WITH_BEFOREPART){
-		if(_sizeBuffer==0) {
+		if(!_pBuffer) {
 			ERROR("A received message tells to have a 'afterpart' and nevertheless partbuffer is empty");
 			return;
 		}
 		
-		UInt8* pOldBuffer = _pBuffer;
-		_pBuffer = new UInt8[_sizeBuffer + message.available()]();
-		memcpy(_pBuffer,pOldBuffer,_sizeBuffer);
-		memcpy(_pBuffer+_sizeBuffer,message.current(),message.available());
-		_sizeBuffer += message.available();
-		delete [] pOldBuffer;
+		Buffer<UInt8>* pOldBuffer = _pBuffer;
+		_pBuffer = new Buffer<UInt8>(pOldBuffer->size() + fragment.available());
+		memcpy(_pBuffer->begin(),pOldBuffer->begin(),pOldBuffer->size());
+		memcpy(_pBuffer->begin()+pOldBuffer->size(),fragment.current(),fragment.available());
+		delete pOldBuffer;
 
 		if(flags&MESSAGE_WITH_AFTERPART)
 			return;
 
-		pMessage = new PacketReader(_pBuffer,_sizeBuffer);
+		pMessage = new PacketReader(_pBuffer->begin(),_pBuffer->size());
 	} else if(flags&MESSAGE_WITH_AFTERPART) {
-		if(_sizeBuffer>0) {
+		if(_pBuffer) {
 			ERROR("A received message tells to have not 'beforepart' and nevertheless partbuffer exists");
-			delete [] _pBuffer;
-			_sizeBuffer=0;
+			delete _pBuffer;
 		}
-		_sizeBuffer = message.available();
-		_pBuffer = new UInt8[_sizeBuffer]();
-		memcpy(_pBuffer,message.current(),_sizeBuffer);
+		_pBuffer = new Buffer<UInt8>(fragment.available());
+		memcpy(_pBuffer->begin(),fragment.current(),_pBuffer->size());
 		return;
 	}
 	if(!pMessage)
-		pMessage = new PacketReader(message);
+		pMessage = new PacketReader(fragment);
 
 	UInt8 type = unpack(*pMessage);
 	if(type!=EMPTY) {
@@ -178,9 +231,9 @@ void Flow::messageHandler(UInt32 stage,PacketReader& message,UInt8 flags) {
 	if(flags&MESSAGE_END)
 		complete();
 
-	if(_sizeBuffer>0) {
-		delete [] _pBuffer;
-		_sizeBuffer=0;
+	if(_pBuffer) {
+		delete _pBuffer;
+		_pBuffer=NULL;
 	}
 }
 

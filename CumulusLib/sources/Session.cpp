@@ -50,17 +50,19 @@ Session::~Session() {
 	kill();
 	if(_peer.state!=Client::NONE)
 		WARN("onDisconnect client handler has not been called on the session '%u'",_id);
+
 	// delete flows
 	map<UInt32,Flow*>::const_iterator it;
 	for(it=_flows.begin();it!=_flows.end();++it)
 		delete it->second;
+	delete _pFlowNull;
+
 	// delete flowWriters remaining
 	map<UInt32,FlowWriter*>::const_iterator it2;
 	for(it2=_flowWriters.begin();it2!=_flowWriters.end();++it2)
 		delete it2->second;
 	if(pTarget)
 		delete pTarget;
-	delete _pFlowNull;
 }
 
 bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
@@ -312,6 +314,7 @@ void Session::packetHandler(PacketReader& packet) {
 	UInt8 flags;
 	Flow* pFlow=NULL;
 	UInt32 stage=0;
+	UInt32 deltaNAck=0;
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 	bool answer = false;
@@ -364,15 +367,7 @@ void Session::packetHandler(PacketReader& packet) {
 				UInt8 ack = message.read8();
 				while(ack==0xFF)
 					ack = message.read8();
-				UInt32 stage = message.read7BitValue();
-				flowWriter.acknowledgment(stage);
-				if(ack==0) {
-					WARN("The FlowWriter %u has received a negative ack for the stage %u",flowWriter.id,stage);
-					flowWriter.close();
-				}
-				// else {
-				// In fact here, we should send a 0x18 message (with id flow),
-				// but it can create a loop... We prefer cancel the message
+				flowWriter.acknowledgment(message.read7BitValue(),ack==0);
 				break;
 			}
 			/// Request
@@ -382,18 +377,18 @@ void Session::packetHandler(PacketReader& packet) {
 				flags = message.read8();
 				UInt32 idFlow = message.read7BitValue();
 				stage = message.read7BitValue()-1;
-				UInt8 nbStageNAck = message.read8();
+				deltaNAck = message.read7BitValue()-1;
+
+				map<UInt32,Flow*>::const_iterator it = _flows.find(idFlow);
+				pFlow = it==_flows.end() ? NULL : it->second;
 
 				// Header part if present
 				if(flags & MESSAGE_HEADER) {
 					string signature;
 					message.readString8(signature);
 
-					// create flow just on a stage of 1 (here 0)
-					if(stage==0)
+					if(!pFlow)
 						pFlow = createFlow(idFlow,signature);
-					else if(!(flags&MESSAGE_WITH_BEFOREPART) && nbStageNAck==1)
-						WARN("Stage for Flow creation should be egal to 1, Maybe is a repeat or following packet, otherwise flow bound for '%u' is already consumed",idFlow);
 
 					if(message.read8()>0) {
 
@@ -416,39 +411,22 @@ void Session::packetHandler(PacketReader& packet) {
 
 				}
 				
-				if(!pFlow)
-					pFlow = &flow(idFlow);
-
-				if(stage > pFlow->stage()) {
-					if(nbStageNAck>1) {
-						// CASE stage superior than the current receiving stage
-						// Here it means that a message with a stage superior to the current receiving stage has been sent
-						// We must ignore this message for that the client resend the precedent packet, but "ack" the last packet received to try to accelerate the packet repetition!
-						// In true we should save the packet for more later (TODO?), but it happens very rarely!
-						WARN("A packet from flow '%u' has been lost",idFlow);
-						PacketWriter& writer = writeMessage(0x51,1+Util::Get7BitValueSize(idFlow)+Util::Get7BitValueSize(pFlow->stage()));
-						writer.write7BitValue(idFlow);
-						writer.write8(0x3f); // ack
-						writer.write7BitValue(pFlow->stage());
-						pFlow=NULL;
-						break;
-					}
-					else
-						ERROR("A flow '%u' message with a '%u' stage more superior than one with the current stage '%u' has been received'",idFlow,stage,pFlow->stage());
+				if(!pFlow) {
+					WARN("Flow %u unfound",idFlow);
+					pFlow = _pFlowNull;
 				}
+
 			}	
 			case 0x11 : {
 				++stage;
-				
-				if(!pFlow)
-					break; // see above at "CASE stage superior than the current receiving stage"
+				++deltaNAck;
 
 				// has Header?
 				if(type==0x11)
 					flags = message.read8();
 
 				// Process request
-				pFlow->messageHandler(stage,message,flags);
+				pFlow->fragmentHandler(stage,deltaNAck,message,flags);
 				if(_peer.state==Client::REJECTED && !failed())
 					fail("Client rejected"); // send fail message immediatly
 
@@ -462,13 +440,9 @@ void Session::packetHandler(PacketReader& packet) {
 		packet.next(size);
 		type = packet.available()>0 ? packet.read8() : 0xFF;
 
-		// Write Acknowledgment
+		// Commit Flow
 		if(pFlow && stage>0 && type!= 0x11) {
-			PacketWriter& writer = writeMessage(0x51,1+Util::Get7BitValueSize(pFlow->id)+Util::Get7BitValueSize(stage));
-			writer.write7BitValue(pFlow->id);
-			writer.write8(0x3f); // ack
-			writer.write7BitValue(stage);
-			pFlow->flush();
+			pFlow->commit();
 			if(pFlow->consumed()) {
 				DEBUG("Flow %u consumed",pFlow->id);
 				_flows.erase(pFlow->id);

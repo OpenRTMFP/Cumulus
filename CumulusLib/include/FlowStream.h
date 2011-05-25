@@ -28,8 +28,6 @@ public:
 	FlowStream(Poco::UInt32 id,const std::string& signature,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
 	virtual ~FlowStream();
 
-	void flush();
-
 	const std::string		name;
 
 	static std::string	s_signature;
@@ -60,8 +58,6 @@ private:
 inline BinaryWriter& FlowStream::write() {
 	return writer.writeRawMessage(true);
 }
-inline void FlowStream::flush() {
-	return Flow::flush();
-}
+
 
 } // namespace Cumulus

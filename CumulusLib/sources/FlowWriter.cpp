@@ -32,16 +32,21 @@ using namespace Poco;
 namespace Cumulus {
 
 
-FlowWriter::FlowWriter(UInt32 flowId,const string& signature,BandWriter& band) : id(0),flowId(flowId),_stage(0),_closed(false),_band(band),signature(signature),_callbackHandle(0) {
+FlowWriter::FlowWriter(UInt32 flowId,const string& signature,BandWriter& band) : id(0),flowId(flowId),_stage(0),_closed(false),_band(band),signature(signature),_callbackHandle(0),_bound(false) {
 	_messageNull.rawWriter.stream().setstate(ios_base::eofbit);
 	band.initFlowWriter(*this);
 }
 
 FlowWriter::~FlowWriter() {
+	clearMessages();
+}
+
+void FlowWriter::clearMessages() {
 	// delete messages
 	list<Message*>::const_iterator it;
 	for(it=_messages.begin();it!=_messages.end();++it)
 		delete *it;
+	_messages.clear();
 }
 
 void FlowWriter::close() {
@@ -53,9 +58,19 @@ void FlowWriter::close() {
 	flush();
 }
 
-void FlowWriter::acknowledgment(Poco::UInt32 stage) {
+void FlowWriter::acknowledgment(Poco::UInt32 stage,bool noMore) {
+
+	if(noMore) {
+		// In fact here, we should send a 0x18 message (with id flow),
+		// but it can create a loop... We prefer the following behavior
+		WARN("The FlowWriter %u has received a 'no more' ack for the stage %u",id,stage);
+		close();
+		clearMessages();
+		return;
+	}
+
 	if(stage>_stage) {
-		ERROR("Acknowledgment received superior than the current sending stage : '%u' instead of '%u'",stage,_stage);
+		ERROR("Acknowledgment received superior than the current sending stage : %u instead of %u",stage,_stage);
 		return;
 	}
 	list<Message*>::const_iterator it=_messages.begin();
@@ -103,7 +118,7 @@ void FlowWriter::raiseMessage() {
 
 	list<Message*>::const_iterator it;
 	bool header = true;
-	UInt8 nbStageNAck=0;
+	UInt32 deltaNAck=0;
 
 	for(it=_messages.begin();it!=_messages.end();++it) {
 		Message& message(**it);
@@ -133,11 +148,12 @@ void FlowWriter::raiseMessage() {
 			UInt8 stageSize = Util::Get7BitValueSize(stage+1);
 			UInt8 idSize = Util::Get7BitValueSize(id);
 			UInt8 flowIdSize = Util::Get7BitValueSize(flowId);
-			Int8 signatureLen = (stage-nbStageNAck)>0 ? 0 : (signature.size()+(flowId==0?2:(4+flowIdSize)));
+			UInt8 deltaNAckSize = Util::Get7BitValueSize(deltaNAck);
+			UInt8 signatureLen = (stage-deltaNAck)>0 ? 0 : (signature.size()+(flowId==0?2:(4+flowIdSize)));
 			if(header) {
 				size+=idSize;
 				size+=stageSize;
-				size+=1; // nbStageNAck
+				size+=deltaNAckSize;
 				size+=signatureLen;
 			}
 
@@ -167,11 +183,11 @@ void FlowWriter::raiseMessage() {
 				size-=idSize;
 				writer.write7BitValue(++stage);
 				size-=stageSize;
-				writer.write8(++nbStageNAck);
-				size-=1;
+				writer.write7BitValue(++deltaNAck);
+				size-=deltaNAckSize;
 				
 				// signature
-				if((stage-nbStageNAck)==0) {
+				if((stage-deltaNAck)==0) {
 					writer.writeString8(signature);
 					size -= (signature.size()+1);
 					// No write this in the case where it's a new flow!
@@ -179,7 +195,7 @@ void FlowWriter::raiseMessage() {
 						writer.write8(1+flowIdSize); // following size
 						writer.write8(0x0a); // Unknown!
 						size -= 2;
-						writer.write8(flowId);
+						writer.write7BitValue(flowId);
 						size -= flowIdSize;
 					}
 					writer.write8(0); // marker of end for this part
@@ -196,12 +212,12 @@ void FlowWriter::raiseMessage() {
 void FlowWriter::flush() {
 	list<Message*>::const_iterator it;
 	bool header = true;
-	UInt8 nbStageNAck=0;
+	UInt8 deltaNAck=0;
 
 	for(it=_messages.begin();it!=_messages.end();++it) {
 		Message& message(**it);
 		if(!message.fragments.empty()) {
-			nbStageNAck += message.fragments.size();
+			deltaNAck += message.fragments.size();
 			continue;
 		}
 
@@ -224,14 +240,15 @@ void FlowWriter::flush() {
 			UInt8 stageSize = Util::Get7BitValueSize(_stage+1);
 			UInt8 idSize = Util::Get7BitValueSize(id);
 			UInt8 flowIdSize = Util::Get7BitValueSize(flowId);
-			Int8 signatureLen = (_stage-nbStageNAck)>0 ? 0 : (signature.size()+(flowId==0?2:(4+flowIdSize)));
+			UInt8 deltaNAckSize = Util::Get7BitValueSize(deltaNAck);
+			UInt8 signatureLen = (_stage-deltaNAck)>0 ? 0 : (signature.size()+(flowId==0?2:(4+flowIdSize)));
 			bool head = header;
 			int size = message.available()+4;
 
 			if(head) {
 				size+=idSize;
 				size+=stageSize;
-				size+=1; // nbStageNAck
+				size+=deltaNAckSize;
 				size+=signatureLen;
 			}
 
@@ -264,11 +281,11 @@ void FlowWriter::flush() {
 				size-=idSize;
 				writer.write7BitValue(_stage);
 				size-=stageSize;
-				writer.write8(++nbStageNAck);
-				size-=1;
+				writer.write7BitValue(++deltaNAck);
+				size-=deltaNAckSize;
 
 				// signature
-				if((_stage-nbStageNAck)==0) {
+				if((_stage-deltaNAck)==0) {
 					writer.writeString8(signature);
 					size -= (signature.size()+1);
 					// No write this in the case where it's a new flow!
@@ -276,7 +293,7 @@ void FlowWriter::flush() {
 						writer.write8(1+flowIdSize); // following size
 						writer.write8(0x0a); // Unknown!
 						size -= 2;
-						writer.write8(flowId);
+						writer.write7BitValue(flowId);
 						size -= flowIdSize;
 					}
 					writer.write8(0); // marker of end for this part
@@ -295,7 +312,7 @@ void FlowWriter::flush() {
 }
 
 Message& FlowWriter::createMessage() {
-	if(_closed || id==0)
+	if(_closed)
 		return _messageNull;
 	Message* pMessage = new Message();
 	_messages.push_back(pMessage);

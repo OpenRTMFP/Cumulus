@@ -26,18 +26,17 @@ class FlowNull : public Flow {
 public:
 	FlowNull(Peer& peer,ServerHandler& serverHandler,BandWriter& band);
 	virtual ~FlowNull();
-
-	void messageHandler(Poco::UInt32 stage,PacketReader& message,Poco::UInt8 flags);
-	void rawHandler(Poco::UInt8 type,PacketReader& data);
-	void audioHandler(PacketReader& packet);
-	void videoHandler(PacketReader& packet);
+	
+	void	fragmentHandler(Poco::UInt32 stage,Poco::UInt32 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
 
 	void				complete();
 	FlowWriter&			writer();
 
-	static std::string	s_signature;
-private:
+	
+private:	
+	void				commit();
 
+	static std::string	s_signature;
 	static std::string	s_name;
 };
 
