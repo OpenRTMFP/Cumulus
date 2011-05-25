@@ -269,8 +269,17 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 }
 
 void RTMFPServer::manage() {
-	if(!_timeLastManage.isElapsed(_freqManage))
+	if(!_timeLastManage.isElapsed(_freqManage)) {
+		if(_middle) {
+			Sessions::Iterator it;
+			for(it=_sessions.begin();it!=_sessions.end();++it) {
+				Middle* pMiddle = dynamic_cast<Middle*>(it->second);
+				if(pMiddle)
+					pMiddle->manage();
+			}
+		}
 		return;
+	}
 	_timeLastManage.update();
 	_handshake.manage();
 	_sessions.manage();

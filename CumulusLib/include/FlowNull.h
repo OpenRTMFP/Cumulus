@@ -34,7 +34,7 @@ public:
 
 	
 private:	
-	void				commit();
+	bool				noMore();
 
 	static std::string	s_signature;
 	static std::string	s_name;
@@ -43,5 +43,7 @@ private:
 inline void FlowNull::complete() {} // To overload the Flow definition, to avoid to set '_completed' for 'true', FlowNull must not be deleted!
 
 inline FlowWriter& FlowNull::writer() {return Flow::writer;}
+
+inline bool FlowNull::noMore() {return true;}
 
 } // namespace Cumulus

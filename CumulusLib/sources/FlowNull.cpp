@@ -36,13 +36,9 @@ FlowNull::~FlowNull() {
 }
 
 void FlowNull::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,UInt8 flags) {
-	fail(format("Message received for a Flow %u unknown",id));
+	fail("Message received for a Flow unknown");
 	(UInt32&)this->stage = stage;
 }
 
-void FlowNull::commit() {
-	(UInt32&)id=0;
-	Flow::commit();
-}
 
 } // namespace Cumulus

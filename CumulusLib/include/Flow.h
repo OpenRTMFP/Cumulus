@@ -36,7 +36,7 @@ public:
 
 	virtual void	fragmentHandler(Poco::UInt32 stage,Poco::UInt32 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
 	
-	virtual void	commit();
+	void			commit();
 
 	void			fail(const std::string& error);
 
@@ -49,7 +49,7 @@ public:
 
 protected:
 
-	void		fragmentSortedHandler(PacketReader& fragment,Poco::UInt8 flags);
+	void		fragmentSortedHandler(Poco::UInt32 stage,PacketReader& fragment,Poco::UInt8 flags);
 
 	virtual void messageHandler(const std::string& name,AMFReader& message);
 	virtual void rawHandler(Poco::UInt8 type,PacketReader& data);
@@ -64,6 +64,7 @@ protected:
 	const Poco::UInt32		stage;
 	
 private:
+	virtual bool		noMore();
 	Poco::UInt8			unpack(PacketReader& reader);
 
 	bool				_completed;
@@ -74,6 +75,10 @@ private:
 	Poco::Buffer<Poco::UInt8>*			_pBuffer;
 	std::map<Poco::UInt32,Fragment*>	_fragments;
 };
+
+inline bool Flow::noMore() {
+	return false;
+}
 
 inline bool Flow::consumed() {
 	return _completed;

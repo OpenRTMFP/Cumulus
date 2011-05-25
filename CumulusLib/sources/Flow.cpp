@@ -105,7 +105,7 @@ void Flow::commit() {
 	// ACK
 	PacketWriter& ack = _band.writeMessage(0x51,1+Util::Get7BitValueSize(id)+Util::Get7BitValueSize(stage));
 	ack.write7BitValue(id);
-	ack.write8(id==0 ? 0 : 0x3f);
+	ack.write8(noMore() ? 0x00 : 0x3f);
 	ack.write7BitValue(stage);
 
 	writer.flush();
@@ -117,40 +117,52 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 	if(_completed)
 		return;
 
-	if(deltaNAck>stage) {
-		ERROR("DeltaNAck %u superior than stage %u on the flow %u",deltaNAck,stage,id);
-		deltaNAck=stage;
+	UInt32 nextStage = this->stage+1;
+
+	if(deltaNAck>0) {
+
+		if(deltaNAck>stage) {
+			ERROR("DeltaNAck %u superior than stage %u on the flow %u",deltaNAck,stage,id);
+			deltaNAck=stage;
+		}
+
+		if( this->stage < (stage-deltaNAck) || flags&MESSAGE_ABANDONMENT) {
+			
+			map<UInt32,Fragment*>::iterator it=_fragments.begin();
+			while(it!=_fragments.end()) {
+				if( it->first > stage)
+					break;
+				if( it->first <= (stage-1)) {
+					PacketReader reader(it->second->begin(),it->second->size());
+					fragmentSortedHandler(it->first,reader,it->second->flags);
+				}
+				delete it->second;
+				_fragments.erase(it++);
+			}
+
+			nextStage = stage;
+		}
 	}
 
-	UInt32 stageNAck = stage-deltaNAck;
-	if( this->stage <stageNAck) {
-		map<UInt32,Fragment*>::const_iterator it=_fragments.begin();
-		if(it!=_fragments.end() && it->first <= stageNAck) 
-			stageNAck = it->first-1;
-		WARN("Flow %u has lost %u packets",id,( this->stage -stageNAck));
-		(UInt32&)this->stage = stageNAck;
-	}
-
-	if(stage<= this->stage) {
+	if(nextStage > stage) {
 		DEBUG("Stage %u on flow %u has already been received",stage,id);
 		return;
 	}
 
-	if(stage>(this->stage+1)) {
+	if(stage>nextStage) {
+		// not following stage!
 		if(_fragments.find(stage) == _fragments.end())
 			_fragments[stage] = new Fragment(fragment,flags);
 		else
 			DEBUG("Stage %u on flow %u has already been received",stage,id);
 	} else {
-		(UInt32&)this->stage += 1;
-		fragmentSortedHandler(fragment,flags);
+		fragmentSortedHandler(nextStage++,fragment,flags);
 		map<UInt32,Fragment*>::iterator it=_fragments.begin();
 		while(it!=_fragments.end()) {
-			if( it->first >(this->stage+1))
+			if( it->first >nextStage)
 				break;
 			PacketReader reader(it->second->begin(),it->second->size());
-			(UInt32&)this->stage += 1;
-			fragmentSortedHandler(reader,it->second->flags);
+			fragmentSortedHandler(nextStage++,reader,it->second->flags);
 			delete it->second;
 			_fragments.erase(it++);
 		}
@@ -158,11 +170,30 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 	}
 }
 
-void Flow::fragmentSortedHandler(PacketReader& fragment,UInt8 flags) {
+void Flow::fragmentSortedHandler(UInt32 stage,PacketReader& fragment,UInt8 flags) {
+	if(stage<=this->stage) {
+		ERROR("Stage %u not sorted on flow %u",stage,id);
+		return;
+	}
+	if(stage>(this->stage+1)) {
+		// not following stage!
+		WARN("%u packets lost on flow %u",stage-this->stage-1,id);
+		(UInt32&)this->stage = stage;
+		if(_pBuffer) {
+			delete _pBuffer;
+			_pBuffer = NULL;
+		}
+		if(flags&MESSAGE_WITH_BEFOREPART)
+			return;
+	} else
+		(UInt32&)this->stage = stage;
+	
 	PacketReader* pMessage(NULL);
 	if(flags&MESSAGE_WITH_BEFOREPART){
 		if(!_pBuffer) {
-			ERROR("A received message tells to have a 'afterpart' and nevertheless partbuffer is empty");
+			WARN("A received message tells to have a 'beforepart' and nevertheless partbuffer is empty, certainly some packets were lost");
+			delete _pBuffer;
+			_pBuffer = NULL;
 			return;
 		}
 		

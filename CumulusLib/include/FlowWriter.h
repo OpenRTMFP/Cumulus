@@ -28,7 +28,8 @@
 #define MESSAGE_HEADER			0x80
 #define MESSAGE_WITH_AFTERPART  0x10 
 #define MESSAGE_WITH_BEFOREPART	0x20
-#define MESSAGE_END				0x03
+#define MESSAGE_ABANDONMENT		0x02
+#define MESSAGE_END				0x01
 
 namespace Cumulus {
 

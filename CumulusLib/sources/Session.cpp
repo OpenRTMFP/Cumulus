@@ -413,6 +413,7 @@ void Session::packetHandler(PacketReader& packet) {
 				
 				if(!pFlow) {
 					WARN("Flow %u unfound",idFlow);
+					((UInt32&)_pFlowNull->id) = idFlow;
 					pFlow = _pFlowNull;
 				}
 
