@@ -55,12 +55,13 @@ Flow::~Flow() {
 	// delete receive buffer
 	if(_pBuffer)
 		delete _pBuffer;
+
+	writer._bound = false;
 }
 
 void Flow::complete() {
 	if(!_completed && id>0)
 		DEBUG("Flow '%u' consumed",id);
-	writer._bound = false;
 	_completed=true;
 }
 

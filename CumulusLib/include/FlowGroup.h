@@ -33,7 +33,6 @@ private:
 
 	static std::string	s_name;
 
-	void complete();
 	void rawHandler(Poco::UInt8 type,PacketReader& data);
 
 	std::list<const Peer*>		_bestPeers;

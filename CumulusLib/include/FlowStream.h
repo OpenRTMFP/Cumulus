@@ -38,7 +38,6 @@ private:
 		PLAYING
 	};
 
-	void  complete();
 	static std::string	s_name;
 
 	void rawHandler(Poco::UInt8 type,PacketReader& data);

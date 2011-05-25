@@ -29,8 +29,6 @@ public:
 	FlowConnection(Poco::UInt32 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
 	virtual ~FlowConnection();
 
-	void complete();
-
 	static std::string	s_signature;
 
 private:

@@ -36,6 +36,14 @@ FlowStream::FlowStream(UInt32 id,const string& signature,Peer& peer,ServerHandle
 }
 
 FlowStream::~FlowStream() {
+	// Stop the current  job
+	if(_state==PUBLISHING)
+		serverHandler.streams.unpublish(_index,name);
+	else if(_state==PLAYING) {
+		serverHandler.streams.unsubscribe(name,*_pListener);
+		_pListener->close();
+	}
+	_state=IDLE;
 }
 
 void FlowStream::audioHandler(PacketReader& packet) {
@@ -59,17 +67,6 @@ void FlowStream::rawHandler(UInt8 type,PacketReader& data) {
 		Flow::rawHandler(type,data);
 }
 
-void FlowStream::complete() {
-	// Stop the current  job
-	if(_state==PUBLISHING)
-		serverHandler.streams.unpublish(_index,name);
-	else if(_state==PLAYING) {
-		serverHandler.streams.unsubscribe(name,*_pListener);
-		_pListener->close();
-	}
-	_state=IDLE;
-	Flow::complete();
-}
 
 void FlowStream::messageHandler(const string& action,AMFReader& message) {
 

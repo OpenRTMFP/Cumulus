@@ -56,7 +56,6 @@ protected:
 	virtual void audioHandler(PacketReader& packet);
 	virtual void videoHandler(PacketReader& packet);
 
-	virtual void complete();
 	
 	Peer&					peer;
 	FlowWriter&				writer;
@@ -65,6 +64,7 @@ protected:
 	
 private:
 	virtual bool		noMore();
+	void				complete();
 	Poco::UInt8			unpack(PacketReader& reader);
 
 	bool				_completed;

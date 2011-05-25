@@ -31,17 +31,11 @@ FlowGroup::FlowGroup(UInt32 id,Peer& peer,ServerHandler& serverHandler,BandWrite
 }
 
 FlowGroup::~FlowGroup() {
-	
-}
-
-void FlowGroup::complete() {
 	// delete member of group
 	DEBUG("Group closed")
 	if(_pGroup)
 		_pGroup->removePeer(peer);
-	Flow::complete();
 }
-
 
 void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 

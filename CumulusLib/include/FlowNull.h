@@ -29,18 +29,14 @@ public:
 	
 	void	fragmentHandler(Poco::UInt32 stage,Poco::UInt32 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
 
-	void				complete();
 	FlowWriter&			writer();
 
-	
 private:	
 	bool				noMore();
 
 	static std::string	s_signature;
 	static std::string	s_name;
 };
-
-inline void FlowNull::complete() {} // To overload the Flow definition, to avoid to set '_completed' for 'true', FlowNull must not be deleted!
 
 inline FlowWriter& FlowNull::writer() {return Flow::writer;}
 

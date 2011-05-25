@@ -32,16 +32,11 @@ FlowConnection::FlowConnection(UInt32 id,Peer& peer,ServerHandler& serverHandler
 }
 
 FlowConnection::~FlowConnection() {
-}
-
-void FlowConnection::complete() {
 	// delete stream index remaining (which have not had time to send a 'destroyStream' message)
 	set<UInt32>::const_iterator it;
 	for(it=_streamIndex.begin();it!=_streamIndex.end();++it)
 		serverHandler.streams.destroy(*it);
-	Flow::complete();
 }
-
 
 void FlowConnection::messageHandler(const std::string& name,AMFReader& message) {
 	
