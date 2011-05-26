@@ -65,6 +65,8 @@ void Streams::unpublish(UInt32 id,const string& name) {
 		DEBUG("The stream '%s' with a %u id doesn't exist, unpublish useless",name.c_str(),id);
 		return;
 	}
+	if(it->second->publisherId==0)
+		return; // already done
 	if(it->second->publisherId!=id) {
 		WARN("Unpublish '%s' operation with a %u id different than its publisher %u id",name.c_str(),id,it->second->publisherId);
 		return;

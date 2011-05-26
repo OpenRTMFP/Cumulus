@@ -45,7 +45,7 @@ Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,Serve
 }
 
 Flow::~Flow() {
-	complete();
+	complete(); // just to display "consumed"
 
 	// delete fragments
 	map<UInt32,Fragment*>::const_iterator it;
@@ -120,36 +120,32 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 
 	UInt32 nextStage = this->stage+1;
 
-	if(deltaNAck>0) {
-
-		if(deltaNAck>stage) {
-			ERROR("DeltaNAck %u superior than stage %u on the flow %u",deltaNAck,stage,id);
-			deltaNAck=stage;
-		}
-
-		if( this->stage < (stage-deltaNAck) || flags&MESSAGE_ABANDONMENT) {
-			
-			map<UInt32,Fragment*>::iterator it=_fragments.begin();
-			while(it!=_fragments.end()) {
-				if( it->first > stage)
-					break;
-				if( it->first <= (stage-1)) {
-					PacketReader reader(it->second->begin(),it->second->size());
-					fragmentSortedHandler(it->first,reader,it->second->flags);
-				}
-				delete it->second;
-				_fragments.erase(it++);
-			}
-
-			nextStage = stage;
-		}
-	}
-
-	if(nextStage > stage) {
+	if(stage < nextStage) {
 		DEBUG("Stage %u on flow %u has already been received",stage,id);
 		return;
 	}
 
+	if(deltaNAck>stage || deltaNAck==0)
+		deltaNAck=stage;
+
+	if(flags&MESSAGE_ABANDONMENT || this->stage < (stage-deltaNAck)) {
+		
+		map<UInt32,Fragment*>::iterator it=_fragments.begin();
+		while(it!=_fragments.end()) {
+			if( it->first > stage)
+				break;
+			if( it->first <= (stage-1)) {
+				PacketReader reader(it->second->begin(),it->second->size());
+				fragmentSortedHandler(it->first,reader,it->second->flags);
+			}
+			delete it->second;
+			_fragments.erase(it++);
+		}
+
+		nextStage = stage;
+	}
+
+	
 	if(stage>nextStage) {
 		// not following stage!
 		if(_fragments.find(stage) == _fragments.end())
