@@ -25,11 +25,11 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-string FlowNull::s_name;
-string FlowNull::s_signature;
+string FlowNull::_Name;
+string FlowNull::_Signature;
 
-FlowNull::FlowNull(Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(0,s_signature,s_name,peer,serverHandler,band) {
-	writer().close();
+FlowNull::FlowNull(Peer& peer,Handler& handler,BandWriter& band) : Flow(0,_Signature,_Name,peer,handler,band) {
+	
 }
 
 FlowNull::~FlowNull() {

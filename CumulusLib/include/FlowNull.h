@@ -24,7 +24,7 @@ namespace Cumulus {
 
 class FlowNull : public Flow {
 public:
-	FlowNull(Peer& peer,ServerHandler& serverHandler,BandWriter& band);
+	FlowNull(Peer& peer,Handler& handler,BandWriter& band);
 	virtual ~FlowNull();
 	
 	void	fragmentHandler(Poco::UInt32 stage,Poco::UInt32 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
@@ -32,14 +32,10 @@ public:
 	FlowWriter&			writer();
 
 private:	
-	bool				noMore();
-
-	static std::string	s_signature;
-	static std::string	s_name;
+	static std::string	_Signature;
+	static std::string	_Name;
 };
 
 inline FlowWriter& FlowNull::writer() {return Flow::writer;}
-
-inline bool FlowNull::noMore() {return true;}
 
 } // namespace Cumulus

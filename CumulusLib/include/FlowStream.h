@@ -25,12 +25,12 @@ namespace Cumulus {
 
 class FlowStream : public Flow {
 public:
-	FlowStream(Poco::UInt32 id,const std::string& signature,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
+	FlowStream(Poco::UInt32 id,const std::string& signature,Peer& peer,Handler& handler,BandWriter& band);
 	virtual ~FlowStream();
 
 	const std::string		name;
 
-	static std::string	s_signature;
+	static std::string	Signature;
 private:
 	enum StreamState {
 		IDLE,
@@ -38,18 +38,26 @@ private:
 		PLAYING
 	};
 
-	static std::string	s_name;
+	static std::string	_Name;
 
 	void rawHandler(Poco::UInt8 type,PacketReader& data);
 	void audioHandler(PacketReader& packet);
 	void videoHandler(PacketReader& packet);
 	void messageHandler(const std::string& action,AMFReader& message);
 
+	void commitHandler();
+	void lostFragmentsHandler(Poco::UInt32 count);
+
+	void disengage();
+
 	Poco::UInt32	_index;
 
 	Publication*	_pPublication;
-	Listener*		_pListener;
 	StreamState		_state;
+
+	// Lost Fragments
+	bool			_isVideo;
+	Poco::UInt32	_numberLostFragments;
 
 	BinaryWriter& write();
 };
@@ -57,6 +65,5 @@ private:
 inline BinaryWriter& FlowStream::write() {
 	return writer.writeRawMessage(true);
 }
-
 
 } // namespace Cumulus

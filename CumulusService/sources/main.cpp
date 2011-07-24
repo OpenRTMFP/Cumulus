@@ -18,6 +18,8 @@
 #include "RTMFPServer.h"
 #include "Logs.h"
 #include "Auth.h"
+#include "Server.h"
+#include "ApplicationKiller.h"
 #include "Poco/File.h"
 #include "Poco/Format.h"
 #include "Poco/FileStream.h"
@@ -26,10 +28,9 @@
 #include "Poco/Util/ServerApplication.h"
 #include "string.h"
 #include <iostream>
-#include <set>
 
-#define LOG_FILE(END)		"./logs/log."#END
-#define LOG_FILE_VAR(NUM)	format("./logs/log.%d",NUM)
+#define LOG_FILE(END)		"/log."#END
+#define LOG_FILE_VAR(NUM)	format("/log.%d",NUM)
 
 #define LOG_SIZE 1000000
 
@@ -39,27 +40,36 @@ using namespace Poco::Net;
 using namespace Poco::Util;
 using namespace Cumulus;
 
-char * g_logPriorities[] = { "FATAL","CRITIC" ,"ERROR","WARN","NOTE","INFO","DEBUG","TRACE" };
-// TODO on linux : warning: deprecated conversion from string constant to ‘char*’
+const char * g_logPriorities[] = { "FATAL","CRITIC" ,"ERROR","WARN","NOTE","INFO","DEBUG","TRACE" };
 
-
-class CumulusService: public ServerApplication , private Cumulus::Logger, private Cumulus::ClientHandler {
+class CumulusService: public ServerApplication , private Cumulus::Logger, private ApplicationKiller  {
 public:
-	CumulusService(): _helpRequested(false),_pCirrus(NULL),_logFile(LOG_FILE(0)),_middle(false) {
-		File("./logs").createDirectory();
-		_logStream.open(LOG_FILE(0),ios::in | ios::ate);
-		Logs::SetLogger(*this);
+	CumulusService(): _helpRequested(false),_pCirrus(NULL),_middle(false),_isInteractive(true),_pLogFile(NULL) {
+		
 	}
 	
 	~CumulusService() {
 		if(_pCirrus)
 			delete _pCirrus;
+		if(_pLogFile)
+			delete _pLogFile;
 	}
 
-protected:
+private:
+
+	void kill() {
+		terminate();
+	}
+
 	void initialize(Application& self) {
 		loadConfiguration(); // load default configuration files, if present
 		ServerApplication::initialize(self);
+		_isInteractive = isInteractive();
+		_logDir = config().getString("logs.dir",config().getString("application.dir",".")+"/logs");
+		_pLogFile = new File(_logDir+LOG_FILE(0));
+		File(_logDir).createDirectory();
+		_logStream.open(_pLogFile->path(),ios::in | ios::ate);
+		Logs::SetLogger(*this);
 		_auth.authIsWhitelist=config().getBool("auth.whitelist",false);
 		_auth.load("auth");
 	}
@@ -136,7 +146,9 @@ protected:
 	}
 
 	void logHandler(Thread::TID threadId,const std::string& threadName,Priority priority,const char *filePath,long line, const char *text) {
-		printf("%s  %s[%ld] %s\n",g_logPriorities[priority-1],Path(filePath).getBaseName().c_str(),line,text);
+		ScopedLock<FastMutex> lock(_logMutex);
+		if(_isInteractive)
+			printf("%s  %s[%ld] %s\n",g_logPriorities[priority-1],Path(filePath).getBaseName().c_str(),line,text);
 		_logStream << DateTimeFormatter::format(LocalDateTime(),"%d/%m %H:%M:%S.%c  ")
 				<< g_logPriorities[priority-1] << '\t' << threadName << '(' << threadId << ")\t"
 				<< Path(filePath).getFileName() << '[' << line << "]  " << text << std::endl;
@@ -144,70 +156,38 @@ protected:
 	}
 
 	void manageLogFile() {
-		if(_logFile.getSize()>LOG_SIZE) {
+		if(_pLogFile->getSize()>LOG_SIZE) {
 			_logStream.close();
 			int num = 10;
-			File file(LOG_FILE(10));
+			File file(_logDir+LOG_FILE(10));
 			if(file.exists())
 				file.remove();
 			while(--num>=0) {
-				file = LOG_FILE_VAR(num);
+				file = _logDir+LOG_FILE_VAR(num);
 				if(file.exists())
-					file.renameTo(LOG_FILE_VAR(num+1));
+					file.renameTo(_logDir+LOG_FILE_VAR(num+1));
 			}
-			_logStream.open(LOG_FILE(0),ios::in | ios::ate);
+			_logStream.open(_pLogFile->path(),ios::in | ios::ate);
 		}	
 	}
 
-	bool onConnection(Client& client) {
 
-		//Acceptance
-		if(!_auth.check(client))
-			return false;
-
-		// Here you can read custom client http parameters in reading "client.parameters".
-		// Also you can send custom data for the client in writing in "client.data",
-		// on flash side you could read that on "data" property from NetStatusEvent::NET_STATUS event of NetConnection object
-
-		// Implementation of families!
-		map<string,string>::const_iterator it = client.parameters.find("family");
-		if(it!=client.parameters.end()) {
-			set<const Client*>& clients = _clientFamilies[it->second];
-			// return peer Ids includes in this family
-			if(clients.size()>1000)
-				return false; // 1000 members in a family is the maximum acceptable for one UDP packet!
-			set<const Client*>::const_iterator it;
-			client.data.resize(clients.size()*32);
-			int i=0;
-			for(it=clients.begin();it!=clients.end();++it) {
-				memcpy(&client.data[i],(*it)->id,32);
-				i += 32;
-			}
-			clients.insert(&client);
-		}
-		return true;
-	}
-	void onFailed(const Client& client,const string& msg) {
-		WARN("Client failed : %s",msg.c_str());
-	}
-	void onDisconnection(const Client& client) {
-		map<string,string>::const_iterator it = client.parameters.find("family");
-		if(it!=client.parameters.end())
-			_clientFamilies[it->second].erase(&client);
-	}
-
+///// MAIN
 	int main(const std::vector<std::string>& args) {
 		if (_helpRequested) {
 			displayHelp();
 		}
 		else {
-			/// Cumulus Service
-			RTMFPServer server(*this,config().getInt("keepAliveServer",15),config().getInt("keepAlivePeer",10));
+			// starts the server
 			RTMFPServerParams params;
 			params.port = config().getInt("port", RTMFP_DEFAULT_PORT);
 			params.pCirrus = _pCirrus;
 			params.middle = _middle;
+			params.keepAliveServer = config().getInt("keepAliveServer",15);
+			params.keepAlivePeer = config().getInt("keepAlivePeer",10);
+			Server server(_auth,*this);
 			server.start(params);
+
 			// wait for CTRL-C or kill
 			waitForTerminationRequest();
 			// Stop the HTTPServer
@@ -216,17 +196,18 @@ protected:
 		return Application::EXIT_OK;
 	}
 	
-private:
-	bool			_helpRequested;
-	SocketAddress*	_pCirrus;
-	bool			_middle;
-	Auth			_auth;
-	File			 _logFile;
-	FileOutputStream _logStream;
-	map<string, set<const Client*> > _clientFamilies;	
+	bool									_isInteractive;
+	bool									_helpRequested;
+	SocketAddress*							_pCirrus;
+	bool									_middle;
+	Auth									_auth;
+	string									_logDir;
+	File*									_pLogFile;
+	FileOutputStream						_logStream;
+	FastMutex								_logMutex;
 };
 
-
 int main(int argc, char* argv[]) {
+	DetectMemoryLeak();
 	return CumulusService().run(argc, argv);
 }

@@ -17,11 +17,45 @@
 
 #include "MemoryStream.h"
 
+
 using namespace std;
+using namespace Poco;
 
 namespace Cumulus {
 
-MemoryStreamBuf::MemoryStreamBuf(char* pBuffer, streamsize bufferSize): _pBuffer(pBuffer),_bufferSize(bufferSize),_written(0) {
+ScopedMemoryClip::ScopedMemoryClip(MemoryStreamBuf& buffer,UInt32 offset) : _offset(offset),_buffer(buffer) {
+	if(_offset>=_buffer._bufferSize)
+		_offset = _buffer._bufferSize-1;
+	if(_offset<0)
+		_offset=0;
+	clip(_offset);
+}
+ScopedMemoryClip::~ScopedMemoryClip() {
+	clip(-(Int32)_offset);
+}
+
+void ScopedMemoryClip::clip(Int32 offset) {
+	char* gpos = _buffer.gCurrent();
+
+	_buffer._pBuffer += offset;
+	_buffer._bufferSize -= offset;
+	
+	int ppos = _buffer.pCurrent()-_buffer._pBuffer;
+
+	_buffer.setg(_buffer._pBuffer,gpos,_buffer._pBuffer + _buffer._bufferSize);
+
+	_buffer.setp(_buffer._pBuffer,_buffer._pBuffer + _buffer._bufferSize);
+	_buffer.pbump(ppos);
+
+	if(_buffer._written<offset)
+		_buffer._written=0;
+	else
+		_buffer._written-=offset;
+	if(_buffer._written>_buffer._bufferSize)
+		_buffer._written=_buffer._bufferSize;
+}
+
+MemoryStreamBuf::MemoryStreamBuf(char* pBuffer, UInt32 bufferSize): _pBuffer(pBuffer),_bufferSize(bufferSize),_written(0) {
 	setg(_pBuffer, _pBuffer,_pBuffer + _bufferSize);
 	setp(_pBuffer, _pBuffer + _bufferSize);
 }
@@ -36,68 +70,44 @@ MemoryStreamBuf::MemoryStreamBuf(MemoryStreamBuf& other): _pBuffer(other._pBuffe
 MemoryStreamBuf::~MemoryStreamBuf() {
 }
 
-void MemoryStreamBuf::next(std::streamsize size) {
+void MemoryStreamBuf::next(UInt32 size) {
 	pbump(size);
 	gbump(size);
 }
 
-void MemoryStreamBuf::position(streampos pos) {
+void MemoryStreamBuf::position(UInt32 pos) {
 	written(); // Save nb char written
 	setp(_pBuffer,_pBuffer + _bufferSize);
-	if(pos<0)
-		pos = 0;
-	else if(pos>=_bufferSize)
-		pos = _bufferSize-1;
+	if(pos>_bufferSize)
+		pos = _bufferSize;
 	pbump((int)pos);
 	setg(_pBuffer,_pBuffer+pos,_pBuffer + _bufferSize);
 }
 
-void MemoryStreamBuf::resize(streamsize newSize) {
-	if(newSize<=0)
-		return;
+void MemoryStreamBuf::resize(UInt32 newSize) {
 	_bufferSize = newSize;
 	int pos = gCurrent()-_pBuffer;
-	//if(pos>=_bufferSize)
-	//	pos = _bufferSize-1;
+	if(pos>_bufferSize)
+		pos = _bufferSize;
 	setg(_pBuffer,_pBuffer+pos,_pBuffer + _bufferSize);
 	pos = pCurrent()-_pBuffer;
-//	if(pos>=_bufferSize)
-//		pos = _bufferSize-1;
+	if(pos>_bufferSize)
+		pos = _bufferSize;
 	setp(_pBuffer,_pBuffer + _bufferSize);
 	pbump(pos);
 }
 
-void MemoryStreamBuf::clip(streampos offset) {
-	if(offset>=_bufferSize)
-		offset = _bufferSize-1;
-
-	char* gpos = gCurrent();
-
-	_pBuffer += offset;
-	_bufferSize -= offset;
-	
-	int ppos = pCurrent()-_pBuffer;
-
-	setg(_pBuffer,gpos,_pBuffer + _bufferSize);
-
-	setp(_pBuffer,_pBuffer + _bufferSize);
-	pbump(ppos);
-
-	if(_written<offset)
-		_written=0;
-	else
-		_written-=offset;
+UInt32 MemoryStreamBuf::written() {
+	int written = pCurrent()-begin();
+	if(written<0)
+		written=0;
+	if(written>_written) 
+		_written = (UInt32)written;
+	return _written;
 }
 
-streamsize MemoryStreamBuf::written(streamsize size) {
-	if(size>=0) {
-		_written = size;
-		return _written;
-	}
-	streamsize written = static_cast<streamsize>(pCurrent()-begin());
-	if(written>_written) 
-		_written = written;
-	return _written;
+void MemoryStreamBuf::written(UInt32 size) {
+	_written=size;
 }
 
 int MemoryStreamBuf::overflow(int_type c) {
@@ -113,7 +123,7 @@ int MemoryStreamBuf::sync() {
 }
 
 
-MemoryIOS::MemoryIOS(char* pBuffer, streamsize bufferSize):_buf(pBuffer, bufferSize) {
+MemoryIOS::MemoryIOS(char* pBuffer, UInt32 bufferSize):_buf(pBuffer, bufferSize) {
 	poco_ios_init(&_buf);
 }
 MemoryIOS::MemoryIOS(MemoryIOS& other):_buf(other._buf) {
@@ -123,22 +133,22 @@ MemoryIOS::MemoryIOS(MemoryIOS& other):_buf(other._buf) {
 MemoryIOS::~MemoryIOS() {
 }
 
-void MemoryIOS::reset(streampos newPos) {
+void MemoryIOS::reset(UInt32 newPos) {
 	if(newPos>=0)
 		rdbuf()->position(newPos);
 	clear();
 }
 
-std::streamsize MemoryIOS::available() {
-	std::streamsize result = rdbuf()->size() - static_cast<std::streamsize>(current()-begin());
+UInt32 MemoryIOS::available() {
+	int result = rdbuf()->size() - (current()-begin());
 	if(result<0)
 		return 0;
-	return result;
+	return (UInt32)result;
 }
 
 
 
-MemoryInputStream::MemoryInputStream(const char* pBuffer, streamsize bufferSize): 
+MemoryInputStream::MemoryInputStream(const char* pBuffer, UInt32 bufferSize): 
 	MemoryIOS(const_cast<char*>(pBuffer), bufferSize), istream(rdbuf()) {
 }
 
@@ -150,7 +160,7 @@ MemoryInputStream::~MemoryInputStream() {
 }
 
 
-MemoryOutputStream::MemoryOutputStream(char* pBuffer, streamsize bufferSize): 
+MemoryOutputStream::MemoryOutputStream(char* pBuffer, UInt32 bufferSize): 
 	MemoryIOS(pBuffer, bufferSize), ostream(rdbuf()) {
 }
 MemoryOutputStream::MemoryOutputStream(MemoryOutputStream& other):

@@ -18,33 +18,27 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Group.h"
-#include "ClientHandler.h"
-#include "AMFWriter.h"
-#include "AMFReader.h"
-#include "Streams.h"
+#include "Poco/Timestamp.h"
+#include <list>
 
 namespace Cumulus {
 
-class ServerHandler : public Entity {
+class Sample;
+class QualityOfService {
 public:
-	ServerHandler(Poco::UInt8 keepAliveServer,Poco::UInt8 keepAlivePeer,ClientHandler* pClientHandler);
-	virtual ~ServerHandler();
+	QualityOfService();
+	virtual ~QualityOfService();
 
-	Group&	group(const std::vector<Poco::UInt8>& id);
+	void add(Poco::UInt32 time,Poco::UInt32 received,Poco::UInt32 lost);
+	void reset();
 
-	bool connection(Peer& peer);
-	void failed(Peer& peer,const std::string& msg);
-	void disconnection(Peer& peer);
-
-	Streams				streams;
-
-	const Poco::UInt32	keepAlivePeer;
-	const Poco::UInt32	keepAliveServer;
+	const Poco::UInt32	droppedFrames;
+	const double		lostRate;
+	const Poco::UInt32	latency;
 private:
-	ClientHandler*					_pClientHandler;
-	std::list<Group*>				_groups;
-	
+	std::list<Sample*>	_samples;
+	Poco::UInt32		_prevTime;
+	Poco::Timestamp		_reception;
 };
 
 

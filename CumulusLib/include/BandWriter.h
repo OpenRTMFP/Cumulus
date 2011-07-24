@@ -32,9 +32,11 @@ public:
 	virtual ~BandWriter() {}
 
 	virtual void			initFlowWriter(FlowWriter& flowWriter)=0;
+	virtual void			resetFlowWriter(FlowWriter& flowWriter)=0;
 
+	virtual bool			canWriteFollowing(FlowWriter& flowWriter)=0;
 	virtual PacketWriter&	writer()=0;
-	virtual PacketWriter&	writeMessage(Poco::UInt8 type,Poco::UInt16 length)=0;
+	virtual PacketWriter&	writeMessage(Poco::UInt8 type,Poco::UInt16 length,FlowWriter* pFlowWriter=NULL)=0;
 	virtual void			flush(Poco::UInt8 flags=0)=0;
 	
 };

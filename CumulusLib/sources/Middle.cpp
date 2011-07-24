@@ -37,9 +37,9 @@ Middle::Middle(UInt32 id,
 				const UInt8* decryptKey,
 				const UInt8* encryptKey,
 				DatagramSocket& socket,
-				ServerHandler& serverHandler,
+				Handler& handler,
 				const Sessions&	sessions,
-				Target& target) : Session(id,farId,peer,decryptKey,encryptKey,socket,serverHandler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
+				Target& target) : Session(id,farId,peer,decryptKey,encryptKey,socket,handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
 					_middleId(0),_sessions(sessions),_firstResponse(false),_queryUrl("rtmfp://"+target.address.toString()+peer.path),_middlePeer(peer),_target(target) {
 
 	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.parameters);
@@ -72,7 +72,9 @@ Middle::Middle(UInt32 id,
 		packet.writeRaw(_queryUrl);
 	}
 
-	packet.writeRandom(16); // tag
+	// tag
+	RandomInputStream().read((char*)packet.begin()+packet.position(),16);
+	packet.clear(packet.position()+16);
 
 	sendHandshakeToTarget(0x30);
 }
@@ -137,7 +139,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 				// P2P handshake
 				PacketWriter& response = writer();
 				response.write8(0x71);
-				response.write16(packet.available()+tag.size()+1);
+				response.write16((UInt16)packet.available()+tag.size()+1);
 				response.writeString8(tag);
 				response.writeRaw(packet.current(),packet.available());
 
@@ -195,13 +197,13 @@ void Middle::sendHandshakeToTarget(UInt8 type) {
 	packet.write8(0x0b);
 	packet << RTMFP::TimeNow();
 	packet << type;
-	packet.write16(packet.length()-packet.position()-2);
+	packet.write16((UInt16)packet.length()-packet.position()-2);
 
 	Logs::Dump(packet,6,"Middle to Target handshaking:",true);
 
 	RTMFP::Encode(packet);
 	RTMFP::Pack(packet);
-	_socket.sendBytes(packet.begin(),packet.length());
+	_socket.sendBytes(packet.begin(),(int)packet.length());
 	writer(); // To delete the handshake response!
 }
 
@@ -252,8 +254,8 @@ void Middle::packetHandler(PacketReader& packet) {
 			if(type==0x10) {
 
 				out.write8(content.read8());
-				UInt8 idFlow = content.read8();out.write8(idFlow);
-				UInt8 stage = content.read8();out.write8(stage);
+				UInt32 idFlow = content.read7BitValue();out.write7BitValue(idFlow);
+				UInt32 stage = content.read7BitValue();out.write7BitValue(stage);
 
 				if(!_isPeer && idFlow==0x02 && stage==0x01) {
 					/// Replace NetConnection infos
@@ -313,7 +315,7 @@ void Middle::sendToTarget() {
 	_firstResponse = true;
 	RTMFP::Encode(*_pMiddleAesEncrypt,packet);
 	RTMFP::Pack(packet,_middleId);
-	_socket.sendBytes(packet.begin(),packet.length());
+	_socket.sendBytes(packet.begin(),(int)packet.length());
 }
 
 void Middle::targetPacketHandler(PacketReader& packet) {
@@ -335,7 +337,7 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 
-	UInt8 idFlow,stage;
+	UInt32 idFlow,stage;
 	UInt8 nbPeerSent = 0;
 
 	while(type!=0xFF) {
@@ -348,34 +350,62 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 		if(type==0x10 || type==0x11) {
 			UInt8 flag = content.read8();packetOut.write8(flag);
 			if(type==0x10) {
-				idFlow = content.read8();packetOut.write8(idFlow);
-				stage = content.read8();packetOut.write8(stage);
+				idFlow = content.read7BitValue();packetOut.write7BitValue(idFlow);
+				stage = content.read7BitValue();packetOut.write7BitValue(stage);
 			} else
 				++stage;
-			if(stage==0x01 && ((marker==0x4e && idFlow==0x03) || (marker==0x8e && idFlow==0x05))) {
-				/// Replace "middleId" by "peerId"	
-				if(type==0x10) {
-					UInt8 tmp[10];
-					content.readRaw(tmp,10);packetOut.writeRaw(tmp,10);
-				} else
-					packetOut.write8(content.read8());
-				
-				UInt8 middlePeerIdWanted[ID_SIZE];
-				content.readRaw(middlePeerIdWanted,ID_SIZE);
 
-				++nbPeerSent;
+			packetOut.write7BitValue(content.read7BitValue());
+			
+			if(!(flag&MESSAGE_WITH_BEFOREPART)) {
 
-				Sessions::Iterator it;
-				for(it=_sessions.begin();it!=_sessions.end();++it) {
-					Middle* pMiddle = (Middle*)it->second;
-					if(pMiddle->middlePeer() == middlePeerIdWanted) {
-						memcpy(middlePeerIdWanted,pMiddle->peer().id,ID_SIZE);
-						break;
+				if(flag&MESSAGE_HEADER) {
+					UInt8 len = content.read8(); packetOut.write8(len);
+					while(len!=0) {
+						packetOut.writeRaw(content.current(),len);
+						content.next(len);
+						len = content.read8(); packetOut.write8(len);
 					}
 				}
-				packetOut.writeRaw(middlePeerIdWanted,ID_SIZE);	
+
+				UInt8 flagType = content.read8(); packetOut.write8(flagType);
+				if(flagType==0x09) {
+					UInt32 time = content.read32(); packetOut.write32(time);
+					//TRACE("Timestamp/Flag video : %u/%2x",time,*content.current());
+				} else if(flagType==0x08) {
+					UInt32 time = content.read32(); packetOut.write32(time);
+					//TRACE("Timestamp/Flag audio : %u/%2x",time,*content.current());
+				} else if(flagType==0x04) {
+					packetOut.write32(content.read32());
+					UInt16 a = content.read16(); packetOut.write16(a);
+					UInt32 b = content.read32(); packetOut.write32(b);
+					UInt32 c = content.read32(); packetOut.write32(c);
+					//TRACE("Bound %u : %u %u %u",idFlow,a,b,c);
+				}
+
+				if(flagType==0x0b && stage==0x01 && ((marker==0x4e && idFlow==0x03) || (marker==0x8e && idFlow==0x05))) {
+					/// Replace "middleId" by "peerId"	
+
+					UInt8 middlePeerIdWanted[ID_SIZE];
+					content.readRaw(middlePeerIdWanted,ID_SIZE);
+
+					++nbPeerSent;
+
+					Sessions::Iterator it;
+					for(it=_sessions.begin();it!=_sessions.end();++it) {
+						Middle* pMiddle = (Middle*)it->second;
+						if(pMiddle->middlePeer() == middlePeerIdWanted) {
+							memcpy(middlePeerIdWanted,pMiddle->peer().id,ID_SIZE);
+							break;
+						}
+					}
+					packetOut.writeRaw(middlePeerIdWanted,ID_SIZE);	
+
+				}
 
 			}
+
+			
 		} else if(type == 0x0F) {
 			packetOut.writeRaw(content.current(),3);content.next(3);
 			UInt8 peerId[ID_SIZE];
@@ -398,11 +428,11 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 
 	if(packetOut.length()>pos)
 		flush();
+
 }
 
 
 void Middle::manage() {
-	TRACE("Middle::manage");
 	if(died())
 		return;
 
@@ -454,7 +484,7 @@ void Middle::manage() {
 			return;
 		}
 
-		DEBUG("Target to middle : session d'identification '%u'",id);
+	//	TRACE("Target to middle : session d'identification '%u'",id);
 		Logs::Dump(packet,"Target to Middle:",true);
 
 		targetPacketHandler(packet);
@@ -462,8 +492,8 @@ void Middle::manage() {
 
 }
 
-void Middle::fail() {
-	Session::fail();
+void Middle::failSignal() {
+	Session::failSignal();
 	if(_pMiddleAesEncrypt) {
 		PacketWriter& request = requester();
 		request.write8(0x4a);

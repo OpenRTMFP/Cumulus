@@ -33,63 +33,111 @@
 
 namespace Cumulus {
 
-class FlowWriter {
+class FlowWriterFactory {
+	friend class FlowWriter;
+public:
+	template<class FlowWriterType>
+	FlowWriterType& newFlowWriter() {
+		return *(new FlowWriterType(signature,_band));
+	}
+
+	template<class FlowWriterType,class FlowWriterFactoryType>
+	FlowWriterType& newFlowWriter(FlowWriterFactoryType& flowWriterFactory) {
+		return flowWriterFactory.newFlowWriter(signature,_band);
+	}
+
+	const Poco::UInt32		flowId;
+	const std::string		signature;
+private:
+	BandWriter&				_band;
+	FlowWriterFactory(const std::string& signature,BandWriter& band) : flowId(0),_band(band),signature(signature){}
+};
+
+class Handler;
+class CUMULUS_API FlowWriter : public FlowWriterFactory {
 	friend class Flow;
 public:
-	FlowWriter(Poco::UInt32 flowId,const std::string& signature,BandWriter& band);
+	FlowWriter(const std::string& signature,BandWriter& band);
 	virtual ~FlowWriter();
 
 	const Poco::UInt32		id;
-	const Poco::UInt32		flowId;
-	const std::string		signature;
+	const bool				critical;
 
-	void flush();
+	void flush(bool full=false);
 
-	void acknowledgment(Poco::UInt32 stage,bool noMore=false);
-	void raise();
+	void acknowledgment(Poco::UInt32 stage);
+	virtual void manage(Handler& handler);
 
+	bool		 closed();
+	Poco::UInt32 count();
+	void fail(const std::string& error);
 	void close();
 	bool consumed();
 
 	Poco::UInt32		stage();
 
+	void					writeUnbufferedMessage(const Poco::UInt8* data,Poco::UInt32 size,const Poco::UInt8* memAckData=NULL,Poco::UInt32 memAckSize=0);
+
 	BinaryWriter&			writeRawMessage(bool withoutHeader=false);
 	AMFWriter&				writeAMFMessage(const std::string& name);
 	AMFWriter&				writeAMFResult();
 
-	AMFObjectWriter			writeSuccessResponse(const std::string& description,const std::string& name="Success");
-	AMFObjectWriter			writeStatusResponse(const std::string& name,const std::string& description);
-	AMFObjectWriter			writeErrorResponse(const std::string& description,const std::string& name="Failed");
+	AMFObjectWriter			writeAMFResponse(const std::string& name,const std::string& code,const  std::string& description);
+	AMFObjectWriter			writeSuccessResponse(const std::string& code,const std::string& description);
+	AMFObjectWriter			writeStatusResponse(const std::string& code,const std::string& description);
+	AMFObjectWriter			writeErrorResponse(const std::string& code,const std::string& description);
 
-	
 private:
-	void					raiseMessage();
-	virtual Message&		createMessage();
-
-	void					clearMessages();
-
+	FlowWriter(FlowWriter& flowWriter);
 	
+	virtual void			ackMessageHandler(BinaryReader& content,Poco::UInt32 size,Poco::UInt32 lostMessages);
+	virtual void			reset(Poco::UInt32 count){}
+	void					raiseMessage();
+	MessageBuffered&		createBufferedMessage();
+
+	void					clearMessages(bool exceptLast=false);
+
+
 	bool					_closed;
 	Poco::UInt32			_stage;
 	std::list<Message*>		_messages;
 	Trigger					_trigger;
-	BandWriter&				_band;
-	Message					_messageNull;
+	MessageBuffered			_messageNull;
+	Poco::UInt32			_lostMessages;
 
-	bool					_bound;
 	// For single thread AMF response!
 	double					_callbackHandle;
-	std::string				_code;
+	std::string				_obj;
+	Poco::UInt32			_resetCount;
 };
 
+inline bool FlowWriter::closed() {
+	return _closed;
+}
+
+inline void FlowWriter::ackMessageHandler(BinaryReader& content,Poco::UInt32 size,Poco::UInt32 lostMessages) {}
+
+inline Poco::UInt32 FlowWriter::count() {
+	return _messages.size();
+}
 inline AMFWriter& FlowWriter::writeAMFResult() {
 	return writeAMFMessage("_result");
 }
+inline AMFObjectWriter FlowWriter::writeSuccessResponse(const std::string& code,const  std::string& description) {
+	return writeAMFResponse("_result",code,description);
+}
+inline AMFObjectWriter FlowWriter::writeStatusResponse(const  std::string& code,const  std::string& description) {
+	return writeAMFResponse("onStatus",code,description);
+}
+inline AMFObjectWriter FlowWriter::writeErrorResponse(const  std::string& code,const  std::string& description) {
+	return writeAMFResponse("_error",code,description);
+}
+
 inline Poco::UInt32 FlowWriter::stage() {
 	return _stage;
 }
 inline bool FlowWriter::consumed() {
-	return _closed && !_bound && _messages.empty();
+	return _closed && _messages.empty();
 }
 
 } // namespace Cumulus

@@ -25,53 +25,48 @@
 
 namespace Cumulus {
 
-
 class PacketWriter: public BinaryWriter {
 public:
-	PacketWriter(const Poco::UInt8* buffer,std::streamsize size);
-	PacketWriter(PacketWriter&,std::streamsize skip=0);
+	PacketWriter(const Poco::UInt8* buffer,Poco::UInt32 size);
+	PacketWriter(PacketWriter&,Poco::UInt32 skip=0);
 	virtual ~PacketWriter();
 
 	Poco::UInt8*		begin();
-	std::streamsize		length();
-	int					position();
+	Poco::UInt32		length();
+	Poco::UInt32		position();
 	
-	std::streamsize		available();
+	Poco::UInt32		available();
 
 	bool	good();
-	void	clear(std::streampos pos=0);
-	void	reset(std::streampos newPos=-1);
-	void	limit(std::streamsize length=0);
-	void	clip(std::streampos offset);
-	void	next(std::streamsize size);
+	void	clear(Poco::UInt32 pos=0);
+	void	reset(Poco::UInt32 newPos);
+	void	limit(Poco::UInt32 length=0);
+	void	next(Poco::UInt32 size);
 	void	flush();
 	
 private:
-	std::streamsize		_skip;
+	Poco::UInt32		_skip;
 	MemoryOutputStream	_memory;
 	PacketWriter*		_pOther;
-	std::streamsize		_size;
+	Poco::UInt32		_size;
 };
 
-inline std::streamsize PacketWriter::available() {
+inline Poco::UInt32 PacketWriter::available() {
 	return _memory.available();
 }
 inline bool PacketWriter::good() {
 	return _memory.good();
 }
-inline std::streamsize PacketWriter::length() {
+inline Poco::UInt32 PacketWriter::length() {
 	return _memory.written();
 }
-inline int PacketWriter::position() {
+inline Poco::UInt32 PacketWriter::position() {
 	return _memory.current()-(char*)begin();
 }
-inline void PacketWriter::reset(std::streampos newPos) {
+inline void PacketWriter::reset(Poco::UInt32 newPos) {
 	_memory.reset(newPos);
 }
-inline void PacketWriter::clip(std::streampos offset) {
-	_memory.clip(offset);
-}
-inline void PacketWriter::next(std::streamsize size) {
+inline void PacketWriter::next(Poco::UInt32 size) {
 	return _memory.next(size);
 }
 

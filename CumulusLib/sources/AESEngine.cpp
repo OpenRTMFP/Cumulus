@@ -18,6 +18,7 @@
 #include "AESEngine.h"
 #include <string.h>
 
+using namespace std;
 using namespace Poco;
 
 namespace Cumulus {
@@ -33,7 +34,7 @@ AESEngine::AESEngine(const UInt8* key,Direction direction) : _direction(directio
 AESEngine::~AESEngine() {
 }
 
-void AESEngine::process(const UInt8* in,UInt8* out,unsigned int size) {
+void AESEngine::process(const UInt8* in,UInt8* out,UInt32 size) {
 	UInt8	iv[KEY_SIZE];
 	memset(iv,0,sizeof(iv));
 	AES_cbc_encrypt(in, out,size,&_key,iv, _direction);

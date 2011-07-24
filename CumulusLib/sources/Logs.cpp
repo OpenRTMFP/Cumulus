@@ -24,9 +24,9 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Logger*			Logs::s_pLogger(NULL);
-Logs::DumpMode	Logs::s_dumpMode(NOTHING);
-UInt8			Logs::s_level(Logger::PRIO_INFO); // default log level
+Logger*			Logs::_PLogger(NULL);
+Logs::DumpMode	Logs::_DumpMode(NOTHING);
+UInt8			Logs::_Level(Logger::PRIO_INFO); // default log level
 
 Logs::Logs() {
 }
@@ -35,9 +35,9 @@ Logs::~Logs() {
 }
 
 
-void Logs::Dump(const UInt8* data,int size,const char* header,bool middle) {
+void Logs::Dump(const UInt8* data,UInt32 size,const char* header,bool middle) {
 	UInt8 type = middle ? MIDDLE : EXTERNAL;
-	if(GetLogger() && s_dumpMode&type) {
+	if(GetLogger() && _DumpMode&type) {
 		char out[PACKETRECV_SIZE*4];
 		int len = 0;
 		int i = 0;

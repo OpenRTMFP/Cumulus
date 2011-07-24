@@ -15,21 +15,51 @@
 	This file is a part of Cumulus.
 */
 
-#include "ClientHandler.h"
 
+#include "Startable.h"
 
 using namespace std;
+using namespace Poco;
 
 namespace Cumulus {
 
-ClientHandler::ClientHandler() {
-	
+Startable::Startable(const string& name) : _name(name),_thread(name),_terminate(false) {
+}
+
+Startable::~Startable() {
+	if(running())
+		stop();
+}
+
+void Startable::start() {
+	ScopedLock<FastMutex> lock(_mutex);
+
+	if(running())
+		return;
+
+	_terminate = false;
+	_thread.start(*this);
 }
 
 
-ClientHandler::~ClientHandler() {
+void Startable::run() {
+	SetThreadName(_name.c_str());
+	prerun();
+}
+
+bool Startable::prerun() {
+	run(_terminate);
+	return !_terminate;
 }
 
 
+void Startable::stop() {
+	ScopedLock<FastMutex> lock(_mutex);
+	if(!running())
+		return;
+	_terminate = true;
+	// Attendre la fin!
+	_thread.join();
+}
 
 } // namespace Cumulus

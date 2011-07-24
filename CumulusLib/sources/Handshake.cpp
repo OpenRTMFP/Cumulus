@@ -28,7 +28,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerHandler& serverHandler) : Session(0,0,Peer(),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket,serverHandler),
+Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,Handler& handler) : Session(0,0,Peer(),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,socket,handler),
 	_gateway(gateway) {
 	
 	memcpy(_certificat,"\x01\x0A\x41\x0E",4);
@@ -36,9 +36,11 @@ Handshake::Handshake(Gateway& gateway,DatagramSocket& socket,ServerHandler& serv
 	memcpy(&_certificat[68],"\x02\x15\x02\x02\x15\x05\x02\x15\x0E",9);
 
 	// Display far id flash side
-	EVP_Digest(_certificat,sizeof(_certificat),(unsigned char *)serverHandler.id,NULL,EVP_sha256(),NULL);
+	// TODO create a Handler.serverId variable (or inherited Handler from Entity), and maybe move this log to "start" server (here, this information is never seen)
+	UInt8 id[32];
+	EVP_Digest(_certificat,sizeof(_certificat),(unsigned char *)id,NULL,EVP_sha256(),NULL);
 
-	INFO("Id of this cumulus server : %s",Util::FormatHex(serverHandler.id,ID_SIZE).c_str());
+	INFO("Id of this cumulus server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
 
@@ -115,6 +117,7 @@ void Handshake::packetHandler(PacketReader& packet) {
 	packetOut << (UInt16)(packetOut.length()-packetOut.position()-2);
 
 	flush(SYMETRIC_ENCODING | WITHOUT_ECHO_TIME);
+
 	// reset farid to 0!
 	_farId=0;
 }
@@ -128,7 +131,6 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			request.read8(); // passer un caractere (boite dans boite)
 			UInt8 epdLen = request.read8()-1;
 
-			
 			UInt8 type = request.read8();
 
 			string epd;
@@ -137,7 +139,6 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			string tag;
 			request.readRaw(16,tag);
 			response.writeString8(tag);
-
 			
 			if(type == 0x0f)
 				return _gateway.p2pHandshake(tag,response,peer().address,(const UInt8*)epd.c_str());

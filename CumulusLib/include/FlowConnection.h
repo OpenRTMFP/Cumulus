@@ -26,13 +26,13 @@ namespace Cumulus {
 
 class FlowConnection : public Flow {
 public:
-	FlowConnection(Poco::UInt32 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
+	FlowConnection(Poco::UInt32 id,Peer& peer,Handler& handler,BandWriter& band);
 	virtual ~FlowConnection();
 
-	static std::string	s_signature;
+	static std::string	Signature;
 
 private:
-	static std::string	s_name;
+	static std::string	_Name;
 	void	messageHandler(const std::string& name,AMFReader& message);
 
 	std::set<Poco::UInt32> _streamIndex;

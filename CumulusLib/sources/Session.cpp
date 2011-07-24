@@ -37,10 +37,10 @@ Session::Session(UInt32 id,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey,
 				 DatagramSocket& socket,
-				 ServerHandler& serverHandler) : 
+				 Handler& handler) : 
 		_id(id),_farId(farId),_socket(socket),pTarget(NULL),checked(false),
-		_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_serverHandler(serverHandler),_peer(peer),_died(false),_failed(false),_timesFailed(0),_timeSent(0),_nextFlowWriterId(0),_timesKeepalive(0),_writer(_buffer,sizeof(_buffer)) {
-	_pFlowNull = new FlowNull(_peer,_serverHandler,*this);
+		_aesDecrypt(decryptKey,AESEngine::DECRYPT),_aesEncrypt(encryptKey,AESEngine::ENCRYPT),_handler(handler),_peer(peer),_died(false),_failed(false),_timesFailed(0),_timeSent(0),_nextFlowWriterId(0),_timesKeepalive(0),_pLastFlowWriter(NULL),_writer(_buffer,sizeof(_buffer)) {
+	_pFlowNull = new FlowNull(_peer,_handler,*this);
 	_writer.next(11);
 	_writer.limit(RTMFP_MAX_PACKET_LENGTH); // set normal limit
 }
@@ -48,7 +48,7 @@ Session::Session(UInt32 id,
 
 Session::~Session() {
 	kill();
-	if(_peer.state!=Client::NONE)
+	if(_peer.state!=Peer::NONE)
 		WARN("onDisconnect client handler has not been called on the session '%u'",_id);
 
 	// delete flows
@@ -75,9 +75,10 @@ bool Session::decode(PacketReader& packet,const SocketAddress& sender) {
 void Session::kill() {
 	if(_died)
 		return;
-	if(_peer.state!=Client::NONE) {
-		((Client::ClientState&)_peer.state) = Client::NONE;
-		_serverHandler.disconnection(_peer);
+	if(_peer.state!=Peer::NONE) {
+		((Peer::PeerState&)_peer.state) = Peer::NONE;
+		_handler.onDisconnection(_peer);
+		--((UInt32&)_handler.count);
 	}
 	_died=true;
 	_failed=true;
@@ -87,19 +88,20 @@ void Session::manage() {
 	if(_died)
 		return;
 
-	// After 6 mn we considerate than the session has failed
-	if(_recvTimestamp.isElapsed(360000000))
-		setFailed("Timeout no client message");
-
-
-	// To accelerate the deletion of peer ghost (mainly for netgroup efficient), starts a keepalive server after 2 mn
-	if(!_failed && _recvTimestamp.isElapsed(120000000))
-		keepAlive();
-
 	if(_failed) {
-		fail(); // send fail message in hoping to trigger the death message
+		failSignal();
 		return;
 	}
+
+	// After 6 mn we considerate than the session has failed
+	if(_recvTimestamp.isElapsed(360000000)) {
+		fail("Timeout no client message");
+		return;
+	}
+
+	// To accelerate the deletion of peer ghost (mainly for netgroup efficient), starts a keepalive server after 2 mn
+	if(_recvTimestamp.isElapsed(120000000) && !keepAlive())
+		return;
 
 	// Raise FlowWriter
 	map<UInt32,FlowWriter*>::iterator it2=_flowWriters.begin();
@@ -110,42 +112,48 @@ void Session::manage() {
 			continue;
 		}
 		try {
-			it2->second->raise();
+			it2->second->manage(_handler);
 		} catch(const Exception& ex) {
-			fail(ex.displayText()); // TODO no maybe good here. If a FlowWriter raise, we must kill the entiere session?
-			return;
+			if(it2->second->critical) {
+				fail(ex.displayText()); // TODO no maybe good here. If a FlowWriter raise, we must kill the entiere session?
+				return;
+			}
+			continue;
 		}
 		++it2;
 	}
 	flush();
 }
 
-void Session::keepAlive() {
+bool Session::keepAlive() {
 	DEBUG("Keepalive server");
 	if(_timesKeepalive==10) {
-		setFailed("Timeout keepalive attempts");
-		return;
+		fail("Timeout keepalive attempts");
+		return false;
 	}
 	++_timesKeepalive;
 	writeMessage(0x01,0);
+	return true;
 }
 
-void Session::setFailed(const string& msg) {
+void Session::fail(const string& error) {
 	if(_failed)
 		return;
 	_failed=true;
-	if(_peer.state!=Client::NONE)
-		_serverHandler.failed(_peer,msg);
-	// Set flows in consumed state
+	if(_peer.state!=Peer::NONE)
+		_handler.onFailed(_peer,error);
+	// close FlowWriters, here no new sending must happen except "failSignal"
 	map<UInt32,FlowWriter*>::const_iterator it;
 	for(it=_flowWriters.begin();it!=_flowWriters.end();++it)
 		it->second->close();
+	Session::writer().clear(11);
 	// unsubscribe peer for its groups
 	_peer.unsubscribeGroups();
-	WARN("Session failed on the server side : %s",msg.c_str());
+	WARN("Session failed on the server side : %s",error.c_str());
+	failSignal();
 }
 
-void Session::fail() {
+void Session::failSignal() {
 	if(_died)
 		WARN("Fail perhaps useless because session is already dead");
 	if(!_failed) {
@@ -209,6 +217,7 @@ void Session::p2pHandshake(const SocketAddress& address,const std::string& tag,S
 }
 
 void Session::flush(UInt8 flags) {
+	_pLastFlowWriter=NULL;
 	PacketWriter& packet(Session::writer());
 	if(packet.length()>=RTMFP_MIN_PACKET_SIZE) {
 
@@ -219,42 +228,45 @@ void Session::flush(UInt8 flags) {
 
 		bool symetric = flags&SYMETRIC_ENCODING;
 		UInt8 marker = symetric ? 0x0b : 0x4a;
+
+		UInt32 offset=0;
 		if(timeEcho)
 			marker+=4;
 		else
-			packet.clip(2);
+			offset = 2;
 
-		packet.reset(6);
-		packet.write8(marker);
-		packet.write16(RTMFP::TimeNow());
-		if(timeEcho)
-			packet.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
+		{
+			ScopedMemoryClip clip((MemoryStreamBuf&)*packet.stream().rdbuf(),offset);
 
-		Logs::Dump(packet,6,"Response:");
+			packet.reset(6);
+			packet.write8(marker);
+			packet.write16(RTMFP::TimeNow());
+			if(timeEcho)
+				packet.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
 
-		if(symetric)
-			RTMFP::Encode(packet);
-		else
-			RTMFP::Encode(_aesEncrypt,packet);
+			Logs::Dump(packet,6,format("Response to %s",_peer.address.toString()).c_str());
 
-		RTMFP::Pack(packet,_farId);
+			if(symetric)
+				RTMFP::Encode(packet);
+			else
+				RTMFP::Encode(_aesEncrypt,packet);
 
-		try {
-			// TODO remake? without retry (but flow)
-			bool retry=false;
-			while(_socket.sendTo(packet.begin(),packet.length(),_peer.address)!=packet.length()) {
-				if(retry) {
-					ERROR("Socket send error on session '%u' : all data were not sent",_id);
-					break;
+			RTMFP::Pack(packet,_farId);
+
+			try {
+				// TODO remake? without retry (but flow)
+				bool retry=false;
+				while(_socket.sendTo(packet.begin(),(int)packet.length(),_peer.address)!=packet.length()) {
+					if(retry) {
+						ERROR("Socket send error on session '%u' : all data were not sent",_id);
+						break;
+					}
+					retry = true;
 				}
-				retry = true;
+			} catch(Exception& ex) {
+				 CRITIC("Socket send error on session '%u' : %s",_id,ex.displayText().c_str());
 			}
-		} catch(Exception& ex) {
-			 CRITIC("Socket send error on session '%u' : %s",_id,ex.displayText().c_str());
 		}
-		
-		if(!timeEcho)
-			packet.clip(-2);
 
 		packet.clear(11);
 		packet.limit(RTMFP_MAX_PACKET_LENGTH); // reset the normal limit
@@ -263,23 +275,25 @@ void Session::flush(UInt8 flags) {
 
 PacketWriter& Session::writer() {
 	if(!_writer.good()) {
-		WARN("Writing packet failed : the writer has certainly exceeded the size set");
+		if(!_failed)
+			WARN("Writing packet failed : the writer has certainly exceeded the size set");
 		_writer.reset(11);
 	}
-	int lenght = _writer.length();
 	_writer.limit(RTMFP_MAX_PACKET_LENGTH);
 	return _writer;
 }
 
-PacketWriter& Session::writeMessage(UInt8 type,UInt16 length) {
+PacketWriter& Session::writeMessage(UInt8 type,UInt16 length,FlowWriter* pFlowWriter) {
 	PacketWriter& writer = Session::writer();
 
 	// No sending formated message for a failed session!
 	if(_failed) {
-		writer.clear();
+		writer.clear(11);
 		writer.limit(writer.position());
 		return writer;
 	}
+
+	_pLastFlowWriter=pFlowWriter;
 
 	UInt16 size = length + 3; // for type and size
 
@@ -328,7 +342,7 @@ void Session::packetHandler(PacketReader& packet) {
 
 		switch(type) {
 			case 0x0c :
-				setFailed("Session failed on the client side");
+				fail("Session failed on the client side");
 				break;
 
 			case 0x4c :
@@ -346,8 +360,12 @@ void Session::packetHandler(PacketReader& packet) {
 			case 0x5e : {
 				// Flow exception!
 				UInt32 id = message.read7BitValue();
-				WARN("FlowWriter %u has failed",id);
-				flowWriter(id).close();
+				
+				FlowWriter* pFlowWriter = flowWriter(id);
+				if(pFlowWriter)
+					pFlowWriter->fail("receiver has rejected the flow");
+				else
+					WARN("FlowWriter %u unfound for failed signal",id);
 				break;
 
 			}
@@ -358,16 +376,27 @@ void Session::packetHandler(PacketReader& packet) {
 				//pFlow = &flow(message.read8());
 				//stage = pFlow->stageSnd();
 				// For the moment, we considerate it like a exception
-				fail("Ack negative exception"); // send fail message immediatly
+				fail("ack negative from server"); // send fail message immediatly
 				break;
 
 			case 0x51 : {
-				/// Acknowledgment 
-				FlowWriter& flowWriter = this->flowWriter(message.read7BitValue());
-				UInt8 ack = message.read8();
-				while(ack==0xFF)
-					ack = message.read8();
-				flowWriter.acknowledgment(message.read7BitValue(),ack==0);
+				/// Acknowledgment
+				UInt32 id = message.read7BitValue();
+				FlowWriter* pFlowWriter = flowWriter(id);
+				if(pFlowWriter) {
+					UInt8 ack = message.read8();
+					while(ack==0xFF)
+						ack = message.read8();
+					if(ack>0)
+						pFlowWriter->acknowledgment(message.read7BitValue());
+					else {
+						// In fact here, we should send a 0x18 message (with id flow),
+						// but it can create a loop... We prefer the following behavior
+						pFlowWriter->fail("ack negative from client");
+					}
+
+				} else
+					WARN("FlowWriter %u unfound for acknowledgment",id);
 				break;
 			}
 			/// Request
@@ -428,7 +457,7 @@ void Session::packetHandler(PacketReader& packet) {
 
 				// Process request
 				pFlow->fragmentHandler(stage,deltaNAck,message,flags);
-				if(_peer.state==Client::REJECTED && !failed())
+				if(_peer.state==Peer::REJECTED && !failed())
 					fail("Client rejected"); // send fail message immediatly
 
 				break;
@@ -445,7 +474,6 @@ void Session::packetHandler(PacketReader& packet) {
 		if(pFlow && stage>0 && type!= 0x11) {
 			pFlow->commit();
 			if(pFlow->consumed()) {
-				DEBUG("Flow %u consumed",pFlow->id);
 				_flows.erase(pFlow->id);
 				delete pFlow;
 			}
@@ -456,13 +484,11 @@ void Session::packetHandler(PacketReader& packet) {
 	flush();
 }
 
-FlowWriter& Session::flowWriter(Poco::UInt32 id) {
+FlowWriter* Session::flowWriter(Poco::UInt32 id) {
 	map<UInt32,FlowWriter*>::const_iterator it = _flowWriters.find(id);
-	if(it==_flowWriters.end()) {
-		WARN("FlowWriter %u unfound",id);
-		return _pFlowNull->writer();
-	}
-	return *it->second;
+	if(it==_flowWriters.end())
+		return NULL;
+	return it->second;
 }
 
 Flow& Session::flow(Poco::UInt32 id) {
@@ -484,12 +510,12 @@ Flow* Session::createFlow(UInt32 id,const string& signature) {
 
 	Flow* pFlow=NULL;
 
-	if(signature==FlowConnection::s_signature)
-		pFlow = new FlowConnection(id,_peer,_serverHandler,*this);	
-	else if(signature==FlowGroup::s_signature)
-		pFlow = new FlowGroup(id,_peer,_serverHandler,*this);
-	else if(signature.compare(0,FlowStream::s_signature.length(),FlowStream::s_signature)==0)
-		pFlow = new FlowStream(id,signature,_peer,_serverHandler,*this);
+	if(signature==FlowConnection::Signature)
+		pFlow = new FlowConnection(id,_peer,_handler,*this);	
+	else if(signature==FlowGroup::Signature)
+		pFlow = new FlowGroup(id,_peer,_handler,*this);
+	else if(signature.compare(0,FlowStream::Signature.length(),FlowStream::Signature)==0)
+		pFlow = new FlowStream(id,signature,_peer,_handler,*this);
 	else
 		ERROR("New unknown flow '%s' on session %u",Util::FormatHex((const UInt8*)signature.c_str(),signature.size()).c_str(),this->id());
 	if(pFlow) {
@@ -502,7 +528,13 @@ Flow* Session::createFlow(UInt32 id,const string& signature) {
 void Session::initFlowWriter(FlowWriter& flowWriter) {
 	while(++_nextFlowWriterId==0 || _flowWriters.find(_nextFlowWriterId)!=_flowWriters.end());
 	(UInt32&)flowWriter.id = _nextFlowWriterId;
+	if(_flows.begin()!=_flows.end())
+		(UInt32&)flowWriter.flowId = _flows.begin()->second->id;
 	_flowWriters[_nextFlowWriterId] = &flowWriter;
+}
+
+void Session::resetFlowWriter(FlowWriter& flowWriter) {
+	_flowWriters[flowWriter.id] = &flowWriter;
 }
 
 

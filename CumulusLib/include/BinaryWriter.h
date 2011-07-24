@@ -30,8 +30,8 @@ public:
 	BinaryWriter(std::ostream& ostr);
 	virtual ~BinaryWriter();
 
-	void writeRaw(const Poco::UInt8* value,std::streamsize size);
-	void writeRaw(const char* value,std::streamsize size);
+	void writeRaw(const Poco::UInt8* value,Poco::UInt32 size);
+	void writeRaw(const char* value,Poco::UInt32 size);
 	void writeRaw(const std::string& value);
 	void write8(Poco::UInt8 value);
 	void write16(Poco::UInt16 value);
@@ -42,15 +42,14 @@ public:
 	void writeString16(const char* value,Poco::UInt16 size);
 	void writeString(const std::string& value);
 	void write7BitValue(Poco::UInt32 value);
-	void writeRandom(std::streamsize size);
 	void writeAddress(const Address& address,bool publicFlag);
 	void writeAddress(const Poco::Net::SocketAddress& address,bool publicFlag);
 };
 
-inline void BinaryWriter::writeRaw(const Poco::UInt8* value,std::streamsize size) {
+inline void BinaryWriter::writeRaw(const Poco::UInt8* value,Poco::UInt32 size) {
 	Poco::BinaryWriter::writeRaw((char*)value,size);
 }
-inline void BinaryWriter::writeRaw(const char* value,std::streamsize size) {
+inline void BinaryWriter::writeRaw(const char* value,Poco::UInt32 size) {
 	Poco::BinaryWriter::writeRaw(value,size);
 }
 inline void BinaryWriter::writeRaw(const std::string& value) {

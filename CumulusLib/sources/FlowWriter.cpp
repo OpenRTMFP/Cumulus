@@ -32,67 +32,95 @@ using namespace Poco;
 namespace Cumulus {
 
 
-FlowWriter::FlowWriter(UInt32 flowId,const string& signature,BandWriter& band) : id(0),flowId(flowId),_stage(0),_closed(false),_band(band),signature(signature),_callbackHandle(0),_bound(false) {
+FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),id(0),_stage(0),_closed(false),_callbackHandle(0),_resetCount(0),FlowWriterFactory(signature,band),_lostMessages(0) {
 	_messageNull.rawWriter.stream().setstate(ios_base::eofbit);
 	band.initFlowWriter(*this);
+}
+
+FlowWriter::FlowWriter(FlowWriter& flowWriter) :
+		id(flowWriter.id),critical(flowWriter.critical),
+		_stage(flowWriter._stage),_lostMessages(0),
+		_closed(false),_callbackHandle(0),_resetCount(0),
+		FlowWriterFactory(flowWriter.signature,flowWriter._band) {
+	_messageNull.rawWriter.stream().setstate(ios_base::eofbit);
+	close();
 }
 
 FlowWriter::~FlowWriter() {
 	clearMessages();
 }
 
-void FlowWriter::clearMessages() {
+void FlowWriter::clearMessages(bool exceptLast) {
 	// delete messages
-	list<Message*>::const_iterator it;
-	for(it=_messages.begin();it!=_messages.end();++it)
-		delete *it;
-	_messages.clear();
+	UInt32 count = exceptLast ? 1 : 0;
+	while(_messages.size()>count) {
+		delete _messages.front();
+		_messages.pop_front();
+		++_lostMessages;
+	}
+	if(_messages.size()==0)
+		_trigger.stop();
 }
+
+void FlowWriter::fail(const string& error) {
+	WARN("FlowWriter %u has failed : %s",id,error.c_str());
+	clearMessages();
+	_band.resetFlowWriter(*new FlowWriter(*this));
+	_band.initFlowWriter(*this);
+	_stage=0;
+	reset(++_resetCount);
+}
+
 
 void FlowWriter::close() {
 	if(_closed)
 		return;
-	if(_stage>0)
-		createMessage(); // Send a MESSAG_END just in the case where the receiver has been created
+	clearMessages(true);
+	if(_stage>0 && count()==0)
+		createBufferedMessage(); // Send a MESSAG_END | MESSAGE_ABANDONMENT just in the case where the receiver has been created
 	_closed=true; // before the flush messages to set the MESSAG_END flag
 	flush();
 }
 
-void FlowWriter::acknowledgment(Poco::UInt32 stage,bool noMore) {
-
-	if(noMore) {
-		// In fact here, we should send a 0x18 message (with id flow),
-		// but it can create a loop... We prefer the following behavior
-		WARN("The FlowWriter %u has received a 'no more' ack for the stage %u",id,stage);
-		close();
-		clearMessages();
-		return;
-	}
+void FlowWriter::acknowledgment(UInt32 stage) {
 
 	if(stage>_stage) {
 		ERROR("Acknowledgment received superior than the current sending stage : %u instead of %u",stage,_stage);
 		return;
 	}
+
 	list<Message*>::const_iterator it=_messages.begin();
-	if(_messages.empty() || stage<=(*it)->startStage) {
-		DEBUG("Acknowledgment of stage '%u' received lower than all repeating messages of flow '%u', certainly a obsolete ack packet",stage,id);
+	bool hasNAck = !_messages.empty() && !(*it)->fragments.empty();
+
+	UInt32 startStage = hasNAck ? (*it)->startStage : (stage+1);
+	Int64 count = stage - startStage;
+
+	if(count==0) // Case where the ACK has been repeated, and is just below the last NAck message, certainly a disorder UDP transfer in packet received
+		return;
+	
+	if(count<0) {
+		DEBUG("Acknowledgment of stage '%u' received lower than all NACK messages of flow '%u', certainly a obsolete ack packet",stage,id);
+		// TODO add a MESSAGE_ABANDONMENT agile system? it can meaning here too an error : a ACK volontary (and emphatically) send which is lower than all repeating messages = PB!
 		return;
 	}
 	
-	// Ack!
-	// Here repeating messages exist, and minStage < stage <=_stageSnd
-	UInt32 count = stage - (*it)->startStage;
+	// Here minStage < stage <=_stageSnd
 
+	// Ack!
 	while(count>0 && it!=_messages.end() && !(*it)->fragments.empty()) { // if _fragments.empty(), it's a message not sending yet (not flushed)
 		Message& message(**it);
 		
 		while(count > 0 && !message.fragments.empty()) {
+			// ACK
 			message.fragments.pop_front();
 			--count;
 			++message.startStage;
 		}
 
 		if(message.fragments.empty()) {
+			UInt32 size(0);
+			ackMessageHandler(message.memAck(size),size,_lostMessages);
+			_lostMessages=0;
 			delete *it;
 			_messages.pop_front();
 			it=_messages.begin();
@@ -100,42 +128,63 @@ void FlowWriter::acknowledgment(Poco::UInt32 stage,bool noMore) {
 	}
 
 	// rest messages not ack?
-	if(_messages.begin()!=_messages.end() && !(*_messages.begin())->fragments.empty())
+	if(!_messages.empty() && !(*_messages.begin())->fragments.empty())
 		_trigger.reset();
 	else
 		_trigger.stop();
 }
 
-void FlowWriter::raise() {
-	if(!_trigger.raise())
-		return;
+void FlowWriter::manage(Handler& handler) {
+	try {
+		if(!_trigger.raise())
+			return;
+	} catch(...) {
+		clearMessages();
+		throw;
+	}
 	raiseMessage();
 }
 
 void FlowWriter::raiseMessage() {
-	if(_messages.empty())
+	if(_messages.empty() || (*_messages.begin())->fragments.empty()) {
 		_trigger.stop();
+		return;
+	}
 
-	list<Message*>::const_iterator it;
+	_band.flush(WITHOUT_ECHO_TIME); // To repeat message, before we must send precedent waiting mesages
+
+	list<Message*>::const_iterator it=_messages.begin();
 	bool header = true;
 	UInt32 deltaNAck=0;
 
-	for(it=_messages.begin();it!=_messages.end();++it) {
+	while(it!=_messages.end()) {
 		Message& message(**it);
 
-		// just messages not flushed, so nothing to do
-		if(message.fragments.empty())
-			return;
+		// clear unbuffered messages
+		if(!message.repeatable) {
+			if(it==_messages.begin()) {
+				_messages.pop_front();
+				it=_messages.begin();
+				++_lostMessages;
+				if(_messages.empty())
+					_trigger.stop();
+			} else {
+				deltaNAck += message.fragments.size();
+				++it;
+			}
+			continue;
+		}
 
 		UInt32 stage = message.startStage;
 
 		list<UInt32>::const_iterator itFrag=message.fragments.begin();
 		UInt32 fragment(*itFrag);
 		bool end=false;
-		message.reset();
+		UInt32 available;
+		BinaryReader& reader = message.reader(available);
 		
 		while(!end && message.fragments.end()!=itFrag++) {
-			streamsize size = message.available();
+			UInt32 size = available;
 			end = itFrag==message.fragments.end();
 			if(!end) {
 				size = (*itFrag)-fragment;
@@ -158,8 +207,10 @@ void FlowWriter::raiseMessage() {
 			}
 
 			// Actual sending packet is enough large? Here we send just one packet!
-			if(!header && size>packet.available())
+			if(!header && size>packet.available()) {
+				DEBUG("Raise message on flowWriter %u finishs on stage %u",id,stage);
 				return;
+			}
 			
 			// Compute flags
 			UInt8 flags = stage==0 ? MESSAGE_HEADER : 0x00;
@@ -173,7 +224,7 @@ void FlowWriter::raiseMessage() {
 
 			// Write packet
 			size-=3;  // type + timestamp removed, before the "writeMessage"
-			PacketWriter& writer = _band.writeMessage(header ? 0x10 : 0x11,size);
+			PacketWriter& writer = _band.writeMessage(header ? 0x10 : 0x11,(UInt16)size,this);
 			
 			size-=1;
 			writer.write8(flags);
@@ -202,16 +253,20 @@ void FlowWriter::raiseMessage() {
 					size -= 1;
 				}
 			}
+			
+			available -= size;
+			reader.readRaw(writer.begin()+writer.position(),size);
+			writer.next(size);
 
-			message.read(writer,size);
 			header=false;
 		}
+		++it;
 	}
 }
 
-void FlowWriter::flush() {
+void FlowWriter::flush(bool full) {
 	list<Message*>::const_iterator it;
-	bool header = true;
+	bool header = !_band.canWriteFollowing(*this);
 	UInt8 deltaNAck=0;
 
 	for(it=_messages.begin();it!=_messages.end();++it) {
@@ -226,6 +281,9 @@ void FlowWriter::flush() {
 		message.startStage = _stage;
 
 		UInt32 fragments= 0;
+
+		UInt32 available;
+		BinaryReader& reader = message.reader(available);
 
 		do {
 
@@ -243,7 +301,8 @@ void FlowWriter::flush() {
 			UInt8 deltaNAckSize = Util::Get7BitValueSize(deltaNAck);
 			UInt8 signatureLen = (_stage-deltaNAck)>0 ? 0 : (signature.size()+(flowId==0?2:(4+flowIdSize)));
 			bool head = header;
-			int size = message.available()+4;
+
+			UInt32 size = available+4;
 
 			if(head) {
 				size+=idSize;
@@ -255,7 +314,7 @@ void FlowWriter::flush() {
 			// Compute flags
 			UInt8 flags = _stage==0 ? MESSAGE_HEADER : 0x00;
 			if(_closed)
-				flags |= MESSAGE_END;
+				flags |= MESSAGE_END | MESSAGE_ABANDONMENT;
 			if(fragments>0)
 				flags |= MESSAGE_WITH_BEFOREPART;
 
@@ -269,7 +328,7 @@ void FlowWriter::flush() {
 			size-=3; // type + timestamp removed, before the "writeMessage"
 
 			// Write packet
-			PacketWriter& writer = _band.writeMessage(head ? 0x10 : 0x11,size);
+			PacketWriter& writer = _band.writeMessage(head ? 0x10 : 0x11,(UInt16)size,this);
 
 			size-=1;
 			writer.write8(flags);
@@ -302,24 +361,41 @@ void FlowWriter::flush() {
 
 			}
 
-			
-			message.read(writer,size);
+			available -= size;
+			reader.readRaw(writer.begin()+writer.position(),size);
+			writer.next(size);
+
 			message.fragments.push_back(fragments);
 			fragments += size;
 
-		} while(message.available()>0);
+		} while(available>0);
+
 	}
+	if(full)
+		_band.flush();
 }
 
-Message& FlowWriter::createMessage() {
-	if(_closed)
-		return _messageNull;
-	Message* pMessage = new Message();
+void FlowWriter::writeUnbufferedMessage(const UInt8* data,UInt32 size,const UInt8* memAckData,UInt32 memAckSize) {
+	if(_closed || signature.empty()) // signature.empty() means that we are on the flowWriter of FlowNull
+		return;
+	MessageUnbuffered* pMessage = new MessageUnbuffered(data,size,memAckData,memAckSize);
 	_messages.push_back(pMessage);
+	 if(_messages.size()>100)
+		DEBUG("_messages.size()=%d",_messages.size()); 
+	flush();
+}
+
+MessageBuffered& FlowWriter::createBufferedMessage() {
+	if(_closed || signature.empty()) // signature.empty() means that we are on the flowWriter of FlowNull
+		return _messageNull;
+	MessageBuffered* pMessage = new MessageBuffered();
+	_messages.push_back(pMessage);
+	 if(_messages.size()>100)
+		DEBUG("_messages.size()=%d",_messages.size()); 
 	return *pMessage;
 }
 BinaryWriter& FlowWriter::writeRawMessage(bool withoutHeader) {
-	Message& message(createMessage());
+	MessageBuffered& message(createBufferedMessage());
 	if(!withoutHeader) {
 		message.rawWriter.write8(0x04);
 		message.rawWriter.write32(0);
@@ -327,63 +403,32 @@ BinaryWriter& FlowWriter::writeRawMessage(bool withoutHeader) {
 	return message.rawWriter;
 }
 AMFWriter& FlowWriter::writeAMFMessage(const std::string& name) {
-	Message& message(createMessage());
+	MessageBuffered& message(createBufferedMessage());
 	message.amfWriter.writeResponseHeader(name,_callbackHandle);
 	return message.amfWriter;
 }
-AMFObjectWriter FlowWriter::writeSuccessResponse(const string& description,const string& name) {
-	AMFWriter& message(writeAMFResult());
 
-	string code(_code);
-	if(!name.empty()) {
-		code.append(".");
-		code.append(name);
-	}
+AMFObjectWriter FlowWriter::writeAMFResponse(const string& name,const string& code,const string& description) {
+	MessageBuffered& message(createBufferedMessage());
+	message.amfWriter.writeResponseHeader(name,_callbackHandle);
 
-	AMFObjectWriter object(message);
-	object.write("level","status");
-	object.write("code",code);
-	if(!description.empty())
-		object.write("description",description);
-	return object;
-}
-AMFObjectWriter FlowWriter::writeStatusResponse(const string& name,const string& description) {
-	Message& message(createMessage());
-	message.amfWriter.writeResponseHeader("onStatus",_callbackHandle);
-
-	string code(_code);
-	if(!name.empty()) {
-		code.append(".");
-		code.append(name);
+	string entireCode(_obj);
+	if(!code.empty()) {
+		entireCode.append(".");
+		entireCode.append(code);
 	}
 
 	AMFObjectWriter object(message.amfWriter);
-	object.write("level","status");
-	object.write("code",code);
+	if(name=="_error") {
+		object.write("level","error");
+		
+	} else
+		object.write("level","status");
+	object.write("code",entireCode);
 	if(!description.empty())
 		object.write("description",description);
 	return object;
 }
-AMFObjectWriter FlowWriter::writeErrorResponse(const string& description,const string& name) {
-	Message& message(createMessage());
-	message.amfWriter.writeResponseHeader("_error",_callbackHandle);
-
-	string code(_code);
-	if(!name.empty()) {
-		code.append(".");
-		code.append(name);
-	}
-
-	AMFObjectWriter object(message.amfWriter);
-	object.write("level","error");
-	object.write("code",code);
-	if(!description.empty())
-		object.write("description",description);
-
-	WARN("'%s' response error : %s",code.c_str(),description.c_str());
-	return object;
-}
-
 
 
 } // namespace Cumulus

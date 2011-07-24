@@ -26,9 +26,11 @@
 #define AMF_BEGIN_OBJECT	0x03
 #define AMF_NULL			0x05
 #define AMF_UNDEFINED		0x06
+#define AMF_ECMA_ARRAY	    0x08 
 #define AMF_END_OBJECT		0x09
-#define	AMF_AVMPLUS_OBJECT	0x11
+#define	AMF_STRICT_ARRAY	0x0A
 #define	AMF_LONG_STRING		0x0C
+#define	AMF_AVMPLUS_OBJECT	0x11
 
 namespace Cumulus {
 

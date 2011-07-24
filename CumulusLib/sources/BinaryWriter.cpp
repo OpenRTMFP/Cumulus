@@ -16,7 +16,6 @@
 */
 
 #include "BinaryWriter.h"
-#include "Poco/RandomStream.h"
 
 using namespace std;
 using namespace Poco;
@@ -24,7 +23,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-BinaryWriter::BinaryWriter(std::ostream& ostr) : Poco::BinaryWriter(ostr,BinaryWriter::NETWORK_BYTE_ORDER) {
+BinaryWriter::BinaryWriter(ostream& ostr) : Poco::BinaryWriter(ostr,BinaryWriter::NETWORK_BYTE_ORDER) {
 }
 
 
@@ -52,13 +51,6 @@ void BinaryWriter::writeString16(const char* value,UInt16 size) {
 void BinaryWriter::writeString16(const string& value) {
 	write16(value.size());
 	writeRaw(value);
-}
-
-void BinaryWriter::writeRandom(streamsize size) {
-	char * value = new char[size]();
-	RandomInputStream().read(value,size);
-	writeRaw(value,size);
-	delete [] value;
 }
 
 void BinaryWriter::writeAddress(const Address& address,bool publicFlag) {

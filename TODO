@@ -11,7 +11,12 @@
 - Changed "CumulusService" for "CumulusServer"
 - Check if Video(Audio) NetStream packets have need of Acknowledgment
 
+- Create a FlowResponder class without close() public access, and a FlowWriter class with close() public access, to prohibit "close()" call from Flow write response
 - Vérifier la sécurité, je ne dois pas être capable moi même d'intercaler un serveur en man-in-the-middle mode pour comprendre les échanges entre
 un client flash et son application serveur Cumulus. Peut être dois je considérer l'addresse d'appel dans le handshake pour celà?
 - Flag for reliability is the 4 bytes! ->
 Forward Sequence Number Offset (variable-length) - for partially-reliable in-order delivery
+
+
+- Vérifier le temps de "reconnexion auto apres deconnexion", et vérifier que un "raise" message sur un flow critique le respecte bien
+- Remplacer tous les "find" par le nouvel algo

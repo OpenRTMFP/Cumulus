@@ -18,77 +18,47 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketWriter.h"
-#include "Poco/BinaryReader.h"
+#include "MemoryStream.h"
+#include "BinaryReader.h"
 
 #define PACKETRECV_SIZE		2048
 
 namespace Cumulus {
 
 
-class PacketReader: public Poco::BinaryReader {
+class PacketReader: public BinaryReader {
 public:
-	PacketReader(const Poco::UInt8* buffer,std::streamsize size);
+	PacketReader(const Poco::UInt8* buffer,Poco::UInt32 size);
 	PacketReader(PacketReader&);
 	virtual ~PacketReader();
 
-	Poco::UInt32	read7BitValue();
-	void			readString(std::string& value);
-	void			readRaw(Poco::UInt8* value,std::streamsize size);
-	void			readRaw(char* value,std::streamsize size);
-	void			readRaw(std::streamsize size,std::string& value);
-	void			readString8(std::string& value);
-	void			readString16(std::string& value);
-	Poco::UInt8		read8();
-	Poco::UInt16	read16();
-	Poco::UInt32	read32();
+	const Poco::UInt32	fragments;
 
-	std::streamsize	available();
+	Poco::UInt32	available();
 	Poco::UInt8*	current();
-	int				position();
+	Poco::UInt32	position();
 
-	void			reset(std::streampos newPos=0);
-	void			shrink(int rest);
-	void			next(std::streamsize size);
+	void			reset(Poco::UInt32 newPos=0);
+	void			shrink(Poco::UInt32 rest);
+	void			next(Poco::UInt32 size);
 private:
 	MemoryInputStream _memory;
 	
 };
 
-inline void PacketReader::readRaw(Poco::UInt8* value,std::streamsize size) {
-	Poco::BinaryReader::readRaw((char*)value,size);
-}
-inline void PacketReader::readRaw(char* value,std::streamsize size) {
-	Poco::BinaryReader::readRaw(value,size);
-}
-inline void PacketReader::readRaw(std::streamsize size,std::string& value) {
-	Poco::BinaryReader::readRaw(size,value);
-}
-
-
-inline void PacketReader::readString8(std::string& value) {
-	readRaw(read8(),value);
-}
-inline void PacketReader::readString16(std::string& value) {
-	readRaw(read16(),value);
-}
-inline void PacketReader::readString(std::string& value) {
-	readRaw(read7BitValue(),value);
-}
-
-inline std::streamsize PacketReader::available() {
+inline Poco::UInt32 PacketReader::available() {
 	return _memory.available();
 }
 
-inline int PacketReader::position() {
+inline Poco::UInt32 PacketReader::position() {
 	return _memory.current()-_memory.begin();
 }
 
-inline void PacketReader::reset(std::streampos newPos) {
+inline void PacketReader::reset(Poco::UInt32 newPos) {
 	_memory.reset(newPos);
 }
 
-inline void PacketReader::next(std::streamsize size) {
+inline void PacketReader::next(Poco::UInt32 size) {
 	return _memory.next(size);
 }
 

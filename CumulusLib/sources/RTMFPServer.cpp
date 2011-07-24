@@ -22,6 +22,7 @@
 #include "PacketWriter.h"
 #include "Util.h"
 #include "Logs.h"
+#include "Poco/Format.h"
 #include "string.h"
 
 
@@ -32,15 +33,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer(UInt8 keepAliveServer,UInt8 keepAlivePeer) : _handler(keepAliveServer,keepAlivePeer,NULL),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_handler),_nextIdSession(0) {
-#ifndef _WIN32
-//	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
-//	RAND_seed(rnd_seed, sizeof(rnd_seed));
-#endif
-}
-
-
-RTMFPServer::RTMFPServer(ClientHandler& clientHandler,UInt8 keepAliveServer,UInt8 keepAlivePeer) : _handler(keepAliveServer,keepAlivePeer,&clientHandler),_terminate(false),_pCirrus(NULL),_handshake(*this,_socket,_handler),_nextIdSession(0) {
+RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(*this,_socket,*this),_nextIdSession(0) {
 #ifndef _WIN32
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -48,7 +41,7 @@ RTMFPServer::RTMFPServer(ClientHandler& clientHandler,UInt8 keepAliveServer,UInt
 }
 
 RTMFPServer::~RTMFPServer() {
-	stop();
+
 }
 
 Session* RTMFPServer::findSession(UInt32 id) {
@@ -60,7 +53,7 @@ Session* RTMFPServer::findSession(UInt32 id) {
 	}
 	Session* pSession = _sessions.find(id);
 	if(pSession) {
-		DEBUG("Session d'identification '%u'",id);
+	//	TRACE("Session d'identification '%u'",id);
 		if(!pSession->checked)
 			_handshake.commitCookie(*pSession);
 		return pSession;
@@ -70,9 +63,13 @@ Session* RTMFPServer::findSession(UInt32 id) {
 	return NULL;
 }
 
+void RTMFPServer::start() {
+	RTMFPServerParams params;
+	start(params);
+}
+
 void RTMFPServer::start(RTMFPServerParams& params) {
-	ScopedLock<FastMutex> lock(_mutex);
-	if(_mainThread.isRunning()) {
+	if(running()) {
 		ERROR("RTMFPServer server is yet running, call stop method before");
 		return;
 	}
@@ -83,79 +80,77 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 		_freqManage = 0; // no waiting, direct process in the middle case!
 	}
 	_middle = params.middle;
-	_terminate = false;
-	_mainThread.start(*this);
+
+	(UInt32&)keepAliveServer = params.keepAliveServer<5 ? 5000 : params.keepAliveServer*1000;
+	(UInt32&)keepAlivePeer = params.keepAlivePeer<5 ? 5000 : params.keepAlivePeer*1000;
 	
+	onStart();
+	setPriority(params.threadPriority);
+	Startable::start();
 }
 
-void RTMFPServer::stop() {
-	ScopedLock<FastMutex> lock(_mutex);
-	_terminate = true;
-	if(_mainThread.isRunning())
-		_mainThread.join();
-	if(_pCirrus) {
-		delete _pCirrus;
-		_pCirrus = NULL;
-	}
-}
 
-void RTMFPServer::run() {
-	SetThreadName("RTMFPServer");
+void RTMFPServer::run(const volatile bool& terminate) {
 	SocketAddress address("0.0.0.0",_port);
 	_socket.bind(address,true);
-	
+
 	SocketAddress sender;
 	UInt8 buff[PACKETRECV_SIZE];
 	int size = 0;
-	Timespan span(250000);
 
 	NOTE("RTMFP server starts on %hu port",_port);
 
-	while(!_terminate) {
+	try {
 
-		manage();
+		while(!terminate) {
+			manage();
 
-		try {
-			if (!_socket.poll(span, Socket::SELECT_READ))
-				continue;
-			size = _socket.receiveFrom(buff,sizeof(buff),sender);
-		} catch(Exception& ex) {
-			WARN("Main socket reception : %s",ex.displayText().c_str());
-			_socket.close();
-			_socket.bind(address,true);
-			continue;
+			Thread::sleep(1);
+
+			while(!terminate && _socket.available()>0) {
+				manage();
+
+				try {
+					size = _socket.receiveFrom(buff,sizeof(buff),sender);
+				} catch(Exception& ex) {
+					WARN("Main socket reception : %s",ex.displayText().c_str());
+					_socket.close();
+					_socket.bind(address,true);
+					continue;
+				}
+
+				//TRACE("Sender : %s",sender.toString().c_str());
+
+				PacketReader packet(buff,size);
+				if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
+					ERROR("Invalid packet");
+					continue;
+				}
+
+				UInt32 idSession = RTMFP::Unpack(packet);
+				Session* pSession = this->findSession(idSession);
+
+				if(!pSession)
+					continue;
+
+				if(!pSession->decode(packet,sender)) {
+					Logs::Dump(packet,"Packet decrypted:");
+					ERROR("Decrypt error");
+					continue;
+				}
+			
+				Logs::Dump(packet,format("Request from %s",sender.toString()).c_str());
+
+				pSession->packetHandler(packet);
+			}
+
 		}
-
-		DEBUG("Sender : %s",sender.toString().c_str());
-
-		// A very small test port protocol (echo one byte)
-		if(size==1) {
-			_socket.sendTo(buff,1,sender);
-			continue;
-		}
-
-		PacketReader packet(buff,size);
-		if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
-			ERROR("Invalid packet");
-			continue;
-		}
-
-		UInt32 idSession = RTMFP::Unpack(packet);
-		Session* pSession = this->findSession(idSession);
-
-		if(!pSession)
-			continue;
-
-		if(!pSession->decode(packet,sender)) {
-			Logs::Dump(packet,"Packet decrypted:");
-			ERROR("Decrypt error");
-			continue;
-		}
-	
-		Logs::Dump(packet,"Request:");
-
-		pSession->packetHandler(packet);
-
+	} catch(Exception& ex) {
+		FATAL("RTMFPServer error : %s",ex.displayText().c_str());
+	} catch (exception& ex) {
+		FATAL("RTMFPServer error : %s",ex.what());
+	} catch (...) {
+		FATAL("RTMFPServer unknown error");
 	}
 
 	INFO("RTMFP server stopping");
@@ -165,6 +160,11 @@ void RTMFPServer::run() {
 	_socket.close();
 
 	NOTE("RTMFP server stops");
+	onStop();
+	if(_pCirrus) {
+		delete _pCirrus;
+		_pCirrus = NULL;
+	}
 }
 
 UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const SocketAddress& address,const UInt8* peerIdWanted) {
@@ -254,12 +254,12 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 
 	Session* pSession;
 	if(pTarget) {
-		pSession = new Middle(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,_handler,_sessions,*pTarget);
+		pSession = new Middle(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,*this,_sessions,*pTarget);
 		DEBUG("500ms sleeping to wait cirrus handshaking");
 		Thread::sleep(500); // to wait the cirrus handshake
 		pSession->manage();
 	} else {
-		pSession = new Session(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,_handler);
+		pSession = new Session(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,*this);
 		pSession->pTarget = cookie.pTarget;
 	}
 
@@ -283,6 +283,8 @@ void RTMFPServer::manage() {
 	_timeLastManage.update();
 	_handshake.manage();
 	_sessions.manage();
+	if(_timeLastManage.isElapsed(10000))
+		WARN("Process management has lasted more than 10ms");
 }
 
 

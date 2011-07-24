@@ -33,7 +33,7 @@ Util::~Util() {
 }
 
 
-string Util::FormatHex(const UInt8* data,unsigned size) {
+string Util::FormatHex(const UInt8* data,UInt32 size) {
 	ostringstream oss;
 	HexBinaryEncoder(oss).write((char*)data,size);
 	return oss.str();
@@ -49,12 +49,13 @@ UInt8 Util::Get7BitValueSize(UInt32 value) {
 	return 1;
 }
 
-
 void Util::UnpackUrl(const string& url,string& path,map<string,string>& parameters) {
 	URI uri(url);
 	path.assign(uri.getPath());
-	string query = uri.getRawQuery();
+	UnpackQuery(uri.getRawQuery(),parameters);
+}
 
+void Util::UnpackQuery(const string& query,map<string,string>& parameters) {
 	istringstream istr(query);
 	static const int eof = std::char_traits<char>::eof();
 

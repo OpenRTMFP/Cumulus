@@ -23,11 +23,11 @@ using namespace Poco;
 
 namespace Cumulus {
 
-PacketWriter::PacketWriter(const UInt8* buffer,streamsize size) : _memory((char*)buffer,size),BinaryWriter(_memory),_pOther(NULL),_skip(0),_size(size) {
+PacketWriter::PacketWriter(const UInt8* buffer,UInt32 size) : _memory((char*)buffer,size),BinaryWriter(_memory),_pOther(NULL),_skip(0),_size(size) {
 }
 
 // Consctruction by copy
-PacketWriter::PacketWriter(PacketWriter& other,streamsize skip) : _pOther(&other),_memory(other._memory),BinaryWriter(_memory),_skip(skip),_size(other._size) {
+PacketWriter::PacketWriter(PacketWriter& other,UInt32 skip) : _pOther(&other),_memory(other._memory),BinaryWriter(_memory),_skip(skip),_size(other._size) {
 	this->next(skip);
 }
 
@@ -35,8 +35,8 @@ PacketWriter::~PacketWriter() {
 	flush();
 }
 
-void PacketWriter::limit(streamsize length) {
-	if(length<=0)
+void PacketWriter::limit(UInt32 length) {
+	if(length==0)
 		length = _size;
 	if(length>_size) {
 		WARN("Limit '%d' more upper than buffer size '%d' bytes",length,_size);
@@ -45,7 +45,7 @@ void PacketWriter::limit(streamsize length) {
 	_memory.resize(length);
 }
 
-void PacketWriter::clear(streampos pos) {
+void PacketWriter::clear(UInt32 pos) {
 	reset(pos);
 	_memory.written(pos);
 }

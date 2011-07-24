@@ -18,25 +18,42 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Flow.h"
+#include "Listener.h"
 
 namespace Cumulus {
 
-class FlowGroup : public Flow {
+class Listeners {
 public:
-	FlowGroup(Poco::UInt32 id,Peer& peer,Handler& handler,BandWriter& band);
-	virtual ~FlowGroup();
+	Listeners(std::map<Poco::UInt32,Listener*>&	listeners) : _listeners(listeners) {}
+	virtual ~Listeners() {}
 
-	static std::string	Signature;
+	typedef std::map<Poco::UInt32,Listener*>::const_iterator Iterator;
+
+	Poco::UInt32 count() const;
+	Iterator begin() const;
+	Iterator end() const;
+
+	Iterator operator()(Poco::UInt32 id) const;
 
 private:
-
-	static std::string	_Name;
-
-	void rawHandler(Poco::UInt8 type,PacketReader& data);
-
-	std::list<const Peer*>		_bestPeers;
-	Group*						_pGroup;
+	std::map<Poco::UInt32,Listener*>&	_listeners;
 };
+
+inline Poco::UInt32 Listeners::count() const {
+	return _listeners.size();
+}
+
+inline Listeners::Iterator Listeners::begin() const {
+	return _listeners.begin();
+}
+
+inline Listeners::Iterator Listeners::end() const {
+	return _listeners.end();
+}
+
+inline Listeners::Iterator Listeners::operator()(Poco::UInt32 id) const{
+	return _listeners.find(id);
+}
+
 
 } // namespace Cumulus

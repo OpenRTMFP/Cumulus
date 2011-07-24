@@ -17,6 +17,7 @@
 
 #include "FlowStream.h"
 #include "Logs.h"
+#include "Util.h"
 
 using namespace std;
 using namespace Poco;
@@ -24,49 +25,70 @@ using namespace Poco;
 
 namespace Cumulus {
 
-string FlowStream::s_signature("\x00\x54\x43\x04",4);
-string FlowStream::s_name("NetStream");
+string FlowStream::Signature("\x00\x54\x43\x04",4);
+string FlowStream::_Name("NetStream");
 
-FlowStream::FlowStream(UInt32 id,const string& signature,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,signature,s_name,peer,serverHandler,band),_pPublication(NULL),_pListener(NULL),_state(IDLE) {
+FlowStream::FlowStream(UInt32 id,const string& signature,Peer& peer,Handler& handler,BandWriter& band) : Flow(id,signature,_Name,peer,handler,band),_pPublication(NULL),_state(IDLE),_numberLostFragments(0) {
 	PacketReader reader((const UInt8*)signature.c_str(),signature.length());
 	reader.next(4);
 	_index = reader.read7BitValue();
-	DEBUG("Index stream : %d",_index);
-	_pPublication = serverHandler.streams.publication(_index);
+	Publications::Iterator it = handler.streams.publications(_index);
+	if(it!=handler.streams.publications.end())
+		_pPublication = it->second;
 }
 
 FlowStream::~FlowStream() {
+	disengage();
+}
+
+void FlowStream::disengage() {
 	// Stop the current  job
-	if(_state==PUBLISHING)
-		serverHandler.streams.unpublish(_index,name);
-	else if(_state==PLAYING) {
-		serverHandler.streams.unsubscribe(name,*_pListener);
-		_pListener->close();
+	if(_state==PUBLISHING) {
+		handler.streams.unpublish(peer,_index,name);
+		writer.writeStatusResponse("Unpublish.Success",name + " is now unpublished");
+	} else if(_state==PLAYING) {
+		handler.streams.unsubscribe(peer,_index,name);
+		writer.writeStatusResponse("Play.Stop","Stopped playing " + name);
 	}
 	_state=IDLE;
 }
 
 void FlowStream::audioHandler(PacketReader& packet) {
-	if(_pPublication && _pPublication->publisherId == _index)
-		_pPublication->pushAudioPacket(packet);
-	else
-		fail("an audio packet has been received on a no subscriber FlowStream");
+	if(_pPublication && _pPublication->publisherId() == _index) {
+		_pPublication->pushAudioPacket(peer,packet.read32(),packet,_numberLostFragments);
+		_numberLostFragments=0;
+	} else
+		fail("an audio packet has been received on a no publisher FlowStream");
 }
 
 void FlowStream::videoHandler(PacketReader& packet) {
-	if(_pPublication && _pPublication->publisherId == _index)
-		_pPublication->pushVideoPacket(packet);
-	else
-		fail("a video packet has been received on a no subscriber FlowStream");
+	if(_pPublication && _pPublication->publisherId() == _index) {
+		_pPublication->pushVideoPacket(peer,packet.read32(),packet,_numberLostFragments);
+		_numberLostFragments=0;
+	} else
+		fail("a video packet has been received on a no publisher FlowStream");
+}
+
+void FlowStream::commitHandler() {
+	if(_pPublication && _pPublication->publisherId() == _index)
+		_pPublication->commit();
 }
 
 void FlowStream::rawHandler(UInt8 type,PacketReader& data) {
-//	if(_pPublication)
-//		_pPublication->pushRawPacket(type,data);
-//	else
-		Flow::rawHandler(type,data);
+	UInt16 flag = data.read16();
+	if(flag==0x22) { // TODO Here we receive publication bounds (id + tracks), useless? maybe to record a file and sync tracks?
+		//TRACE("Bound %u : %u %u",id,data.read32(),data.read32());
+		return;
+	}
+	ERROR("Unknown raw flag %u on FlowStream %u",flag,id);
+	Flow::rawHandler(type,data);
 }
 
+void FlowStream::lostFragmentsHandler(UInt32 count) {
+	if(_pPublication)
+		_numberLostFragments += count;
+	Flow::lostFragmentsHandler(count); // TODO remove it in a "no reliable" case? To avoid a too much WARN log written?
+}
 
 void FlowStream::messageHandler(const string& action,AMFReader& message) {
 
@@ -75,72 +97,47 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		bool value1 = message.readBool();
 		bool value2 = message.readBool();
 	} else if(action=="play") {
-		// Stop a precedent playing
-		if(_state==PLAYING) {
-			serverHandler.streams.unsubscribe(name,*_pListener);
-			_pListener->close();
-		}
+		disengage();
 		_state = PLAYING;
 
 		// TODO add a failed scenario?
 		message.read((string&)name);
+		// TODO implements completly NetStream.play method
+		double start = -2000;
+		if(message.available())
+			start = message.readNumber();
 
-		BinaryWriter& writer1 = writer.writeRawMessage(true);
-		writer1.write8(0x0F);
-		writer1.write32(0x00);
-		writer1.write8(0x00);
-		AMFWriter amf(writer1);
+		BinaryWriter& data = writer.writeRawMessage(true);
+		data.write8(0x0F);
+		data.write32(0x00);
+		data.write8(0x00);
+		AMFWriter amf(data);
 		amf.write("|RtmpSampleAccess");
 		amf.writeBool(false);
 		amf.writeBool(false);
 
-	/*	BinaryWriter& writer2 = writeRawMessage();
-		writer2.write16(0x00);
-		writer2.write32(0x02);*/
+		writer.writeStatusResponse("Play.Reset","Playing and resetting " + name);
 
-		writer.writeStatusResponse("Reset","Playing and resetting '" + name +"'");
+		writer.writeStatusResponse("Play.Start","Started playing " + name);
 
-		writer.writeStatusResponse("Start","Started playing '" + name +"'");
-
-		/*BinaryWriter& writer3 = writer.writeRawMessage(); TODO added? useful?
-		writer3.write16(0x22);
-		writer3.write32(0);
-		writer3.write32(0x02);*/
-
-		_pListener = &newFlowWriter<Listener>(writer.signature);
-		serverHandler.streams.subscribe(name,*_pListener);
-
+		handler.streams.subscribe(peer,_index,name,writer,start);
 
 	} else if(action == "closeStream") {
-		// Stop the current  job
-		if(_state==PUBLISHING) {
-			serverHandler.streams.unpublish(_index,name);
-			writer.writeSuccessResponse("Stopped publishing '" + name +"'"); // TODO doesn't work! NetStream.Unpublish.Success should be!
-		} else if(_state==PLAYING) {
-			serverHandler.streams.unsubscribe(name,*_pListener);
-			_pListener->close();
-			writer.writeStatusResponse("Stop","Stopped playing '" + name +"'"); // TODO doesn't work!
-		}
-		_state=IDLE;
+		disengage();
 	} else if(action=="publish") {
 
-		// Stop a precedent publishment
-		if(_state==PUBLISHING)
-			serverHandler.streams.unpublish(_index,name);
-		_state = IDLE;
+		disengage();
 
 		string type;
 		message.read((string&)name);
 		if(message.available())
 			message.read(type); // TODO record!
 
-		// TODO add a failed scenario?
-
-		if(serverHandler.streams.publish(_index,name)) {
-			writer.writeStatusResponse("Start","'" + name +"' is now published");
+		if(handler.streams.publish(peer,_index,name)) {
+			writer.writeStatusResponse("Publish.Start",name +" is now published");
 			_state = PUBLISHING;
 		} else
-			writer.writeErrorResponse("'" + name +"' is already publishing","BadName");
+			writer.writeStatusResponse("Publish.BadName",name +" is already publishing");
 
 	} else
 		Flow::messageHandler(action,message);

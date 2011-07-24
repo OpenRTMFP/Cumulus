@@ -16,6 +16,7 @@
 */
 
 #include "Message.h"
+#include "string.h"
 
 using namespace std;
 using namespace Poco;
@@ -23,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Message::Message() : rawWriter(_stream),amfWriter(rawWriter),startStage(0) {
+Message::Message(istream& istr,bool repeatable) : startStage(0),_reader(istr),repeatable(repeatable) {
 	
 }
 
@@ -32,20 +33,52 @@ Message::~Message() {
 
 }
 
-void Message::reset() {
+BinaryReader& Message::reader(UInt32& size) {
 	list<UInt32>::const_iterator it = fragments.begin();
-	if(it==fragments.end()) {
-		_stream.resetReading(0);
-		return;
-	}
-	UInt32 fragment = *it;
-	_stream.resetReading(fragment);
+	size =  init(it==fragments.end() ? 0 : (*it));
+	return _reader;
 }
 
-void Message::read(PacketWriter& writer,streamsize size) {
-	_stream.read((char*)(writer.begin()+writer.position()),size);
-	writer.next(size);
+
+MessageBuffered::MessageBuffered() : rawWriter(_stream),amfWriter(rawWriter),Message(_stream,true) {
+	
 }
+
+
+MessageBuffered::~MessageBuffered() {
+
+}
+
+
+UInt32 MessageBuffered::init(UInt32 position) {
+	_stream.resetReading(position);
+	return _stream.size();
+}
+
+MessageUnbuffered::MessageUnbuffered(const UInt8* data,UInt32 size,const UInt8* memAckData,UInt32 memAckSize) : _stream((const char*)data,size),Message(_stream,false),_bufferAck(memAckSize) {
+	memcpy(_bufferAck.begin(),memAckData,memAckSize);
+	_pMemAck = new MemoryInputStream(_bufferAck.begin(),memAckSize);
+	_pReaderAck = new BinaryReader(*_pMemAck);
+}
+
+
+MessageUnbuffered::~MessageUnbuffered() {
+	delete _pReaderAck;
+	delete _pMemAck;
+}
+
+UInt32 MessageUnbuffered::init(UInt32 position) {
+	_stream.reset(position);
+	return _stream.available();
+}
+
+BinaryReader& MessageUnbuffered::memAck(UInt32& size) {
+	size = _pMemAck->available();
+	return *_pReaderAck;
+}
+
+
+
 
 
 } // namespace Cumulus

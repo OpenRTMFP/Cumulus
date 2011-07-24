@@ -24,10 +24,11 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-string FlowGroup::s_signature("\x00\x47\x43",3);
-string FlowGroup::s_name("NetGroup");
+string FlowGroup::Signature("\x00\x47\x43",3);
+string FlowGroup::_Name("NetGroup");
 
-FlowGroup::FlowGroup(UInt32 id,Peer& peer,ServerHandler& serverHandler,BandWriter& band) : Flow(id,s_signature,s_name,peer,serverHandler,band),_pGroup(NULL) {
+FlowGroup::FlowGroup(UInt32 id,Peer& peer,Handler& handler,BandWriter& band) : Flow(id,Signature,_Name,peer,handler,band),_pGroup(NULL) {
+	(UInt32&)writer.flowId = id;
 }
 
 FlowGroup::~FlowGroup() {
@@ -46,7 +47,7 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 			vector<UInt8> groupId(size);
 			data.readRaw(&groupId[0],size);
 
-			_pGroup = &serverHandler.group(groupId);
+			_pGroup = &handler.group(groupId);
 
 			_pGroup->bestPeers(_bestPeers,peer);
 

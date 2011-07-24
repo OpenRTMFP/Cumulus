@@ -20,16 +20,16 @@
 #include "Cumulus.h"
 #include "PacketReader.h"
 #include "Peer.h"
-#include "ServerHandler.h"
+#include "Handler.h"
 #include "FlowWriter.h"
-#include "Poco/Buffer.h"
 
 namespace Cumulus {
 
+class Packet;
 class Fragment;
 class Flow {
 public:
-	Flow(Poco::UInt32 id,const std::string& signature,const std::string& name,Peer& peer,ServerHandler& serverHandler,BandWriter& band);
+	Flow(Poco::UInt32 id,const std::string& signature,const std::string& name,Peer& peer,Handler& handler,BandWriter& band);
 	virtual ~Flow();
 
 	const Poco::UInt32		id;
@@ -40,16 +40,12 @@ public:
 
 	void			fail(const std::string& error);
 
-	template <class FlowWriterType>
-	FlowWriterType& newFlowWriter(const std::string& signature) {
-		return *(new FlowWriterType(id,signature,_band));
-	}
-
 	bool			consumed();
 
 protected:
 
-	void		fragmentSortedHandler(Poco::UInt32 stage,PacketReader& fragment,Poco::UInt8 flags);
+	void		 fragmentSortedHandler(Poco::UInt32 stage,PacketReader& fragment,Poco::UInt8 flags);
+	virtual void lostFragmentsHandler(Poco::UInt32 count);
 
 	virtual void messageHandler(const std::string& name,AMFReader& message);
 	virtual void rawHandler(Poco::UInt8 type,PacketReader& data);
@@ -59,11 +55,11 @@ protected:
 	
 	Peer&					peer;
 	FlowWriter&				writer;
-	ServerHandler&			serverHandler;
+	Handler&				handler;
 	const Poco::UInt32		stage;
 	
 private:
-	virtual bool		noMore();
+	virtual void		commitHandler();
 	void				complete();
 	Poco::UInt8			unpack(PacketReader& reader);
 
@@ -72,16 +68,15 @@ private:
 	BandWriter&			_band;
 
 	// Receiving
-	Poco::Buffer<Poco::UInt8>*			_pBuffer;
+	Packet*								_pPacket;
 	std::map<Poco::UInt32,Fragment*>	_fragments;
 };
 
-inline bool Flow::noMore() {
-	return false;
-}
-
 inline bool Flow::consumed() {
 	return _completed;
+}
+
+inline void Flow::commitHandler() {
 }
 
 } // namespace Cumulus

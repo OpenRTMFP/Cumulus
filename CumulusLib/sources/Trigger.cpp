@@ -48,8 +48,8 @@ void Trigger::start() {
 bool Trigger::raise() {
 	if(!_running)
 		return false;
-	// Wait at least 1.5 sec before to begin the repeat cycle
-	if(_time==0 && !_timeInit.isElapsed(1500000))
+	// Wait at least 1 sec before to begin the repeat cycle, it means that it will be between 1 and 3 sec in truth (freg mangement is set to 2)
+	if(_time==0 && !_timeInit.isElapsed(1000000))
 		return false;
 	++_time;
 	if(_time>=_cycle) {

@@ -41,7 +41,7 @@ public:
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
 			Poco::Net::DatagramSocket& socket,
-			ServerHandler& serverHandler);
+			Handler& handler);
 
 	virtual ~Session();
 
@@ -62,18 +62,18 @@ public:
 	void	p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag,Session* pSession);
 	bool	decode(PacketReader& packet,const Poco::Net::SocketAddress& sender);
 	
-	void	fail(const std::string& msg);
+	void	fail(const std::string& fail);
 
 	const bool checked;
 
 	// For middle peer/peer
 	Target*	pTarget;
 protected:
-	void			setFailed(const std::string& msg);
-	virtual void	fail();
+	
+	virtual void	failSignal();
 	void			kill();
 
-	ServerHandler&			_serverHandler;
+	Handler&			_handler;
 
 	Poco::UInt32			_farId; // Protected for Middle session
 	Poco::Timestamp			_recvTimestamp; // Protected for Middle session
@@ -82,12 +82,14 @@ protected:
 private:
 	// Implementation of BandWriter
 	void				initFlowWriter(FlowWriter& flowWriter);
+	void				resetFlowWriter(FlowWriter& flowWriter);
+	bool				canWriteFollowing(FlowWriter& flowWriter);
 
-	PacketWriter&		writeMessage(Poco::UInt8 type,Poco::UInt16 length);
+	PacketWriter&		writeMessage(Poco::UInt8 type,Poco::UInt16 length,FlowWriter* pFlowWriter=NULL);
 
-	void				keepAlive();
+	bool				keepAlive();
 
-	FlowWriter&			flowWriter(Poco::UInt32 id);
+	FlowWriter*			flowWriter(Poco::UInt32 id);
 	Flow&				flow(Poco::UInt32 id);
 	Flow*				createFlow(Poco::UInt32 id,const std::string& signature);
 	
@@ -98,6 +100,7 @@ private:
 	std::map<Poco::UInt32,Flow*>		_flows;
 	FlowNull*							_pFlowNull;
 	std::map<Poco::UInt32,FlowWriter*>	_flowWriters;
+	FlowWriter*							_pLastFlowWriter;
 	Poco::UInt32						_nextFlowWriterId;
 
 	Poco::UInt32				_id;
@@ -115,10 +118,10 @@ private:
 	std::map<std::string,Poco::UInt8>		_p2pHandshakeAttemps;
 };
 
-inline void Session::fail(const std::string& msg) {
-	setFailed(msg);
-	fail();
+inline bool Session::canWriteFollowing(FlowWriter& flowWriter) {
+	return _pLastFlowWriter==&flowWriter;
 }
+
 
 inline bool Session::failed() const {
 	return _failed;

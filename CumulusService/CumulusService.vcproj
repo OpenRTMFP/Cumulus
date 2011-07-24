@@ -177,6 +177,7 @@
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
 			IntermediateDirectory="tmp/$(ConfigurationName)"
 			ConfigurationType="1"
+			UseOfMFC="0"
 			CharacterSet="2"
 			>
 			<Tool
@@ -340,6 +341,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\sources\ApplicationKiller.h"
+				>
+			</File>
+			<File
 				RelativePath=".\sources\Auth.cpp"
 				>
 			</File>
@@ -349,6 +354,22 @@
 			</File>
 			<File
 				RelativePath=".\sources\main.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\sources\Server.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\sources\Server.h"
+				>
+			</File>
+			<File
+				RelativePath=".\sources\StatusWriter.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\sources\StatusWriter.h"
 				>
 			</File>
 		</Filter>

@@ -32,12 +32,20 @@ class Group;
 class Peer : public Client {
 	friend class Group;
 public:
+	enum PeerState {
+		NONE,
+		ACCEPTED,
+		REJECTED
+	};
+
 	Peer();
 	//Peer(const Poco::Net::SocketAddress& address);
 	virtual ~Peer();
 
 	const Poco::Net::SocketAddress	address;
 	const std::vector<Address>		privateAddress;
+
+	const PeerState					state;
 
 	void setPrivateAddress(const std::list<Address>& address);
 	void setPing(Poco::UInt16 ping);

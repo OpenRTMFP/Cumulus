@@ -18,32 +18,62 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Listener.h"
-#include <list>
+#include "Listeners.h"
+#include "Client.h"
 
 namespace Cumulus {
 
-class Publication {
+class Handler;
+class CUMULUS_API Publication {
+	friend class Publications;
 public:
-	Publication();
+	Publication(const std::string& name,Handler& handler);
 	virtual ~Publication();
 
-	void				pushRawPacket(Poco::UInt8 type,PacketReader& packet);
-	void				pushAudioPacket(PacketReader& packet);
-	void				pushVideoPacket(PacketReader& packet);
+	Poco::UInt32			publisherId() const;
+	const std::string&		name() const;
 
-	void				add(Listener& listener);
-	void				remove(Listener& listener);
-	Poco::UInt32		count();
-	
-	const Poco::UInt32	publisherId;
+	const Listeners			listeners;
+
+	const QualityOfService&	videoQOS() const;
+	const QualityOfService&	audioQOS() const;
+
+	bool					start(const Client& client,Poco::UInt32	publisherId);
+	void					stop(const Client& client,Poco::UInt32	publisherId);
+
+	void					pushAudioPacket(const Client& client,Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
+	void					pushVideoPacket(const Client& client,Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
+
+	void					addListener(const Client& client,Poco::UInt32 id,FlowWriter& writer,bool unbuffered);
+	void					removeListener(const Client& client,Poco::UInt32 id);
+
+	void					commit();
 private:
-	std::list<Listener*>	_listeners;
+	bool								_firstKeyFrame;
+	Poco::UInt32						_time;
+	std::string							_name;
+	Poco::UInt32						_publisherId;
+	std::map<Poco::UInt32,Listener*>	_listeners;
+	Handler&							_handler;
+
+	QualityOfService					_videoQOS;
+	QualityOfService					_audioQOS;
 };
 
-inline Poco::UInt32 Publication::count() {
-	return _listeners.size();
+inline const QualityOfService& Publication::audioQOS() const {
+	return _audioQOS;
 }
 
+inline const QualityOfService& Publication::videoQOS() const {
+	return _videoQOS;
+}
+
+inline Poco::UInt32 Publication::publisherId() const {
+	return _publisherId;
+}
+
+inline const std::string& Publication::name() const {
+	return _name;
+}
 
 } // namespace Cumulus

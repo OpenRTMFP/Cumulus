@@ -26,7 +26,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Peer::Peer():_ping(0) {
+Peer::Peer():_ping(0),state(NONE) {
 }
 
 /*Peer::Peer(const Poco::Net::SocketAddress& address):_ping(0),address(address) {

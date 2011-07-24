@@ -28,7 +28,7 @@ class BinaryBuffer : public Poco::UnbufferedStreamBuf {
 public:
 	BinaryBuffer();
 	~BinaryBuffer();
-	std::streamsize		size();
+	Poco::UInt32		size();
 
 private:
 	std::streampos seekpos(std::streampos sp,std::ios_base::openmode which = std::ios_base::in | std::ios_base::out);
@@ -44,10 +44,6 @@ private:
 
 	std::stringbuf  _buf;
 };
-
-inline std::streamsize BinaryBuffer::size() {
-	return _buf.pubseekoff(0,std::ios_base::cur,std::ios_base::out) - _buf.pubseekoff(0,std::ios_base::cur,std::ios_base::in);
-}
 
 inline BinaryBuffer::int_type BinaryBuffer::writeToDevice(char_type ch) {
 	return _buf.sputc(ch);
@@ -100,14 +96,14 @@ public:
       BinaryStream();
       ~BinaryStream();
 
-	  std::streamsize    size();
+	  Poco::UInt32	  size();
       void            clear();
-	  void            resetReading(std::streampos position);
+	  void            resetReading(Poco::UInt32 position);
       bool            empty();
 private:
 };
 
-inline std::streamsize BinaryStream::size() {
+inline Poco::UInt32 BinaryStream::size() {
       return rdbuf()->size();
 }
 

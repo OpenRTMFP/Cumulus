@@ -32,9 +32,16 @@ BinaryBuffer::~BinaryBuffer() {
 
 
 BinaryBuffer::int_type BinaryBuffer::readFromDevice() {
-        if(size()==0)
-                return EOF;
-        return _buf.sbumpc();
+    if(size()==0)
+		return EOF;
+    return _buf.sbumpc();
+}
+
+inline Poco::UInt32 BinaryBuffer::size() {
+	int result = _buf.pubseekoff(0,std::ios_base::cur,std::ios_base::out) - _buf.pubseekoff(0,std::ios_base::cur,std::ios_base::in);
+	if(result<0)
+		result=0;
+	return (UInt32)result;
 }
 
 BinaryIOS::BinaryIOS() {
@@ -59,7 +66,7 @@ void BinaryStream::clear() {
 	iostream::clear();
 }
 
-void BinaryStream::resetReading(std::streampos position) {
+void BinaryStream::resetReading(UInt32 position) {
 	rdbuf()->pubseekoff(position,ios::beg,ios_base::in);
     iostream::clear();
 }

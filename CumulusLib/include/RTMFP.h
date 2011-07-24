@@ -19,6 +19,7 @@
 
 #include "Cumulus.h"
 #include "PacketReader.h"
+#include "PacketWriter.h"
 #include "AESEngine.h"
 #include "Poco/Timestamp.h"
 #include <openssl/dh.h>

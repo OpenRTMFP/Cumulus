@@ -21,10 +21,7 @@
 std::string MainThreadName;
 
 #if defined(_WIN32) && defined(_DEBUG)
-#include "crtdbg.h"
-#include "windows.h"
 
- 
 #define FALSE   0
 #define TRUE    1
  
@@ -79,8 +76,8 @@ int reportingHook(int reportType, char* userMessage, int* retVal)
   
 };
  
-void setFilterDebugHook(void)
-{
+void DetectMemoryLeak() {
+	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
   //change the report function to only report memory leaks from program code
   prevHook = _CrtSetReportHook(reportingHook);
 }
@@ -138,6 +135,8 @@ void SetThreadName(const char* szThreadName) {
 		pThread->setName(szThreadName);
 	else
 		MainThreadName = szThreadName;
+}
+void DetectMemoryLeak() {
 }
 #endif
 

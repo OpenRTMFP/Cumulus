@@ -27,18 +27,11 @@ namespace Cumulus {
 
 class Client : public Entity {
 public:
-	Client():state(NONE) {}
+	Client() {}
 	virtual ~Client() {}
-
-	enum ClientState {
-		NONE,
-		ACCEPTED,
-		REJECTED
-	};
 
 	const Poco::URI								swfUrl;
 	const Poco::URI								pageUrl;
-	const ClientState							state;
 
 	std::vector<Poco::UInt8>					data;
 

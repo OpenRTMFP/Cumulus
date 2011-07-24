@@ -23,97 +23,57 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Streams::Streams() : _nextId(0) {
+Streams::Streams(Handler& handler) : _nextId(0),publications(handler) {
 	
 }
 
 Streams::~Streams() {
-	// delete subscriptions
-	PublicationIt it;
-	for(it=_publications.begin();it!=_publications.end();++it)
-		delete it->second;
+	
 }
 
-
-Streams::PublicationIt Streams::publicationIt(const string& name) {
-	// Return a suscription iterator and create the subscrition if it doesn't exist
-	PublicationIt it = _publications.find(name);
-	if(it != _publications.end())
-		return it;
-	return _publications.insert(pair<string,Publication*>(name,new Publication())).first;
+bool Streams::publish(const Client& client,UInt32 id,const string& name) {
+	Publications::Iterator it = publications.create(name);
+	return it->second->start(client,id);
 }
 
-void Streams::cleanPublication(PublicationIt& it) {
-	// Delete susbscription is no more need
-	if(it->second->count()==0 && it->second->publisherId==0) {
-		delete it->second;
-		_publications.erase(it);
-	}
-}
-
-bool Streams::publish(UInt32 id,const string& name) {
-	PublicationIt it = publicationIt(name);
-	if(it->second->publisherId!=0)
-		return false; // has already a publisher
-	((UInt8&)it->second->publisherId) = id;
-	return true;
-}
-
-void Streams::unpublish(UInt32 id,const string& name) {
-	PublicationIt it = _publications.find(name);
-	if(it == _publications.end()) {
+void Streams::unpublish(const Client& client,UInt32 id,const string& name) {
+	Publications::Iterator it = publications(name);
+	if(it == publications.end()) {
 		DEBUG("The stream '%s' with a %u id doesn't exist, unpublish useless",name.c_str(),id);
 		return;
 	}
-	if(it->second->publisherId==0)
-		return; // already done
-	if(it->second->publisherId!=id) {
-		WARN("Unpublish '%s' operation with a %u id different than its publisher %u id",name.c_str(),id,it->second->publisherId);
-		return;
-	}
-	((UInt8&)it->second->publisherId) = 0;
-	cleanPublication(it);
+	Publication& publication(*it->second);
+	publication.stop(client,id);
+	if(publication.publisherId()==0 && publication.listeners.count()==0)
+		publications.destroy(it);
 }
 
-void Streams::subscribe(const string& name,Listener& listener) {
-	publicationIt(name)->second->add(listener);
+void Streams::subscribe(const Client& client,UInt32 id,const string& name,FlowWriter& writer,double start) {
+	publications.create(name)->second->addListener(client,id,writer,start==-3000 ? true : false);
 }
 
-void Streams::unsubscribe(const string& name,Listener& listener) {
-	PublicationIt it = _publications.find(name);
-	if(it == _publications.end()) {
+void Streams::unsubscribe(const Client& client,UInt32 id,const string& name) {
+	Publications::Iterator it = publications(name);
+	if(it == publications.end()) {
 		DEBUG("The stream '%s' doesn't exists, unsubscribe useless",name.c_str());
 		return;
 	}
-	it->second->remove(listener);
-	cleanPublication(it);
+	Publication& publication(*it->second);
+	publication.removeListener(client,id);
+	if(publication.publisherId()==0 && publication.listeners.count()==0)
+		publications.destroy(it);
 }
 
-Publication* Streams::publication(UInt32 id) {
-	PublicationIt it;
-	for(it=_publications.begin();it!=_publications.end();++it) {
-		if(it->second->publisherId==id)
-			return it->second;
-	}
-	return NULL;
-}
 
 UInt32 Streams::create() {
 	while(!_streams.insert((++_nextId)==0 ? ++_nextId : _nextId).second);
+	DEBUG("New stream %u",_nextId);
 	return _nextId;
 }
 
 void Streams::destroy(UInt32 id) {
+	DEBUG("Stream %u deleted",id);
 	_streams.erase(id);
-	PublicationIt it=_publications.begin();
-	while(it!=_publications.end()) {
-		if(it->second->publisherId==id) {
-			((UInt8&)it->second->publisherId) = 0;
-			PublicationIt it2(it++); // Causes a Unix std bug
-			cleanPublication(it2);
-		} else
-			++it;
-	}
 }
 
 

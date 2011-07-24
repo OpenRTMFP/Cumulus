@@ -385,6 +385,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\BinaryReader.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\BinaryReader.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\BinaryStream.cpp"
 					>
 				</File>
@@ -437,6 +445,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\Startable.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Startable.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\Util.cpp"
 					>
 				</File>
@@ -461,14 +477,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\ClientHandler.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\ClientHandler.h"
-					>
-				</File>
-				<File
 					RelativePath=".\sources\Entity.cpp"
 					>
 				</File>
@@ -482,6 +490,14 @@
 				</File>
 				<File
 					RelativePath=".\include\Group.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Handler.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Handler.h"
 					>
 				</File>
 				<File
@@ -514,14 +530,6 @@
 				</File>
 				<File
 					RelativePath=".\include\RTMFPServer.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\ServerHandler.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\ServerHandler.h"
 					>
 				</File>
 			</Filter>
@@ -661,11 +669,31 @@
 					>
 				</File>
 				<File
+					RelativePath=".\include\Listeners.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\Publication.cpp"
 					>
 				</File>
 				<File
 					RelativePath=".\include\Publication.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Publications.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Publications.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\QualityOfService.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\QualityOfService.h"
 					>
 				</File>
 				<File

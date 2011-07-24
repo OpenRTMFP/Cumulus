@@ -35,7 +35,7 @@ public:
 	AESEngine(const Poco::UInt8* key,Direction direction);
 	virtual ~AESEngine();
 
-	void process(const Poco::UInt8* in,Poco::UInt8* out,unsigned int size);
+	void process(const Poco::UInt8* in,Poco::UInt8* out,Poco::UInt32 size);
 
 private:
 	Direction	_direction;

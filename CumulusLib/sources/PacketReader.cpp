@@ -23,74 +23,24 @@ using namespace Poco;
 
 namespace Cumulus {
 
-PacketReader::PacketReader(const Poco::UInt8* buffer,streamsize size) : _memory((const char*)buffer,size),BinaryReader(_memory,BinaryReader::NETWORK_BYTE_ORDER) {
+PacketReader::PacketReader(const UInt8* buffer,UInt32 size) : _memory((const char*)buffer,size),BinaryReader(_memory),fragments(1) {
 }
 
 
 // Consctruction by copy
-PacketReader::PacketReader(PacketReader& other) : _memory(other._memory),BinaryReader(_memory,BinaryReader::NETWORK_BYTE_ORDER) {
+PacketReader::PacketReader(PacketReader& other) : _memory(other._memory),BinaryReader(_memory),fragments(other.fragments) {
 }
 
 
 PacketReader::~PacketReader() {
 }
 
-void PacketReader::shrink(int rest) {
-	if(rest<0) {
-		ERROR("rest must be a positive value");
-		return;
-	}
+void PacketReader::shrink(UInt32 rest) {
 	if(rest>available()) {
-		WARN("rest '%d' more upper than available '%d' bytes",rest,available());
+		WARN("rest %u more upper than available %u bytes",rest,available());
 		rest = available();
 	}
 	_memory.resize(position()+rest);
-}
-
-UInt8 PacketReader::read8() {
-	UInt8 c;
-	(*this) >> c;
-	return c;
-}
-
-UInt16 PacketReader::read16() {
-	UInt16 c;
-	(*this) >> c;
-	return c;
-}
-
-UInt32 PacketReader::read32() {
-	UInt32 c;
-	(*this) >> c;
-	return c;
-}
-
-UInt32 PacketReader::read7BitValue() {
-	UInt8 a=0,b=0,c=0,d=0;
-	Int8 s = 0;
-	*this >> a;
-	if(a & 0x80) {
-		*this >> b;++s;
-		if(b & 0x80) {
-			*this >> c;++s;
-			if(c & 0x80) {
-				*this >> d;++s;
-			}
-		}
-	}
-	UInt32 value = ((a&0x7F)<<(s*7));
-	--s;
-	if(s<0)
-		return value;
-	value += ((b&0x7F)<<(s*7));
-	--s;
-	if(s<0)
-		return value;
-	value += ((c&0x7F)<<(s*7));
-	--s;
-	if(s<0)
-		return value;
-	return value + ((d&0x7F)<<(s*7));
 }
 
 

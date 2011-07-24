@@ -43,9 +43,10 @@ public:
 	static void			SetDump(DumpMode mode);
 
 #ifdef CUMULUS_LOGS
+	static DumpMode				GetDump();
 	static Logger*				GetLogger();
 	static Poco::UInt8			GetLevel();
-	static void					Dump(const Poco::UInt8* data,int size,const char* header=NULL,bool middle=false);
+	static void					Dump(const Poco::UInt8* data,Poco::UInt32 size,const char* header=NULL,bool middle=false);
 	static void					Dump(PacketReader& packet,const char* header=NULL,bool middle=false);
 	static void					Dump(PacketWriter& packet,const char* header=NULL,bool middle=false);
 	static void					Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header=NULL,bool middle=false);
@@ -56,25 +57,29 @@ private:
 	Logs();
 	~Logs();
 	
-	static Logger*		s_pLogger;
-	static DumpMode		s_dumpMode;
-	static Poco::UInt8  s_level;
+	static Logger*		_PLogger;
+	static DumpMode		_DumpMode;
+	static Poco::UInt8  _Level;
 };
 
 inline void Logs::SetDump(DumpMode mode) {
-	s_dumpMode=mode;
+	_DumpMode=mode;
 }
 
 inline void Logs::SetLevel(Poco::UInt8 level) {
-	s_level = level;
+	_Level = level;
 }
 
 inline void Logs::SetLogger(Logger& logger) {
-	s_pLogger = &logger;
+	_PLogger = &logger;
 }
 
 
 #ifdef CUMULUS_LOGS
+
+	inline Logs::DumpMode Logs::GetDump() {
+		return _DumpMode;
+	}
 
 	inline void Logs::Dump(PacketReader& packet,const char* header,bool middle) {
 		Dump(packet.current(),packet.available(),header,middle);
@@ -87,35 +92,35 @@ inline void Logs::SetLogger(Logger& logger) {
 	}
 
 	inline Poco::UInt8 Logs::GetLevel() {
-		return s_level;
+		return _Level;
 	}
 
 	inline Logger* Logs::GetLogger() {
-		return s_pLogger;
+		return _PLogger;
 	}
 
 	// Empecher le traitement des chaines si de toute façon le log n'a aucun CLogReceiver!
 	// Ou si le level est plus détaillé que le loglevel
 	#define LOG(PRIO,FILE,LINE,FMT, ...) { \
-		if(Logs::GetLogger() && Logs::GetLevel()>=PRIO) {\
+		if(Cumulus::Logs::GetLogger() && Cumulus::Logs::GetLevel()>=PRIO) {\
 			char szzs[700];\
 			snprintf(szzs,sizeof(szzs),FMT,## __VA_ARGS__);\
 			szzs[sizeof(szzs)-1] = '\0'; \
-			Logs::GetLogger()->logHandler(Poco::Thread::currentTid(),GetThreadName(),PRIO,FILE,LINE,szzs); \
+			Cumulus::Logs::GetLogger()->logHandler(Poco::Thread::currentTid(),GetThreadName(),PRIO,FILE,LINE,szzs); \
 		} \
 	}
 
 	#undef ERROR
 	#undef DEBUG
 	#undef TRACE
-	#define FATAL(FMT, ...) LOG(Logger::PRIO_FATAL,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
-	#define CRITIC(FMT, ...) LOG(Logger::PRIO_CRITIC,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
-	#define ERROR(FMT, ...) LOG(Logger::PRIO_ERROR,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
-	#define WARN(FMT, ...) LOG(Logger::PRIO_WARN,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
-	#define NOTE(FMT, ...) LOG(Logger::PRIO_NOTE,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
-	#define INFO(FMT, ...) LOG(Logger::PRIO_INFO,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
-	#define DEBUG(FMT, ...) LOG(Logger::PRIO_DEBUG,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
-	#define TRACE(FMT, ...) LOG(Logger::PRIO_TRACE,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
+	#define FATAL(FMT, ...) LOG(Cumulus::Logger::PRIO_FATAL,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
+	#define CRITIC(FMT, ...) LOG(Cumulus::Logger::PRIO_CRITIC,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
+	#define ERROR(FMT, ...) LOG(Cumulus::Logger::PRIO_ERROR,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
+	#define WARN(FMT, ...) LOG(Cumulus::Logger::PRIO_WARN,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
+	#define NOTE(FMT, ...) LOG(Cumulus::Logger::PRIO_NOTE,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
+	#define INFO(FMT, ...) LOG(Cumulus::Logger::PRIO_INFO,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
+	#define DEBUG(FMT, ...) LOG(Cumulus::Logger::PRIO_DEBUG,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
+	#define TRACE(FMT, ...) LOG(Cumulus::Logger::PRIO_TRACE,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
 
 #endif
 

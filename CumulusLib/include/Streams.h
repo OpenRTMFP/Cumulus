@@ -19,39 +19,29 @@
 
 #include "Cumulus.h"
 #include "Listener.h"
-#include "Publication.h"
+#include "Publications.h"
 #include <set>
-#include <map>
-
 
 namespace Cumulus {
 
-
 class Streams {
 public:
-	Streams();
+	Streams(Handler& handler);
 	virtual ~Streams();
 
 	Poco::UInt32	create();
 	void			destroy(Poco::UInt32 id);
 
-	bool			publish(Poco::UInt32 id,const std::string& name);
-	void			unpublish(Poco::UInt32 id,const std::string& name);
-	void			subscribe(const std::string& name,Listener& listener);
-	void			unsubscribe(const std::string& name,Listener& listener);
+	bool			publish(const Client& client,Poco::UInt32 id,const std::string& name);
+	void			unpublish(const Client& client,Poco::UInt32 id,const std::string& name);
+	void			subscribe(const Client& client,Poco::UInt32 id,const std::string& name,FlowWriter& writer,double start=-2000);
+	void			unsubscribe(const Client& client,Poco::UInt32 id,const std::string& name);
 
-	Publication*	publication(Poco::UInt32 id);
+	Publications	publications;
 
 private:
-	typedef std::map<std::string,Publication*>::iterator PublicationIt;
-
-	PublicationIt   publicationIt(const std::string& name);
-	void			cleanPublication(PublicationIt& it);
-
-	std::set<Poco::UInt32>				_streams;
-	std::map<std::string,Publication*>	_publications;
-	Poco::UInt32						_nextId;
-
+	std::set<Poco::UInt32>		_streams;
+	Poco::UInt32				_nextId;
 };
 
 

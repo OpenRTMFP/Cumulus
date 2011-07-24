@@ -25,32 +25,43 @@
 namespace Cumulus {
 
 
-class MemoryStreamBuf: public std::streambuf {
+class MemoryStreamBuf;
+class ScopedMemoryClip {
 public:
-	MemoryStreamBuf(char* pBuffer, std::streamsize bufferSize);
+	ScopedMemoryClip(MemoryStreamBuf& buffer,Poco::UInt32 offset);
+	~ScopedMemoryClip();
+private:
+	void				clip(Poco::Int32 offset);
+	Poco::UInt32		_offset;
+	MemoryStreamBuf&   _buffer;
+};
+
+class MemoryStreamBuf: public std::streambuf {
+	friend class ScopedMemoryClip;
+public:
+	MemoryStreamBuf(char* pBuffer,Poco::UInt32 bufferSize);
 	MemoryStreamBuf(MemoryStreamBuf&);
 	~MemoryStreamBuf();
 
-	virtual int overflow(int_type c);
-
-	virtual int underflow();
-
-	virtual int sync();
 	
-	void			next(std::streamsize size);
-	std::streamsize written(std::streamsize size=-1);
-	std::streamsize size();
-	void			resize(std::streamsize newSize);
-	void			clip(std::streampos offset);
+	void			next(Poco::UInt32 size);
+	Poco::UInt32	written();
+	void			written(Poco::UInt32 size);
+	Poco::UInt32	size();
+	void			resize(Poco::UInt32 newSize);
 	char*			begin();
-	void			position(std::streampos pos=0);
+	void			position(Poco::UInt32 pos=0);
 	char*			gCurrent();
 	char*			pCurrent();
 
 private:
-	std::streamsize _written;
+	virtual int overflow(int_type c);
+	virtual int underflow();
+	virtual int sync();
+
+	Poco::UInt32	_written;
 	char*			_pBuffer;
-	std::streamsize _bufferSize;
+	Poco::UInt32	_bufferSize;
 
 	MemoryStreamBuf();
 	MemoryStreamBuf& operator = (const MemoryStreamBuf&);
@@ -58,7 +69,7 @@ private:
 
 /// inlines
 
-inline std::streamsize MemoryStreamBuf::size() {
+inline Poco::UInt32 MemoryStreamBuf::size() {
 	return _bufferSize;
 }
 inline char* MemoryStreamBuf::begin() {
@@ -72,7 +83,6 @@ inline char* MemoryStreamBuf::pCurrent() {
 }
 //////////
 
-
 class MemoryIOS: public virtual std::ios
 	/// The base class for MemoryInputStream and MemoryOutputStream.
 	///
@@ -80,7 +90,7 @@ class MemoryIOS: public virtual std::ios
 	/// order of the stream buffer and base classes.
 {
 public:
-	MemoryIOS(char* pBuffer, std::streamsize bufferSize);
+	MemoryIOS(char* pBuffer,Poco::UInt32 bufferSize);
 		/// Creates the basic stream.
 	MemoryIOS(MemoryIOS&);
 	~MemoryIOS();
@@ -90,12 +100,11 @@ public:
 		/// Returns a pointer to the underlying streambuf.
 
 	virtual char*	current()=0;
-	void			reset(std::streampos newPos);
-	void			resize(std::streamsize newSize);
-	void			clip(std::streampos pos);
+	void			reset(Poco::UInt32 newPos);
+	void			resize(Poco::UInt32 newSize);
 	char*			begin();
-	void			next(std::streamsize size);
-	std::streamsize available();
+	void			next(Poco::UInt32 size);
+	Poco::UInt32	available();
 		
 private:
 	MemoryStreamBuf _buf;
@@ -105,13 +114,10 @@ private:
 inline char* MemoryIOS::begin() {
 	return rdbuf()->begin();
 }
-inline void MemoryIOS::resize(std::streamsize newSize) {
+inline void MemoryIOS::resize(Poco::UInt32 newSize) {
 	rdbuf()->resize(newSize);
 }
-inline void MemoryIOS::clip(std::streampos pos) {
-	rdbuf()->clip(pos);
-}
-inline void MemoryIOS::next(std::streamsize size) {
+inline void MemoryIOS::next(Poco::UInt32 size) {
 	rdbuf()->next(size);
 }
 inline MemoryStreamBuf* MemoryIOS::rdbuf() {
@@ -123,7 +129,7 @@ class MemoryInputStream: public MemoryIOS, public std::istream
 	/// An input stream for reading from a memory area.
 {
 public:
-	MemoryInputStream(const char* pBuffer, std::streamsize bufferSize);
+	MemoryInputStream(const char* pBuffer,Poco::UInt32 bufferSize);
 		/// Creates a MemoryInputStream for the given memory area,
 		/// ready for reading.
 	MemoryInputStream(MemoryInputStream&);
@@ -143,20 +149,24 @@ class MemoryOutputStream: public MemoryIOS, public std::ostream
 	/// An input stream for reading from a memory area.
 {
 public:
-	MemoryOutputStream(char* pBuffer, std::streamsize bufferSize);
+	MemoryOutputStream(char* pBuffer,Poco::UInt32 bufferSize);
 		/// Creates a MemoryOutputStream for the given memory area,
 		/// ready for writing.
 	MemoryOutputStream(MemoryOutputStream&);
 	~MemoryOutputStream();
 		/// Destroys the MemoryInputStream.
 	
-	std::streamsize written(std::streamsize size=-1);
+	Poco::UInt32	written();
+	void			written(Poco::UInt32 size);
 	char*			current();
 };
 
 /// inlines
-inline std::streamsize MemoryOutputStream::written(std::streamsize size) {
-	return rdbuf()->written(size);
+inline Poco::UInt32 MemoryOutputStream::written() {
+	return rdbuf()->written();
+}
+inline void MemoryOutputStream::written(Poco::UInt32 size) {
+	rdbuf()->written(size);
 }
 inline char* MemoryOutputStream::current() {
 	return rdbuf()->pCurrent();

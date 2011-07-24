@@ -19,23 +19,50 @@
 
 #include "Cumulus.h"
 #include "FlowWriter.h"
-#include "Poco/Timestamp.h"
+#include "QualityOfService.h"
 
 namespace Cumulus {
 
-class Listener : public FlowWriter {
+class Publication;
+class AudioWriter;
+class VideoWriter;
+class Listener {
 public:
-	Listener(Poco::UInt32 flowId,const std::string& signature,BandWriter& band);
+	Listener(Poco::UInt32 id,Publication& publication,FlowWriter& writer,bool unbuffered);
 	virtual ~Listener();
 
-	void pushRawPacket(Poco::UInt8 type,PacketReader& packet);
-	void pushAudioPacket(PacketReader& packet); 
-	void pushVideoPacket(PacketReader& packet);
+	void startPublishing(const std::string& name); 
+	void stopPublishing(const std::string& name); 
+
+	void pushAudioPacket(Poco::UInt32 time,PacketReader& packet); 
+	void pushVideoPacket(Poco::UInt32 time,PacketReader& packet);
+
+	void flush();
+
+	const Publication&	publication;
+	const Poco::UInt32  id;
+
+	const QualityOfService&	videoQOS() const;
+	const QualityOfService&	audioQOS() const;
 
 private:
-	void flush();
-	Poco::Timestamp			_time;
-	BandWriter&				_band;
+	Poco::UInt32 	computeTime(Poco::UInt32 time);
+
+	void			writeBounds();
+	void			writeBound(FlowWriter& writer);
+
+	bool					_unbuffered;
+	Poco::UInt32			_boundId;
+
+	bool					_firstKeyFrame;
+
+	Poco::UInt32 			_deltaTime;
+	Poco::UInt32 			_addingTime;
+	Poco::UInt32 			_time;
+
+	FlowWriter&				_writer;
+	AudioWriter&			_audioWriter;
+	VideoWriter&			_videoWriter;
 };
 
 

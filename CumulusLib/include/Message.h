@@ -21,7 +21,9 @@
 #include "BinaryWriter.h"
 #include "AMFWriter.h"
 #include "BinaryStream.h"
-#include "PacketWriter.h"
+#include "BinaryReader.h"
+#include "MemoryStream.h"
+#include "Poco/Buffer.h"
 #include <list>
 
 namespace Cumulus {
@@ -29,26 +31,53 @@ namespace Cumulus {
 
 class Message {
 public:
-	Message();
+	Message(std::istream& istr,bool repeatable);
 	virtual ~Message();
 
-	AMFWriter					amfWriter;
-	BinaryWriter				rawWriter;
-
-	std::streamsize				available();
-	void						reset();
-	void						read(PacketWriter& writer,std::streamsize size);
+	BinaryReader&			reader(Poco::UInt32& size);
+	virtual BinaryReader&	memAck(Poco::UInt32& size);
+	virtual	Poco::UInt32	init(Poco::UInt32 position)=0;
+	
 	std::list<Poco::UInt32>		fragments;
 	Poco::UInt32				startStage;
+	const bool					repeatable;
 
 private:
-	BinaryStream				_stream;
+	BinaryReader			_reader;
 };
 
-inline std::streamsize Message::available() {
-	return _stream.size();
+inline BinaryReader& Message::memAck(Poco::UInt32& size) {
+	return reader(size);
 }
 
+class MessageUnbuffered : public Message {
+public:
+	MessageUnbuffered(const Poco::UInt8* data,Poco::UInt32 size,const Poco::UInt8* memAckData=NULL,Poco::UInt32 memAckSize=0);
+	virtual ~MessageUnbuffered();
+
+	Poco::UInt32		init(Poco::UInt32 position);
+	BinaryReader&		memAck(Poco::UInt32& size);
+	
+private:
+	MemoryInputStream			_stream;
+	BinaryReader*				_pReaderAck;
+	MemoryInputStream*			_pMemAck;
+	Poco::Buffer<char>			_bufferAck;
+};
+
+class MessageBuffered : public Message {
+public:
+	MessageBuffered();
+	virtual ~MessageBuffered();
+
+	Poco::UInt32		init(Poco::UInt32 position);
+
+	AMFWriter			amfWriter;
+	BinaryWriter		rawWriter;
+	
+private:
+	BinaryStream		_stream;
+};
 
 
 } // namespace Cumulus

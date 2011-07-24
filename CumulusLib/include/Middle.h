@@ -35,7 +35,7 @@ public:
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
 			Poco::Net::DatagramSocket& socket,
-			ServerHandler& serverHandler,
+			Handler& handler,
 			const Sessions&	sessions,
 			Target& target);
 	~Middle();
@@ -48,7 +48,6 @@ public:
 	void				sendHandshakeToTarget(Poco::UInt8 type);
 
 	void				manage();
-	void				fail();
 	
 private:
 	PacketWriter&		writer();
@@ -57,6 +56,8 @@ private:
 	PacketWriter&		requester();
 	void				packetHandler(PacketReader& packet);
 	void				sendToTarget();
+
+	void				failSignal();
 
 	AESEngine*				_pMiddleAesDecrypt;
 	AESEngine*				_pMiddleAesEncrypt;

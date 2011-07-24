@@ -24,7 +24,7 @@
 namespace Cumulus {
 
 
-class AMFWriter {
+class CUMULUS_API AMFWriter {
 public:
 	AMFWriter(BinaryWriter& writer);
 	~AMFWriter();
@@ -36,11 +36,15 @@ public:
 
 	// fast
 	void beginObject();
+	void beginSubObject(const std::string& name);
 	void writeObjectProperty(const std::string& name,double value);
 	void writeObjectProperty(const std::string& name,const std::string& value);
+	void writeObjectArrayProperty(const std::string& name,Poco::UInt32 count);
 	void writeObjectProperty(const std::string& name,const char* value,Poco::UInt16 size);
 	void writeObjectProperty(const std::string& name,const std::vector<Poco::UInt8>& data);
 	void endObject();
+
+	void writeArray(Poco::UInt32 count);
 
 	void writeNumber(double value);
 	void write(const std::string& value);
@@ -52,6 +56,7 @@ public:
 private:
 	BinaryWriter& _writer;
 };
+
 
 inline void AMFWriter::beginObject() {
 	_writer.write8(AMF_BEGIN_OBJECT); // mark deb

@@ -32,6 +32,11 @@ AMFWriter::~AMFWriter() {
 
 }
 
+void AMFWriter::writeArray(UInt32 count) {
+	_writer.write8(AMF_STRICT_ARRAY);
+	_writer.write32(count);
+}
+
 void AMFWriter::writeResponseHeader(const string& key,double callbackHandle) {
 	_writer.write8(0x14);
 	_writer.write32(0);
@@ -67,8 +72,6 @@ void AMFWriter::writeNumber(double value){
 	_writer << value;
 }
 
-
-
 void AMFWriter::writeObject(const AMFObject& amfObject) {
 	beginObject();
 	AbstractConfiguration::Keys keys;
@@ -101,6 +104,15 @@ void AMFWriter::writeObject(const AMFObject& amfObject) {
 	endObject();
 }
 
+void AMFWriter::writeObjectArrayProperty(const string& name,UInt32 count) {
+	_writer.writeString16(name);
+	writeArray(count);
+}
+
+void AMFWriter::beginSubObject(const string& name) {
+	_writer.writeString16(name);
+	beginObject();
+}
 
 void AMFWriter::writeObjectProperty(const string& name,double value) {
 	_writer.writeString16(name);

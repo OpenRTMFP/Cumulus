@@ -18,27 +18,11 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Client.h"
-#include <map>
 
-
-namespace Cumulus {
-
-
-class CUMULUS_API ClientHandler
-{
+class ApplicationKiller {
 public:
-	ClientHandler();
-	virtual ~ClientHandler();
+	ApplicationKiller(){}
+	virtual ~ApplicationKiller(){}
 
-	virtual bool onConnection(Client& client)=0;
-	virtual void onFailed(const Client& client,const std::string& msg)=0;
-	virtual void onDisconnection(const Client& client)=0;
-//	virtual void onMessage(const Client& client,)=0;
-
-private:
-	//onMessage(const Client& client,const std::string& name,AMFReader& reader);
+	virtual void kill()=0;
 };
-
-
-} // namespace Cumulus

@@ -27,7 +27,7 @@ namespace Cumulus {
 
 class Handshake : public Session {
 public:
-	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& socket,ServerHandler& serverHandler);
+	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& socket,Handler& handler);
 	~Handshake();
 
 	void	createCookie(PacketWriter& writer,Cookie* pCookie);
