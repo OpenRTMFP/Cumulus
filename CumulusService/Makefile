@@ -1,4 +1,4 @@
-OBJECTS = main Auth AVFRWConnection AVFWriterChannel Server StatusWriter TCPReceiver
+OBJECTS = main Auth Server StatusWriter
 
 CC=g++
 EXEC=CumulusService
