@@ -77,11 +77,11 @@ public:
 };
 
 
-Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,Handler& handler,BandWriter& band) : id(id),stage(0),peer(peer),handler(handler),_completed(false),_name(name),_pPacket(NULL),_band(band),writer(*new FlowWriter(signature,band)) {
+Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,Handler& handler,BandWriter& band) : id(id),stage(0),peer(peer),handler(handler),_completed(false),_pPacket(NULL),_band(band),writer(*new FlowWriter(signature,band)) {
 	if(writer.flowId==0)
 		((UInt32&)writer.flowId)=id;
 	// create code prefix for a possible response
-	writer._obj.assign(_name);
+	writer._obj.assign(name);
 }
 
 Flow::~Flow() {
@@ -251,6 +251,7 @@ void Flow::fragmentSortedHandler(UInt32 stage,PacketReader& fragment,UInt8 flags
 	}
 
 	UInt8 type = unpack(*pMessage);
+
 	if(type!=EMPTY) {
 		writer._callbackHandle = 0;
 		string name;
@@ -263,19 +264,27 @@ void Flow::fragmentSortedHandler(UInt32 stage,PacketReader& fragment,UInt8 flags
 			}
 		}
 
-		switch(type) {
-			case AMF_WITH_HANDLER:
-			case AMF:
-				messageHandler(name,amf);
-				break;
-			case AUDIO:
-				audioHandler(*pMessage);
-				break;
-			case VIDEO:
-				videoHandler(*pMessage);
-				break;
-			default:
-				rawHandler(type,*pMessage);
+		try {
+			switch(type) {
+				case AMF_WITH_HANDLER:
+				case AMF:
+					messageHandler(name,amf);
+					break;
+				case AUDIO:
+					audioHandler(*pMessage);
+					break;
+				case VIDEO:
+					videoHandler(*pMessage);
+					break;
+				default:
+					rawHandler(type,*pMessage);
+			}
+		} catch(Exception& ex) {
+			_error = "flow error, " + ex.message();
+		} catch(exception& ex) {
+			_error = string("flow error, ") + ex.what();
+		} catch(...) {
+			_error = "Unknown flow error";
 		}
 	}
 	writer._callbackHandle = 0;
@@ -287,6 +296,7 @@ void Flow::fragmentSortedHandler(UInt32 stage,PacketReader& fragment,UInt8 flags
 
 	if(flags&MESSAGE_END)
 		complete();
+	
 }
 
 void Flow::messageHandler(const std::string& name,AMFReader& message) {

@@ -34,13 +34,14 @@ public:
 
 	const Poco::UInt32		id;
 
-	virtual void	fragmentHandler(Poco::UInt32 stage,Poco::UInt32 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
+	virtual void		fragmentHandler(Poco::UInt32 stage,Poco::UInt32 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
 	
-	void			commit();
+	void				commit();
 
-	void			fail(const std::string& error);
+	void				fail(const std::string& error);
 
-	bool			consumed();
+	bool				consumed();
+	const std::string&	error();
 
 protected:
 
@@ -64,13 +65,17 @@ private:
 	Poco::UInt8			unpack(PacketReader& reader);
 
 	bool				_completed;
-	const std::string&	_name;
 	BandWriter&			_band;
+	std::string			_error;
 
 	// Receiving
 	Packet*								_pPacket;
 	std::map<Poco::UInt32,Fragment*>	_fragments;
 };
+
+inline const std::string& Flow::error() {
+	return _error;
+}
 
 inline bool Flow::consumed() {
 	return _completed;

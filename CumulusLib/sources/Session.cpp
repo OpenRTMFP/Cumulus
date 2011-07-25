@@ -115,7 +115,7 @@ void Session::manage() {
 			it2->second->manage(_handler);
 		} catch(const Exception& ex) {
 			if(it2->second->critical) {
-				fail(ex.displayText()); // TODO no maybe good here. If a FlowWriter raise, we must kill the entiere session?
+				fail(ex.message()); // TODO no maybe good here. If a FlowWriter raise, we must kill the entiere session?
 				return;
 			}
 			continue;
@@ -264,7 +264,7 @@ void Session::flush(UInt8 flags) {
 					retry = true;
 				}
 			} catch(Exception& ex) {
-				 CRITIC("Socket send error on session '%u' : %s",_id,ex.displayText().c_str());
+				 CRITIC("Socket send error on session '%u' : %s",_id,ex.message().c_str());
 			}
 		}
 
@@ -457,8 +457,8 @@ void Session::packetHandler(PacketReader& packet) {
 
 				// Process request
 				pFlow->fragmentHandler(stage,deltaNAck,message,flags);
-				if(_peer.state==Peer::REJECTED && !failed())
-					fail("Client rejected"); // send fail message immediatly
+				if(!pFlow->error().empty())
+					fail(pFlow->error()); // send fail message immediatly
 
 				break;
 			}

@@ -113,7 +113,7 @@ void RTMFPServer::run(const volatile bool& terminate) {
 				try {
 					size = _socket.receiveFrom(buff,sizeof(buff),sender);
 				} catch(Exception& ex) {
-					WARN("Main socket reception : %s",ex.displayText().c_str());
+					WARN("Main socket reception : %s",ex.message().c_str());
 					_socket.close();
 					_socket.bind(address,true);
 					continue;
@@ -146,7 +146,7 @@ void RTMFPServer::run(const volatile bool& terminate) {
 
 		}
 	} catch(Exception& ex) {
-		FATAL("RTMFPServer error : %s",ex.displayText().c_str());
+		FATAL("RTMFPServer error : %s",ex.message().c_str());
 	} catch (exception& ex) {
 		FATAL("RTMFPServer error : %s",ex.what());
 	} catch (...) {

@@ -47,17 +47,16 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		((URI&)peer.swfUrl) = obj.getString("swfUrl","");
 		((URI&)peer.pageUrl) = obj.getString("pageUrl","");
 
-		((Peer::PeerState&)peer.state) = Peer::REJECTED;
-
 		// Don't support AMF0 forced on NetConnection object because impossible to exchange custome data (ByteArray written impossible)
 		// But it's not a pb because NetConnection RTMFP works since flash player 10.0 only (which supports AMF3)
 		if(obj.getDouble("objectEncoding")==0)
-			return;
+			throw Exception("ObjectEncoding client must be AMF3 and not AMF0");
 
 		// Check if the client is authorized
-		if(!handler.onConnection(peer,writer))
-			return;
 		++((UInt32&)handler.count);
+		((Peer::PeerState&)peer.state) = Peer::REJECTED;
+		if(!handler.onConnection(peer,writer))
+			throw Exception("Client rejected");
 		
 		((Peer::PeerState&)peer.state) = Peer::ACCEPTED;
 

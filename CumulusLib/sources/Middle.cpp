@@ -442,7 +442,7 @@ void Middle::manage() {
 		try {
 			len = _socket.receiveBytes(_buffer,sizeof(_buffer));
 		} catch(Exception& ex) {
-			ERROR("Middle socket reception error : %s",ex.displayText().c_str());
+			ERROR("Middle socket reception error : %s",ex.message().c_str());
 			return;
 		}
 
