@@ -208,6 +208,19 @@ CumulusService works in a same way:
 	make            // install
 	make clean      // uninstall
 
+**OS X**
+
+You will need to configure Poco with the `--config=Darwin64-clang --prefix=/usr` options. Then build normally.
+
+Cumulus on OS X requires a different set of Makefiles than do other flavors of *nix. First rename the Makefiles:
+
+    cd CumulusLib
+    mv Makefile-darwin Makefile
+    cd ../CumulusService
+    mv Makefile-darwin Makefile
+
+Then build the same way as for linux or unix, using `make` to install and `make clean` to uninstall.
+
 Thanks
 ------------------------------------
 Special thanks to Key2 and Andrei of [C++ RMTP Server] who by their preliminary work has made this project possible.
