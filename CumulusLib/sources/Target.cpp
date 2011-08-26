@@ -27,7 +27,7 @@ using namespace std;
 
 namespace Cumulus {
 
-Target::Target(const SocketAddress& address,Cookie* pCookie) : address(address),publicKey(),isPeer(pCookie?true:false),peerId(),pDH(pCookie?pCookie->_pDH:NULL) {
+Target::Target(const SocketAddress& address,Cookie* pCookie) : address(address),publicKey(),sharedSecret(),isPeer(pCookie?true:false),peerId(),pDH(pCookie?pCookie->_pDH:NULL) {
 	if(address.port()==0)
 		((SocketAddress&)this->address) = SocketAddress(address.host(),RTMFP_DEFAULT_PORT);
 	if(isPeer) {

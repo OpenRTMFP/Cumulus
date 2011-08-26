@@ -176,15 +176,15 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				// peerId = SHA256(farPubKey)
 				EVP_Digest(request.current(),size,(UInt8*)peer().id,NULL,EVP_sha256(),NULL);
 
-				request.next(size-KEY_SIZE);
-				UInt8 publicKey[KEY_SIZE];
-				request.readRaw(publicKey,KEY_SIZE);
+				vector<UInt8> publicKey(request.read7BitValue()-2);
+				request.next(2); // unknown
+				request.readRaw(&publicKey[0],publicKey.size());
 
 				size = request.read7BitValue();
 
-				UInt8 decryptKey[KEY_SIZE];
-				UInt8 encryptKey[KEY_SIZE];
-				cookie.computeKeys(publicKey,request.current(),size,decryptKey,encryptKey);
+				UInt8 decryptKey[AES_KEY_SIZE];
+				UInt8 encryptKey[AES_KEY_SIZE];
+				cookie.computeKeys(&publicKey[0],publicKey.size(),request.current(),size,decryptKey,encryptKey);
 
 				// Fill peer infos
 				Util::UnpackUrl(cookie.queryUrl,(string&)peer().path,(map<string,string>&)peer().parameters);

@@ -71,7 +71,7 @@ void FlowStream::videoHandler(PacketReader& packet) {
 
 void FlowStream::commitHandler() {
 	if(_pPublication && _pPublication->publisherId() == _index)
-		_pPublication->commit();
+		_pPublication->flush();
 }
 
 void FlowStream::rawHandler(UInt8 type,PacketReader& data) {

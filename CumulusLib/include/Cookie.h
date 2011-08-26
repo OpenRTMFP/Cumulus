@@ -32,7 +32,7 @@ public:
 	const std::string				queryUrl;
 	const Poco::UInt32				id;
 	
-	void							computeKeys(const Poco::UInt8* initiatorKey,const Poco::UInt8* initiatorNonce,Poco::UInt16 initNonceSize,Poco::UInt8* decryptKey,Poco::UInt8* encryptKey);
+	void							computeKeys(const Poco::UInt8* initiatorKey,Poco::UInt16 initKeySize,const Poco::UInt8* initiatorNonce,Poco::UInt16 initNonceSize,Poco::UInt8* decryptKey,Poco::UInt8* encryptKey);
 	bool							obsolete();
 	void							write(PacketWriter& writer);
 

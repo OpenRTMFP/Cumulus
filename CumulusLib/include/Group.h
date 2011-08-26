@@ -36,16 +36,26 @@ public:
 	bool operator!=(const Group& other) const;
 	bool operator!=(const std::vector<Poco::UInt8>& id) const;
 
+	bool hasPeer(const Poco::UInt8* peerId);
 	void addPeer(Peer& peer);
 	void removePeer(Peer& peer);
 	//void clear();
 	void bestPeers(std::list<const Peer*>& peers,const Peer& askerPeer);
 	bool empty();
+	const std::vector<Poco::UInt8>& id();
 
 private:
 	std::vector<Poco::UInt8>	_id;
 	Peers						_peers;
 };
+
+inline bool Group::hasPeer(const Poco::UInt8* peerId) {
+	return _peers.has(peerId);
+}
+
+inline const std::vector<Poco::UInt8>& Group::id() {
+	return _id;
+}
 
 inline bool Group::empty() {
 	return _peers.empty();

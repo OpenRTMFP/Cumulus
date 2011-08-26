@@ -47,7 +47,7 @@ public:
 	void					addListener(const Client& client,Poco::UInt32 id,FlowWriter& writer,bool unbuffered);
 	void					removeListener(const Client& client,Poco::UInt32 id);
 
-	void					commit();
+	void					flush();
 private:
 	bool								_firstKeyFrame;
 	Poco::UInt32						_time;

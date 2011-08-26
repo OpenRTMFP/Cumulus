@@ -255,6 +255,8 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 	Session* pSession;
 	if(pTarget) {
 		pSession = new Middle(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,*this,_sessions,*pTarget);
+		if(_pCirrus==pTarget)
+			pSession->pTarget = cookie.pTarget;
 		DEBUG("500ms sleeping to wait cirrus handshaking");
 		Thread::sleep(500); // to wait the cirrus handshake
 		pSession->manage();
@@ -270,6 +272,7 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 
 void RTMFPServer::manage() {
 	if(!_timeLastManage.isElapsed(_freqManage)) {
+		// Just middle session!
 		if(_middle) {
 			Sessions::Iterator it;
 			for(it=_sessions.begin();it!=_sessions.end();++it) {
@@ -283,8 +286,8 @@ void RTMFPServer::manage() {
 	_timeLastManage.update();
 	_handshake.manage();
 	_sessions.manage();
-	if(_timeLastManage.isElapsed(10000))
-		WARN("Process management has lasted more than 10ms");
+	if(!_middle && !_pCirrus && _timeLastManage.isElapsed(20000))
+		WARN("Process management has lasted more than 20ms : %ums",UInt32(_timeLastManage.elapsed()/1000));
 }
 
 

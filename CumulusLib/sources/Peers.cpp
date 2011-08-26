@@ -56,6 +56,24 @@ void Peers::add(const Peer& peer) {
 	}
 }
 
+bool Peers::has(const UInt8* peerId) {
+	list<const Peer*>::const_iterator it;
+
+	for(it=_localPeers.begin();it!=_localPeers.end();++it) {
+		if((**it)==peerId)
+			return true;
+	}
+
+	map<UInt16,list<const Peer*>*>::const_iterator it2;
+	for(it2=_peers.begin();it2!=_peers.end();++it2) {
+		for(it=it2->second->begin();it!=it2->second->end();++it) {
+			if((**it)==peerId)
+				return true;
+		}
+	}
+	return false;
+}
+
 void Peers::remove(const Peer& peer) {
 	
 	if(peer.address.host().isLoopback()) {

@@ -138,15 +138,15 @@ DH* RTMFP::BeginDiffieHellman(UInt8* pubKey) {
 	return pDH;
 }
 
-void RTMFP::ComputeDiffieHellmanSecret(DH* pDH,const UInt8* farPubKey,UInt8* sharedSecret) {
-	BIGNUM *bnFarPubKey = BN_bin2bn(farPubKey,KEY_SIZE,NULL);
+void RTMFP::ComputeDiffieHellmanSecret(DH* pDH,const UInt8* farPubKey,UInt16 farPubKeySize,UInt8* sharedSecret) {
+	BIGNUM *bnFarPubKey = BN_bin2bn(farPubKey,farPubKeySize,NULL);
 	if(DH_compute_key(sharedSecret, bnFarPubKey,pDH)<=0)
 		ERROR("Diffie Hellman exchange failed : dh compute key error");
 	BN_free(bnFarPubKey);
 }
 
-void RTMFP::EndDiffieHellman(DH* pDH,const UInt8* farPubKey,UInt8* sharedSecret) {
-	ComputeDiffieHellmanSecret(pDH,farPubKey,sharedSecret);
+void RTMFP::EndDiffieHellman(DH* pDH,const UInt8* farPubKey,UInt16 farPubKeySize,UInt8* sharedSecret) {
+	ComputeDiffieHellmanSecret(pDH,farPubKey,farPubKeySize,sharedSecret);
 	EndDiffieHellman(pDH);
 }
 

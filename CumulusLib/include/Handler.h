@@ -24,6 +24,7 @@
 namespace Cumulus {
 
 class Handler {
+	friend class Middle;
 public:
 	Handler();
 	virtual ~Handler();

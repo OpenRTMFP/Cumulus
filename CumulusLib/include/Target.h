@@ -33,6 +33,8 @@ public:
 	const Poco::Net::SocketAddress	address;
 	const bool						isPeer;
 	const Poco::UInt8				peerId[ID_SIZE];
+	const std::vector<Poco::UInt8>  initiatorNonce;
+	const Poco::UInt8				sharedSecret[KEY_SIZE];
 
 	const Poco::UInt8				publicKey[KEY_SIZE+4];
 	DH*								pDH;

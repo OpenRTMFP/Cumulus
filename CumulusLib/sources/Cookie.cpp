@@ -39,12 +39,18 @@ Cookie::~Cookie() {
 		RTMFP::EndDiffieHellman(_pDH);
 }
 
-void Cookie::computeKeys(const UInt8* initiatorKey,const UInt8* initiatorNonce,UInt16 initNonceSize,UInt8* decryptKey,UInt8* encryptKey) {
+void Cookie::computeKeys(const UInt8* initiatorKey,UInt16 initKeySize,const UInt8* initiatorNonce,UInt16 initNonceSize,UInt8* decryptKey,UInt8* encryptKey) {
 	// Compute Diffie-Hellman secret
 	UInt8 sharedSecret[KEY_SIZE];
-	RTMFP::ComputeDiffieHellmanSecret(_pDH,initiatorKey,sharedSecret);
+	RTMFP::ComputeDiffieHellmanSecret(_pDH,initiatorKey,initKeySize,sharedSecret);
+	//DEBUG("Shared Secret : %s",Util::FormatHex(sharedSecret,sizeof(sharedSecret)).c_str());
 	// Compute Keys
 	RTMFP::ComputeAsymetricKeys(sharedSecret,initiatorNonce,initNonceSize,&_nonce[0],_nonce.size(),decryptKey,encryptKey);
+	if(pTarget) {
+		((vector<UInt8>&)pTarget->initiatorNonce).resize(initNonceSize);
+		memcpy(&((vector<UInt8>&)pTarget->initiatorNonce)[0],initiatorNonce,initNonceSize);
+		memcpy((UInt8*)pTarget->sharedSecret,sharedSecret,KEY_SIZE);
+	}
 }
 
 void Cookie::write(PacketWriter& writer) {

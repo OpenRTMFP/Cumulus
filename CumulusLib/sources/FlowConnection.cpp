@@ -78,7 +78,7 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		response.write16(0x29); // Unknown!
 		response.write32(handler.keepAliveServer);
 		response.write32(handler.keepAlivePeer);
-
+	
 	} else if(name == "initStream") {
 		// TODO?
 	} else if(name == "createStream") {

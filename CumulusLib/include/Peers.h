@@ -28,6 +28,7 @@ public:
 	Peers();
 	virtual ~Peers();
 	
+	bool has(const Poco::UInt8* peerId);
 	void add(const Peer& peer);
 	void remove(const Peer& peer);
 	void update(const Peer& peer,Poco::UInt16 oldPing);

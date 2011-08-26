@@ -31,6 +31,8 @@ namespace Cumulus {
 #define RTMFP_MIN_PACKET_SIZE	12
 #define RTMFP_MAX_PACKET_LENGTH 1192
 
+#define KEY_SIZE				0x80
+
 class RTMFP
 {
 public:
@@ -45,8 +47,8 @@ public:
 	static Poco::UInt16				CheckSum(PacketReader& packet);
 
 	static DH*						BeginDiffieHellman(Poco::UInt8* pubKey);
-	static void						ComputeDiffieHellmanSecret(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt8* sharedSecret);
-	static void						EndDiffieHellman(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt8* sharedSecret);
+	static void						ComputeDiffieHellmanSecret(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt16 farPubKeySize,Poco::UInt8* sharedSecret);
+	static void						EndDiffieHellman(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt16 farPubKeySize,Poco::UInt8* sharedSecret);
 	static void						EndDiffieHellman(DH* pDH);
 
 	static void						ComputeAsymetricKeys(const Poco::UInt8* sharedSecret,

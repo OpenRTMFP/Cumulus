@@ -116,7 +116,7 @@ private:
 				_pCirrus = new SocketAddress(uri.getHost(),uri.getPort());
 				NOTE("Mode 'man in the middle' : the exchange will bypass to '%s'",value.c_str());
 			} catch(Exception& ex) {
-				ERROR("Mode 'man in the middle' error : %s",ex.displayText().c_str());
+				ERROR("Mode 'man in the middle' error : %s",ex.message().c_str());
 			}
 		} else if (name == "dump") {
 			if(value == "all")

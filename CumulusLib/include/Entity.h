@@ -21,7 +21,7 @@
 
 namespace Cumulus {
 
-#define ID_SIZE 32
+#define ID_SIZE 0x20
 
 class CUMULUS_API Entity {
 public:

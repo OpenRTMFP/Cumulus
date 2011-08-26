@@ -95,7 +95,7 @@ void Publication::stop(const Client& client,UInt32 publisherId) {
 	return;
 }
 
-void Publication::commit() {
+void Publication::flush() {
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->flush();

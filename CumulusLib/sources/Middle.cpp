@@ -23,6 +23,7 @@
 #include "AMFReader.h"
 #include "Poco/RandomStream.h"
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include "string.h"
 
 using namespace std;
@@ -109,7 +110,8 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 			if(_isPeer) {
 				packet.next(4);
 				memcpy(&nonce[4],_target.publicKey,KEY_SIZE);
-				RTMFP::ComputeDiffieHellmanSecret(_pMiddleDH,packet.current(),_sharedSecret);
+				RTMFP::ComputeDiffieHellmanSecret(_pMiddleDH,packet.current(),KEY_SIZE,_sharedSecret);
+				// DEBUG("Middle Shared Secret : %s",Util::FormatHex(_sharedSecret,sizeof(_sharedSecret)).c_str());
 			} else {
 				packet.readRaw(packet.available(),targetCertificat);
 				_pMiddleDH = RTMFP::BeginDiffieHellman(&nonce[4]);
@@ -171,17 +173,21 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 
 			// response
 			packet >> _middleId;
-			vector<UInt8> targetNonce(packet.read7BitValue());
-			packet.readRaw(&targetNonce[0],targetNonce.size());
+			_targetNonce.resize(packet.read7BitValue());
+			packet.readRaw(&_targetNonce[0],_targetNonce.size());
 			
 			if(!_isPeer)
-				RTMFP::EndDiffieHellman(_pMiddleDH,&targetNonce[targetNonce.size()-128],_sharedSecret);
+				RTMFP::EndDiffieHellman(_pMiddleDH,&_targetNonce[_targetNonce.size()-KEY_SIZE],KEY_SIZE,_sharedSecret);
 
 			UInt8 requestKey[AES_KEY_SIZE];
 			UInt8 responseKey[AES_KEY_SIZE];
-			RTMFP::ComputeAsymetricKeys(_sharedSecret,_middleCertificat,sizeof(_middleCertificat),&targetNonce[0],targetNonce.size(),requestKey,responseKey);
+			RTMFP::ComputeAsymetricKeys(_sharedSecret,_middleCertificat,sizeof(_middleCertificat),&_targetNonce[0],_targetNonce.size(),requestKey,responseKey);
 			_pMiddleAesEncrypt = new AESEngine(requestKey,AESEngine::ENCRYPT);
 			_pMiddleAesDecrypt = new AESEngine(responseKey,AESEngine::DECRYPT);
+
+			DEBUG("Middle Shared Secret : %s",Util::FormatHex(_sharedSecret,sizeof(_sharedSecret)).c_str());
+
+			// DEBUG("Peer/Middle/Target id : %s/%s/%s",Util::FormatHex(this->peer().id,ID_SIZE).c_str(),Util::FormatHex(_middlePeer.id,ID_SIZE).c_str(),Util::FormatHex(_target.peerId,ID_SIZE).c_str());
 			break;
 		}
 
@@ -257,31 +263,81 @@ void Middle::packetHandler(PacketReader& packet) {
 				UInt32 idFlow = content.read7BitValue();out.write7BitValue(idFlow);
 				UInt32 stage = content.read7BitValue();out.write7BitValue(stage);
 
-				if(!_isPeer && idFlow==0x02 && stage==0x01) {
-					/// Replace NetConnection infos
+				if(!_isPeer) {
+					if(idFlow==0x02 && stage==0x01) {
+						/// Replace NetConnection infos
 
-					out.writeRaw(content.current(),14);content.next(14);
+						out.writeRaw(content.current(),14);content.next(14);
 
-					// first string
-					string tmp;
-					content.readString16(tmp);out.writeString16(tmp);
+						// first string
+						string tmp;
+						content.readString16(tmp);out.writeString16(tmp);
 
-					AMFWriter writer(out);
-					AMFReader reader(content);
-					writer.writeNumber(reader.readNumber()); // double
-					
-					AMFObject obj;
-					reader.readObject(obj);
-					
-					/// Replace tcUrl
-					if(obj.has("tcUrl")) {
-						string oldUrl = obj.getString("tcUrl");
-						obj.setString("tcUrl",_queryUrl);
-						newSize += _queryUrl.size()-oldUrl.size();
+						AMFWriter writer(out);
+						AMFReader reader(content);
+						writer.writeNumber(reader.readNumber()); // double
+						
+						AMFObject obj;
+						reader.readObject(obj);
+						
+						/// Replace tcUrl
+						if(obj.has("tcUrl")) {
+							string oldUrl = obj.getString("tcUrl");
+							obj.setString("tcUrl",_queryUrl);
+							newSize += _queryUrl.size()-oldUrl.size();
+						}
+						
+						writer.writeObject(obj);
+					} else if(idFlow==0x02 && stage==0x02) {
+						// Replace setPeerInfo
+						out.writeRaw(content.current(),7);content.next(7);
+						AMFReader reader(content);
+						AMFWriter writer(out);
+
+						string name;
+						reader.read(name);
+						writer.write(name);
+
+						if(name=="setPeerInfo") {
+							writer.writeNumber(reader.readNumber());
+							reader.skipNull();writer.writeNull();
+							while(reader.available()) {
+								string address;
+								reader.read(address);
+								size_t pos = address.find_last_of(':');
+								if(pos==string::npos)
+									pos = address.size();
+								writer.write(SocketAddress(address.substr(0,pos),_socket.address().port()).toString());
+							}
+						}
+						
 					}
-					
-					writer.writeObject(obj);
-
+				} else {
+					if(idFlow==0x02 && stage==0x01) {
+						out.writeRaw(content.current(),3);content.next(3);
+						UInt16 netGroupHeader = content.read16();out.write16(netGroupHeader);
+						if(netGroupHeader==0x4752) {
+							out.writeRaw(content.current(),71);content.next(71);
+							
+							list<Group*>::const_iterator it;
+							for(it = _handler._groups.begin();it!=_handler._groups.end();++it) {
+								if((*it)->hasPeer(_target.id)) {
+									UInt8 result1[AES_KEY_SIZE];
+									UInt8 result2[AES_KEY_SIZE];
+									HMAC(EVP_sha256(),_sharedSecret,KEY_SIZE,&_targetNonce[0],_targetNonce.size(),result1,NULL);
+									HMAC(EVP_sha256(),&(*it)->id()[1],(*it)->id().size()-1,result1,AES_KEY_SIZE,result2,NULL);
+									out.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
+									out.writeRaw(content.current(),4);content.next(4);
+									out.writeRaw(_target.peerId,ID_SIZE);content.next(ID_SIZE);
+									break;
+								}
+							}
+						
+							if(it==_handler._groups.end())
+								ERROR("Handshake NetGroup packet between peers without corresponding Group");
+							
+						}
+					}
 				}
 
 			}  else if(type == 0x4C) {
@@ -401,11 +457,30 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 					}
 					packetOut.writeRaw(middlePeerIdWanted,ID_SIZE);	
 
-				}
+				} else if(flagType == 0x01) {
 
+					packetOut.writeRaw(content.current(),68);content.next(68);
+					
+					list<Group*>::const_iterator it;
+					for(it = _handler._groups.begin();it!=_handler._groups.end();++it) {
+						if((*it)->hasPeer(_target.id)) {
+							UInt8 result1[AES_KEY_SIZE];
+							UInt8 result2[AES_KEY_SIZE];
+							HMAC(EVP_sha256(),_target.sharedSecret,KEY_SIZE,&_target.initiatorNonce[0],_target.initiatorNonce.size(),result1,NULL);
+							HMAC(EVP_sha256(),&(*it)->id()[1],(*it)->id().size()-1,result1,AES_KEY_SIZE,result2,NULL);
+							packetOut.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
+							packetOut.writeRaw(content.current(),4);content.next(4);
+							packetOut.writeRaw(peer().id,ID_SIZE);content.next(ID_SIZE);
+							break;
+						}
+					}
+				
+					if(it==_handler._groups.end())
+						ERROR("Handshake NetGroup packet between peers without corresponding Group");
+
+				}
 			}
 
-			
 		} else if(type == 0x0F) {
 			packetOut.writeRaw(content.current(),3);content.next(3);
 			UInt8 peerId[ID_SIZE];

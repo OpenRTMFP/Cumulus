@@ -25,9 +25,9 @@ namespace Cumulus {
 
 AESEngine::AESEngine(const UInt8* key,Direction direction) : _direction(direction) {
 	if(_direction==DECRYPT)
-		AES_set_decrypt_key(key, KEY_SIZE,&_key);
+		AES_set_decrypt_key(key, 0x80,&_key);
 	else
-		AES_set_encrypt_key(key, KEY_SIZE,&_key);
+		AES_set_encrypt_key(key, 0x80,&_key);
 }
 
 
@@ -35,7 +35,7 @@ AESEngine::~AESEngine() {
 }
 
 void AESEngine::process(const UInt8* in,UInt8* out,UInt32 size) {
-	UInt8	iv[KEY_SIZE];
+	UInt8	iv[AES_KEY_SIZE];
 	memset(iv,0,sizeof(iv));
 	AES_cbc_encrypt(in, out,size,&_key,iv, _direction);
 }
