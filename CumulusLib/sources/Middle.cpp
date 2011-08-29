@@ -21,7 +21,7 @@
 #include "RTMFP.h"
 #include "AMFWriter.h"
 #include "AMFReader.h"
-#include "Poco/format.h"
+#include "Poco/Format.h"
 #include "Poco/RandomStream.h"
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
