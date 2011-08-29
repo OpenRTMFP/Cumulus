@@ -21,6 +21,7 @@
 #include "RTMFP.h"
 #include "AMFWriter.h"
 #include "AMFReader.h"
+#include "Poco/format.h"
 #include "Poco/RandomStream.h"
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -205,7 +206,7 @@ void Middle::sendHandshakeToTarget(UInt8 type) {
 	packet << type;
 	packet.write16((UInt16)packet.length()-packet.position()-2);
 
-	Logs::Dump(packet,6,"Middle to Target handshaking:",true);
+	Logs::Dump(packet,6,format("Middle to %s handshaking",_target.address.toString()).c_str(),true);
 
 	RTMFP::Encode(packet);
 	RTMFP::Pack(packet);
@@ -366,7 +367,7 @@ void Middle::sendToTarget() {
 	
 	PacketWriter& packet(Session::writer());
 
-	Logs::Dump(packet,6,"Middle to Target:",true);
+	Logs::Dump(packet,6,format("Middle to %s",_target.address.toString()).c_str(),true);
 
 	_firstResponse = true;
 	RTMFP::Encode(*_pMiddleAesEncrypt,packet);
@@ -524,7 +525,7 @@ void Middle::manage() {
 		PacketReader packet(_buffer,len);
 
 		if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
-			ERROR("Target to middle : invalid packet");
+			ERROR(format("Middle from %s : invalid packet",_target.address.toString()).c_str());
 			return;
 		}
 
@@ -537,7 +538,7 @@ void Middle::manage() {
 				return;
 			}
 
-			Logs::Dump(packet,"Target to Middle handshaking:",true);
+			Logs::Dump(packet,format("Middle from %s handshaking",_target.address.toString()).c_str(),true);
 
 			UInt8 marker = packet.read8();
 			if(marker!=0x0B) {
@@ -560,7 +561,7 @@ void Middle::manage() {
 		}
 
 	//	TRACE("Target to middle : session d'identification '%u'",id);
-		Logs::Dump(packet,"Target to Middle:",true);
+		Logs::Dump(packet,format("Middle from %s",_target.address.toString()).c_str(),true);
 
 		targetPacketHandler(packet);
 	}
