@@ -16,7 +16,7 @@ Usage
 
 ### CumulusService
 
-ComulusService is statically configured by a optionnal configuration file to the installation directory.
+ComulusService is statically configured by a optional  configuration file to the installation directory.
 The possible configurations are:
 
 - **port**,
