@@ -1,0 +1,21 @@
+OBJECTS = main Auth Server StatusWriter
+
+CC=g++
+EXEC=CumulusService
+INCLUDES=-I./../CumulusLib/include/
+SOURCES=./sources/
+CFLAGS=-D CUMULUS_EXPORTS
+LIBS = -lCumulus -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lssl -lcrypto
+OBJECT = $(OBJECTS:%=%.o)
+
+main: $(OBJECT)
+	@echo creating CumulusService executable $(EXEC)
+	@echo running command: $(CC) $(CFLAGS) $(LIBS) -arch x86_64 -o $(EXEC) $(OBJECT)
+	@$(CC) $(CFLAGS) $(LIBS) -arch x86_64 -o $(EXEC) $(OBJECT)
+
+$(OBJECT): 
+	@echo compiling $(@:%.o=%.cpp)
+	@$(CC) $(CFLAGS) $(INCLUDES) -arch x86_64 -c -o $(@) $(SOURCES)$(@:%.o=%.cpp)
+
+clean:
+	rm -f $(OBJECT) $(EXEC)
