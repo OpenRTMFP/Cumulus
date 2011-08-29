@@ -180,20 +180,12 @@
     <ClCompile Include="sources\main.cpp" />
     <ClCompile Include="sources\Server.cpp" />
     <ClCompile Include="sources\StatusWriter.cpp" />
-    <ClCompile Include="sources\AVFRWConnection.cpp" />
-    <ClCompile Include="sources\AVFWriterChannel.cpp" />
-    <ClCompile Include="sources\TCPReceiver.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="sources\ApplicationKiller.h" />
     <ClInclude Include="sources\Auth.h" />
     <ClInclude Include="sources\Server.h" />
     <ClInclude Include="sources\StatusWriter.h" />
-    <ClInclude Include="sources\AVFRWConnection.h" />
-    <ClInclude Include="sources\AVFWriterChannel.h" />
-    <ClInclude Include="sources\TCPConnection.h" />
-    <ClInclude Include="sources\TCPHeaderHandler.h" />
-    <ClInclude Include="sources\TCPReceiver.h" />
-    <ClInclude Include="sources\TCPServer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
