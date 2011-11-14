@@ -18,7 +18,6 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Session.h"
 #include "PacketReader.h"
 #include "Handshake.h"
 #include "Gateway.h"
@@ -32,9 +31,12 @@ namespace Cumulus {
 
 class RTMFPServerParams {
 public:
-	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15) {
+	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),edgesAttemptsBeforeFallback(2),udpBufferSize(0),edgesPort(0),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15) {
 	}
 	Poco::UInt16				port;
+	Poco::UInt32				udpBufferSize;
+	Poco::UInt16				edgesPort;
+	Poco::UInt8					edgesAttemptsBeforeFallback;
 	bool						middle;
 	Poco::Net::SocketAddress*	pCirrus;
 	Poco::Thread::Priority		threadPriority;
@@ -44,6 +46,7 @@ public:
 };
 
 class CUMULUS_API RTMFPServer : private Gateway,protected Handler,private Startable {
+	friend class RTMFPServerEdge;
 public:
 	RTMFPServer();
 	virtual ~RTMFPServer();
@@ -53,25 +56,34 @@ public:
 	void stop();
 	bool running();
 
-protected:
-	virtual void	manage();
+	virtual bool	manageRealTime(bool& terminate);
+	virtual void    manage();
 
 private:
+	RTMFPServer(const std::string& name);
+	virtual void    onStart(){}
+	virtual void    onStop(){}
+
+
 	Session*		findSession(Poco::UInt32 id);
+	bool			prerun();
 	void			run(const volatile bool& terminate);
 	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);
-	Poco::UInt32	createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie);
+	Session&		createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie);
+	void			destroySession(Session& session);
 	
 	Handshake					_handshake;
+	//BridgeHandshake				_bridgeHandshake;
 
 	Poco::UInt16				_port;
 	Poco::Net::DatagramSocket	_socket;
 
+	Poco::UInt16					_edgesPort;
+	Poco::Net::DatagramSocket		_edgesSocket;
+
 	bool							_middle;
 	Target*							_pCirrus;
 	Sessions						_sessions;
-	Poco::UInt32					_nextIdSession;
-
 	Poco::Timestamp					_timeLastManage;
 	Poco::UInt32					_freqManage;
 };

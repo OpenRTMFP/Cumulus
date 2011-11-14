@@ -26,11 +26,8 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Peer::Peer():_ping(0),state(NONE) {
+Peer::Peer():_ping(0),connected(false) {
 }
-
-/*Peer::Peer(const Poco::Net::SocketAddress& address):_ping(0),address(address) {
-}*/
 
 Peer::~Peer() {
 	unsubscribeGroups();

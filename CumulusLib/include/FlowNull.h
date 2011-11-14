@@ -31,9 +31,6 @@ public:
 
 	FlowWriter&			writer();
 
-private:	
-	static std::string	_Signature;
-	static std::string	_Name;
 };
 
 inline FlowWriter& FlowNull::writer() {return Flow::writer;}

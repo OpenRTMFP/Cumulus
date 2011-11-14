@@ -65,7 +65,6 @@ RTMFP::~RTMFP() {
 
 
 UInt16 RTMFP::CheckSum(PacketReader& packet) {
-
 	int sum = 0;
 	int pos = packet.position();
 	while(packet.available()>0)
@@ -82,7 +81,10 @@ UInt16 RTMFP::CheckSum(PacketReader& packet) {
 bool RTMFP::Decode(AESEngine& aesDecrypt,PacketReader& packet) {
 	// Decrypt
 	aesDecrypt.process(packet.current(),packet.current(),packet.available());
+	return ReadCRC(packet);
+}
 
+bool RTMFP::ReadCRC(PacketReader& packet) {
 	// Check the first 2 CRC bytes 
 	packet.reset(4);
 	UInt16 sum = packet.read16();
@@ -91,21 +93,27 @@ bool RTMFP::Decode(AESEngine& aesDecrypt,PacketReader& packet) {
 
 
 void RTMFP::Encode(AESEngine& aesEncrypt,PacketWriter& packet) {
-	// paddingBytesLength=(0xffffffff-plainRequestLength+5)&0x0F
-	int paddingBytesLength = (0xFFFFFFFF-packet.length()+5)&0x0F;
-	// Padd the plain request with paddingBytesLength of value 0xff at the end
-	packet.reset(packet.length());
-	string end(paddingBytesLength,(UInt8)0xFF);
-	packet.writeRaw(end);
+	if(!aesEncrypt.null) {
+		// paddingBytesLength=(0xffffffff-plainRequestLength+5)&0x0F
+		int paddingBytesLength = (0xFFFFFFFF-packet.length()+5)&0x0F;
+		// Padd the plain request with paddingBytesLength of value 0xff at the end
+		packet.reset(packet.length());
+		string end(paddingBytesLength,(UInt8)0xFF);
+		packet.writeRaw(end);
+	}
+
+	WriteCRC(packet);
+	
+	// Encrypt the resulted request
+	aesEncrypt.process(packet.begin()+4,packet.begin()+4,packet.length()-4);
+}
+
+void RTMFP::WriteCRC(PacketWriter& packet) {
 	// Compute the CRC and add it at the beginning of the request
 	PacketReader reader(packet.begin(),packet.length());
 	reader.next(6);
 	UInt16 sum = CheckSum(reader);
 	packet.reset(4);packet << sum;
-	
-	// Encrypt the resulted request
-	reader.reset(4);
-	aesEncrypt.process(reader.current(),reader.current(),reader.available());
 }
 
 UInt32 RTMFP::Unpack(PacketReader& packet) {
@@ -119,7 +127,7 @@ UInt32 RTMFP::Unpack(PacketReader& packet) {
 
 void RTMFP::Pack(PacketWriter& packet,UInt32 farId) {
 	PacketReader reader(packet.begin(),packet.length());
-	reader.read32();
+	reader.next(4);
 	packet.reset(0);
 	packet.write32(reader.read32()^reader.read32()^farId);
 }
@@ -131,7 +139,8 @@ DH* RTMFP::BeginDiffieHellman(UInt8* pubKey) {
 
 	BN_set_word(pDH->g, 2); //group DH 2
 	BN_bin2bn(g_dh1024p,KEY_SIZE,pDH->p); //prime number
-	int ret = DH_generate_key(pDH); // TODO que faire de ret?
+	if(!DH_generate_key(pDH))
+		CRITIC("Generation DH key failed!");
 
 	// It's our key public part
 	BN_bn2bin(pDH->pub_key,pubKey);

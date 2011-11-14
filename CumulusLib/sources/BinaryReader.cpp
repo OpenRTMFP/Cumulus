@@ -29,6 +29,12 @@ BinaryReader::BinaryReader(istream& istr) : Poco::BinaryReader(istr,BinaryReader
 BinaryReader::~BinaryReader() {
 }
 
+UInt32 BinaryReader::read7BitEncoded() {
+	UInt32 id;
+	Poco::BinaryReader::read7BitEncoded(id);
+	return id;
+}
+
 UInt8 BinaryReader::read8() {
 	UInt8 c;
 	(*this) >> c;
@@ -73,6 +79,17 @@ UInt32 BinaryReader::read7BitValue() {
 	if(s<0)
 		return value;
 	return value + ((d&0x7F)<<(s*7));
+}
+
+bool BinaryReader::readAddress(Address& address) {
+	UInt8 flag = read8();
+	((vector<UInt8>&)address.host).resize(4);
+	if((flag&0x0F)==0x8F)
+		((vector<UInt8>&)address.host).resize(16);
+	for(int i=0;i<address.host.size();++i)
+		((vector<UInt8>&)address.host)[i] = read8();
+	(UInt16&)address.port = read16();
+	return flag==0x02;
 }
 
 

@@ -16,6 +16,7 @@
 */
 
 #include "FlowWriter.h"
+#include "Clients.h"
 #include "Util.h"
 #include "Logs.h"
 #include "string.h"
@@ -31,43 +32,60 @@ using namespace Poco;
 
 namespace Cumulus {
 
+MessageNull FlowWriter::_MessageNull;
 
-FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),id(0),_stage(0),_closed(false),_callbackHandle(0),_resetCount(0),FlowWriterFactory(signature,band),_lostMessages(0) {
-	_messageNull.rawWriter.stream().setstate(ios_base::eofbit);
+
+FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),_abandoned(false),id(0),_stage(0),_stageAck(0),_closed(false),_callbackHandle(0),_resetCount(0),flowId(0),_band(band),signature(signature),_repeatable(0),_lostCount(0),_ackCount(0) {
 	band.initFlowWriter(*this);
 }
 
 FlowWriter::FlowWriter(FlowWriter& flowWriter) :
-		id(flowWriter.id),critical(flowWriter.critical),
-		_stage(flowWriter._stage),_lostMessages(0),
+		id(flowWriter.id),critical(flowWriter.critical),_abandoned(false),
+		_stage(flowWriter._stage),_stageAck(flowWriter._stageAck),
+		_ackCount(flowWriter._ackCount),_lostCount(flowWriter._lostCount),
 		_closed(false),_callbackHandle(0),_resetCount(0),
-		FlowWriterFactory(flowWriter.signature,flowWriter._band) {
-	_messageNull.rawWriter.stream().setstate(ios_base::eofbit);
+		flowId(0),_band(flowWriter._band),signature(flowWriter.signature) {
 	close();
 }
 
 FlowWriter::~FlowWriter() {
-	clearMessages();
+	clear();
 }
 
-void FlowWriter::clearMessages(bool exceptLast) {
+
+void FlowWriter::clear() {
 	// delete messages
-	UInt32 count = exceptLast ? 1 : 0;
-	while(_messages.size()>count) {
-		delete _messages.front();
+	Message* pMessage;
+	while(!_messages.empty()) {
+		pMessage = _messages.front();
+		_lostCount += pMessage->fragments.size();
+		delete pMessage;
 		_messages.pop_front();
-		++_lostMessages;
 	}
-	if(_messages.size()==0)
+	while(!_messagesSent.empty()) {
+		pMessage = _messagesSent.front();
+		_lostCount += pMessage->fragments.size();
+		if(pMessage->repeatable)
+			--_repeatable;
+		delete pMessage;
+		_messagesSent.pop_front();
+	}
+	if(_stage>0) {
+		createBufferedMessage(); ; // Send a MESSAGE_ABANDONMENT just in the case where the receiver has been created
+		_abandoned=true;
+		flush();
 		_trigger.stop();
+	}
 }
 
 void FlowWriter::fail(const string& error) {
 	WARN("FlowWriter %u has failed : %s",id,error.c_str());
-	clearMessages();
+	_stage=_stageAck=_lostCount=_ackCount=0;
+	clear();
+	if(_closed)
+		return;
 	_band.resetFlowWriter(*new FlowWriter(*this));
 	_band.initFlowWriter(*this);
-	_stage=0;
 	reset(++_resetCount);
 }
 
@@ -75,215 +93,378 @@ void FlowWriter::fail(const string& error) {
 void FlowWriter::close() {
 	if(_closed)
 		return;
-	clearMessages(true);
-	if(_stage>0 && count()==0)
-		createBufferedMessage(); // Send a MESSAG_END | MESSAGE_ABANDONMENT just in the case where the receiver has been created
-	_closed=true; // before the flush messages to set the MESSAG_END flag
+	if(_stage>0 && _messages.size()==0)
+		createBufferedMessage(); ; // Send a MESSAGE_END just in the case where the receiver has been created
+	_closed=true;
+	_abandoned=true;
 	flush();
 }
 
-void FlowWriter::acknowledgment(UInt32 stage) {
-
-	if(stage>_stage) {
-		ERROR("Acknowledgment received superior than the current sending stage : %u instead of %u",stage,_stage);
+void FlowWriter::acknowledgment(PacketReader& reader) {
+	
+	UInt32 bufferSize = reader.read7BitValue(); // TODO use this value in reliability mechanism?
+	
+	if(bufferSize==0) {
+		// In fact here, we should send a 0x18 message (with id flow),
+		// but it can create a loop... We prefer the following behavior
+		fail("Negative acknowledgment");
 		return;
 	}
 
-	list<Message*>::const_iterator it=_messages.begin();
-	bool hasNAck = !_messages.empty() && !(*it)->fragments.empty();
+	UInt32 stageAckPrec = _stageAck;
+	UInt32 stageReaden = reader.read7BitValue();
+	UInt32 stage = _stageAck+1;
 
-	UInt32 startStage = hasNAck ? (*it)->startStage : (stage+1);
-	Int64 count = stage - startStage;
+	if(stageReaden>_stage) {
+		ERROR("Acknowledgment received %u superior than the current sending stage %u on flowWriter %u",stageReaden,_stage,id);
+		_stageAck = _stage;
+	} else if(stageReaden<=_stageAck) {
+		// already acked
+		if(reader.available()==0)
+			DEBUG("Acknowledgment %u obsolete on flowWriter %u",stageReaden,id);
+	} else
+		_stageAck = stageReaden;
 
-	if(count==0) // Case where the ACK has been repeated, and is just below the last NAck message, certainly a disorder UDP transfer in packet received
-		return;
-	
-	if(count<0) {
-		DEBUG("Acknowledgment of stage '%u' received lower than all NACK messages of flow '%u', certainly a obsolete ack packet",stage,id);
-		// TODO add a MESSAGE_ABANDONMENT agile system? it can meaning here too an error : a ACK volontary (and emphatically) send which is lower than all repeating messages = PB!
-		return;
-	}
-	
-	// Here minStage < stage <=_stageSnd
+	UInt32 maxStageRecv = _stageAck;
+	UInt32 pos=reader.position();
+	while(reader.available()>0)
+		maxStageRecv += reader.read7BitValue()+reader.read7BitValue()+2;
+	if(pos != reader.position())
+		reader.reset(pos);
 
-	// Ack!
-	while(count>0 && it!=_messages.end() && !(*it)->fragments.empty()) { // if _fragments.empty(), it's a message not sending yet (not flushed)
+	UInt32 lostCount = 0,lostStage = 0;
+	bool repeated = false;
+	bool header = true;
+	bool stop=false;
+
+	list<Message*>::iterator it=_messagesSent.begin();
+	while(!stop && it!=_messagesSent.end()) {
 		Message& message(**it);
-		
-		while(count > 0 && !message.fragments.empty()) {
-			// ACK
-			message.fragments.pop_front();
-			--count;
-			++message.startStage;
-		}
 
 		if(message.fragments.empty()) {
-			UInt32 size(0);
-			ackMessageHandler(message.memAck(size),size,_lostMessages);
-			_lostMessages=0;
-			delete *it;
-			_messages.pop_front();
-			it=_messages.begin();
-		}
-	}
-
-	// rest messages not ack?
-	if(!_messages.empty() && !(*_messages.begin())->fragments.empty())
-		_trigger.reset();
-	else
-		_trigger.stop();
-}
-
-void FlowWriter::manage(Handler& handler) {
-	try {
-		if(!_trigger.raise())
-			return;
-	} catch(...) {
-		clearMessages();
-		throw;
-	}
-	raiseMessage();
-}
-
-void FlowWriter::raiseMessage() {
-	if(_messages.empty() || (*_messages.begin())->fragments.empty()) {
-		_trigger.stop();
-		return;
-	}
-
-	_band.flush(WITHOUT_ECHO_TIME); // To repeat message, before we must send precedent waiting mesages
-
-	list<Message*>::const_iterator it=_messages.begin();
-	bool header = true;
-	UInt32 deltaNAck=0;
-
-	while(it!=_messages.end()) {
-		Message& message(**it);
-
-		// clear unbuffered messages
-		if(!message.repeatable) {
-			if(it==_messages.begin()) {
-				_messages.pop_front();
-				it=_messages.begin();
-				++_lostMessages;
-				if(_messages.empty())
-					_trigger.stop();
-			} else {
-				deltaNAck += message.fragments.size();
-				++it;
-			}
+			CRITIC("Message %u is bad formatted on fowWriter %u",stage+1,id);
+			++it;
 			continue;
 		}
 
-		UInt32 stage = message.startStage;
+		map<UInt32,UInt32>::iterator itFrag=message.fragments.begin();
+		while(message.fragments.end()!=itFrag) {
+			
+			// ACK
+			if(_stageAck>=stage) {
+				message.fragments.erase(message.fragments.begin());
+				itFrag=message.fragments.begin();
+				++_ackCount;
+				++stage;
+				continue;
+			}
 
-		list<UInt32>::const_iterator itFrag=message.fragments.begin();
-		UInt32 fragment(*itFrag);
-		bool end=false;
-		UInt32 available;
-		BinaryReader& reader = message.reader(available);
-		
-		while(!end && message.fragments.end()!=itFrag++) {
-			UInt32 size = available;
-			end = itFrag==message.fragments.end();
-			if(!end) {
-				size = (*itFrag)-fragment;
-				fragment = *itFrag;
+			// Read lost informations
+			while(!stop && lostCount==0) {
+				if(lostCount==0) {
+					if(reader.available()>0) {
+						lostCount = reader.read7BitValue()+1;
+						lostStage = stageReaden+1;
+						stageReaden = lostStage+lostCount+reader.read7BitValue();
+					} else {
+						stop=true;
+						break;
+					}
+				}
+				// check the range
+				if(lostStage>_stage) {
+					// Not yet sent
+					ERROR("Lost information received %u have not been yet sent on flowWriter %u",lostStage,id);
+					stop=true;
+				} else if(lostStage<=_stageAck) {
+					// already acked
+					--lostCount;
+					++lostStage;
+					continue;
+				}
+				break;
+			}
+			if(stop)
+				break;
+			
+			// lostStage > 0 and lostCount > 0
+
+			if(lostStage!=stage) {
+				if(repeated) {
+					++stage;
+					++itFrag;
+					header=true;
+				} else
+					_stageAck = stage;
+				continue;
+			}
+
+			/// Repeat message asked!
+			if(!message.repeatable) {
+				if(repeated) {
+					++itFrag;
+					++stage;
+					header=true;
+				} else {
+					DEBUG("FlowWriter %u : message %u lost",id,stage);
+					--_ackCount;
+					++_lostCount;
+					_stageAck = stage;
+				}
+				--lostCount;
+				++lostStage;
+				continue;
+			}
+
+			repeated = true;
+			if(itFrag->second >= maxStageRecv || stageReaden==(lostStage+2)) {
+				++stage;
+				header=true;
+				--lostCount;
+				++lostStage;
+				++itFrag;
+				continue;
+			}
+
+			// Repeat message
+
+			DEBUG("FlowWriter %u : stage %u repeated",id,stage);
+			UInt32 available;
+			UInt32 fragment(itFrag->first);
+			BinaryReader& content = message.reader(fragment,available);
+			itFrag->second = _stage;
+			UInt32 contentSize = available;
+			++itFrag;
+
+			// Compute flags
+			UInt8 flags = 0;
+			if(fragment>0)
+				flags |= MESSAGE_WITH_BEFOREPART; // fragmented
+			if(itFrag!=message.fragments.end()) {
+				flags |= MESSAGE_WITH_AFTERPART;
+				contentSize = itFrag->first - fragment;
 			}
 
 			PacketWriter& packet(_band.writer());
-			size+=4;
-
-			UInt8 stageSize = Util::Get7BitValueSize(stage+1);
-			UInt8 idSize = Util::Get7BitValueSize(id);
-			UInt8 flowIdSize = Util::Get7BitValueSize(flowId);
-			UInt8 deltaNAckSize = Util::Get7BitValueSize(deltaNAck);
-			UInt8 signatureLen = (stage-deltaNAck)>0 ? 0 : (signature.size()+(flowId==0?2:(4+flowIdSize)));
-			if(header) {
-				size+=idSize;
-				size+=stageSize;
-				size+=deltaNAckSize;
-				size+=signatureLen;
-			}
-
-			// Actual sending packet is enough large? Here we send just one packet!
+			UInt32 size = contentSize+4;
+			
 			if(!header && size>packet.available()) {
-				DEBUG("Raise message on flowWriter %u finishs on stage %u",id,stage);
-				return;
+				_band.flush(false);
+				header=true;
 			}
 			
-			// Compute flags
-			UInt8 flags = stage==0 ? MESSAGE_HEADER : 0x00;
-			if(_closed)
-				flags |= MESSAGE_END;
-			if(stage > message.startStage)
-				flags |= MESSAGE_WITH_BEFOREPART; // fragmented
-			if(!end)
-				flags |= MESSAGE_WITH_AFTERPART;
+			if(header)
+				size+=headerSize(stage);
 
+			if(size>packet.available())
+				_band.flush(false);
 
 			// Write packet
 			size-=3;  // type + timestamp removed, before the "writeMessage"
-			PacketWriter& writer = _band.writeMessage(header ? 0x10 : 0x11,(UInt16)size,this);
-			
-			size-=1;
-			writer.write8(flags);
-			
-			if(header) {
-				writer.write7BitValue(id);
-				size-=idSize;
-				writer.write7BitValue(++stage);
-				size-=stageSize;
-				writer.write7BitValue(++deltaNAck);
-				size-=deltaNAckSize;
-				
-				// signature
-				if((stage-deltaNAck)==0) {
-					writer.writeString8(signature);
-					size -= (signature.size()+1);
-					// No write this in the case where it's a new flow!
-					if(flowId>0) {
-						writer.write8(1+flowIdSize); // following size
-						writer.write8(0x0a); // Unknown!
-						size -= 2;
-						writer.write7BitValue(flowId);
-						size -= flowIdSize;
-					}
-					writer.write8(0); // marker of end for this part
-					size -= 1;
-				}
-			}
-			
-			available -= size;
-			reader.readRaw(writer.begin()+writer.position(),size);
-			writer.next(size);
+			flush(_band.writeMessage(header ? 0x10 : 0x11,(UInt16)size)
+				,stage,flags,header,content,contentSize);
+			available -= contentSize;
+			header=false;
+			--lostCount;
+			++lostStage;
+			++stage;
+		}
 
+		if(message.fragments.empty()) {
+			if(message.repeatable)
+				--_repeatable;
+			if(_ackCount>0) {
+				UInt32 size(0);
+				ackMessageHandler(_ackCount,_lostCount,message.memAck(size),size);
+				_ackCount=_lostCount=0;
+			}
+			delete *it;
+			_messagesSent.pop_front();
+			it=_messagesSent.begin();
+		} else
+			++it;
+	
+	}
+
+	if(lostCount>0 && reader.available()>0)
+		ERROR("Some lost information received have not been yet sent on flowWriter %u",id);
+
+
+	// rest messages repeatable?
+	if(_repeatable==0)
+		_trigger.stop();
+	else if(_stageAck>stageAckPrec || repeated)
+		_trigger.reset();
+}
+
+void FlowWriter::manage(Handler& handler) {
+	if(consumed() || _band.failed())
+		return;
+	try {
+		if(_trigger.raise())
+			raiseMessage();
+	} catch(...) {
+		fail("FlowWriter can't deliver its data");
+		throw;
+	}
+	if(critical && _closed)
+		throw Exception("Critical flow writer closed, session must be closed");
+	flush();
+}
+
+UInt32 FlowWriter::headerSize(UInt32 stage) {
+	UInt32 size= Util::Get7BitValueSize(id);
+	size+= Util::Get7BitValueSize(stage);
+	if(_stageAck>stage)
+		CRITIC("stageAck %u superior to stage %u on flowWriter %u",_stageAck,stage,id);
+	size+= Util::Get7BitValueSize(stage-_stageAck);
+	size+= _stageAck>0 ? 0 : (signature.size()+(flowId==0?2:(4+Util::Get7BitValueSize(flowId))));
+	return size;
+}
+
+
+void FlowWriter::flush(PacketWriter& writer,UInt32 stage,UInt8 flags,bool header,BinaryReader& reader,UInt16 size) {
+	if(_stageAck==0 && header)
+		flags |= MESSAGE_HEADER;
+	if(_abandoned) {
+		flags |= MESSAGE_ABANDONMENT;
+		_abandoned=false;
+	}
+	if(_closed)
+		flags |= MESSAGE_END;
+
+	// TRACE("FlowWriter %u stage %u",id,stage);
+
+	writer.write8(flags);
+
+	if(header) {
+		writer.write7BitValue(id);
+		writer.write7BitValue(stage);
+		writer.write7BitValue(stage-_stageAck);
+
+		// signature
+		if(_stageAck==0) {
+			writer.writeString8(signature);
+			// No write this in the case where it's a new flow!
+			if(flowId>0) {
+				writer.write8(1+Util::Get7BitValueSize(flowId)); // following size
+				writer.write8(0x0a); // Unknown!
+				writer.write7BitValue(flowId);
+			}
+			writer.write8(0); // marker of end for this part
+		}
+
+	}
+
+	reader.readRaw(writer.begin()+writer.position(),size);
+	writer.next(size);
+}
+
+void FlowWriter::raiseMessage() {
+	list<Message*>::const_iterator it;
+	bool header = true;
+	bool stop = true;
+	bool sent = false;
+	UInt32 stage = _stageAck+1;
+
+	for(it=_messagesSent.begin();it!=_messagesSent.end();++it) {
+		Message& message(**it);
+		
+		if(message.fragments.empty())
+			break;
+
+		// not repeat unbuffered messages
+		if(!message.repeatable) {
+			stage += message.fragments.size();
+			header = true;
+			continue;
+		}
+		
+		/// HERE -> message repeatable AND already flushed one time!
+
+		if(stop) {
+			_band.flush(false); // To repeat message, before we must send precedent waiting mesages
+			stop = false;
+		}
+
+		map<UInt32,UInt32>::const_iterator itFrag=message.fragments.begin();
+		UInt32 available;
+		BinaryReader& content = message.reader(available);
+		
+		while(itFrag!=message.fragments.end()) {
+			UInt32 contentSize = available;
+			UInt32 fragment(itFrag->first);
+			++itFrag;
+
+			// Compute flags
+			UInt8 flags = 0;
+			if(fragment>0)
+				flags |= MESSAGE_WITH_BEFOREPART; // fragmented
+			if(itFrag!=message.fragments.end()) {
+				flags |= MESSAGE_WITH_AFTERPART;
+				contentSize = itFrag->first - fragment;
+			}
+
+			PacketWriter& packet(_band.writer());
+			UInt32 size = contentSize+4;
+
+			if(header)
+				size+=headerSize(stage);
+
+			// Actual sending packet is enough large? Here we send just one packet!
+			if(size>packet.available()) {
+				if(!sent)
+					ERROR("Raise messages on flowWriter %u without sending!",id);
+				DEBUG("Raise message on flowWriter %u finishs on stage %u",id,stage);
+				return;
+			}
+			sent=true;
+
+			// Write packet
+			size-=3;  // type + timestamp removed, before the "writeMessage"
+			flush(_band.writeMessage(header ? 0x10 : 0x11,(UInt16)size)
+				,stage++,flags,header,content,contentSize);
+			available -= contentSize;
 			header=false;
 		}
-		++it;
 	}
+
+	if(stop)
+		_trigger.stop();
 }
 
 void FlowWriter::flush(bool full) {
-	list<Message*>::const_iterator it;
-	bool header = !_band.canWriteFollowing(*this);
-	UInt8 deltaNAck=0;
 
-	for(it=_messages.begin();it!=_messages.end();++it) {
-		Message& message(**it);
-		if(!message.fragments.empty()) {
-			deltaNAck += message.fragments.size();
-			continue;
+	/* abandonement?
+	if((_messagesSent.size()-_repeatable)>100) {
+		list<Message*>::const_iterator it;
+		UInt32 count=0;
+		for(it=_messagesSent.begin();it!=_messagesSent.end();++it) {
+			if((*it)->repeatable)
+				break;
 		}
+		if(it!=_messagesSent.begin()) {
+			--it;
+		}
+	}*/
+	 if(_messagesSent.size()>100)
+		DEBUG("_messagesSent.size()=%d",_messagesSent.size());
 
-		_trigger.start();
+	// flush
+	bool header = !_band.canWriteFollowing(*this);
 
-		message.startStage = _stage;
+	list<Message*>::const_iterator it=_messages.begin();
+	while(it!=_messages.end()) {
+		Message& message(**it);
+		if(message.repeatable) {
+			++_repeatable;
+			_trigger.start();
+		}
 
 		UInt32 fragments= 0;
 
 		UInt32 available;
-		BinaryReader& reader = message.reader(available);
+		BinaryReader& content = message.reader(available);
 
 		do {
 
@@ -291,107 +472,66 @@ void FlowWriter::flush(bool full) {
 
 			// Actual sending packet is enough large?
 			if(packet.available()<12) { // 12 to have a size minimum of fragmentation!
-				_band.flush(WITHOUT_ECHO_TIME); // send packet (and without time echo)
+				_band.flush(false); // send packet (and without time echo)
 				header=true;
 			}
 
-			UInt8 stageSize = Util::Get7BitValueSize(_stage+1);
-			UInt8 idSize = Util::Get7BitValueSize(id);
-			UInt8 flowIdSize = Util::Get7BitValueSize(flowId);
-			UInt8 deltaNAckSize = Util::Get7BitValueSize(deltaNAck);
-			UInt8 signatureLen = (_stage-deltaNAck)>0 ? 0 : (signature.size()+(flowId==0?2:(4+flowIdSize)));
 			bool head = header;
 
-			UInt32 size = available+4;
+			UInt32 contentSize = available;
+			UInt32 size = contentSize+4;
+			++_stage;
 
-			if(head) {
-				size+=idSize;
-				size+=stageSize;
-				size+=deltaNAckSize;
-				size+=signatureLen;
-			}
+			if(head)
+				size+=headerSize(_stage);
 
 			// Compute flags
-			UInt8 flags = _stage==0 ? MESSAGE_HEADER : 0x00;
-			if(_closed)
-				flags |= MESSAGE_END | MESSAGE_ABANDONMENT;
+			UInt8 flags = 0;
 			if(fragments>0)
 				flags |= MESSAGE_WITH_BEFOREPART;
 
 			if(size>packet.available()) {
 				// the packet will changed! The message will be fragmented.
 				flags |= MESSAGE_WITH_AFTERPART;
+				contentSize = packet.available()-(size-contentSize);
 				size=packet.available();
 				header=true;
 			} else
 				header=false; // the packet stays the same!
-			size-=3; // type + timestamp removed, before the "writeMessage"
 
 			// Write packet
-			PacketWriter& writer = _band.writeMessage(head ? 0x10 : 0x11,(UInt16)size,this);
+			size-=3; // type + timestamp removed, before the "writeMessage"
+			flush(_band.writeMessage(head ? 0x10 : 0x11,(UInt16)size,this)
+				,_stage,flags,head,content,contentSize);
 
-			size-=1;
-			writer.write8(flags);
-
-			++_stage;
-
-			if(head) {
-				writer.write7BitValue(id);
-				size-=idSize;
-				writer.write7BitValue(_stage);
-				size-=stageSize;
-				writer.write7BitValue(++deltaNAck);
-				size-=deltaNAckSize;
-
-				// signature
-				if((_stage-deltaNAck)==0) {
-					writer.writeString8(signature);
-					size -= (signature.size()+1);
-					// No write this in the case where it's a new flow!
-					if(flowId>0) {
-						writer.write8(1+flowIdSize); // following size
-						writer.write8(0x0a); // Unknown!
-						size -= 2;
-						writer.write7BitValue(flowId);
-						size -= flowIdSize;
-					}
-					writer.write8(0); // marker of end for this part
-					size -= 1;
-				}
-
-			}
-
-			available -= size;
-			reader.readRaw(writer.begin()+writer.position(),size);
-			writer.next(size);
-
-			message.fragments.push_back(fragments);
-			fragments += size;
+			message.fragments[fragments] = _stage;
+			available -= contentSize;
+			fragments += contentSize;
 
 		} while(available>0);
 
+		_messagesSent.push_back(&message);
+		_messages.pop_front();
+		it=_messages.begin();
 	}
+
 	if(full)
 		_band.flush();
 }
 
 void FlowWriter::writeUnbufferedMessage(const UInt8* data,UInt32 size,const UInt8* memAckData,UInt32 memAckSize) {
-	if(_closed || signature.empty()) // signature.empty() means that we are on the flowWriter of FlowNull
+	if(_closed || signature.empty() || _band.failed()) // signature.empty() means that we are on the flowWriter of FlowNull
 		return;
 	MessageUnbuffered* pMessage = new MessageUnbuffered(data,size,memAckData,memAckSize);
-	_messages.push_back(pMessage);
-	 if(_messages.size()>100)
-		DEBUG("_messages.size()=%d",_messages.size()); 
+	_messages.push_back(pMessage); 
 	flush();
 }
 
 MessageBuffered& FlowWriter::createBufferedMessage() {
-	if(_closed || signature.empty()) // signature.empty() means that we are on the flowWriter of FlowNull
-		return _messageNull;
+	if(_closed || signature.empty() || _band.failed()) // signature.empty() means that we are on the flowWriter of FlowNull
+		return _MessageNull;
 	MessageBuffered* pMessage = new MessageBuffered();
 	_messages.push_back(pMessage);
-	 if(_messages.size()>100)
-		DEBUG("_messages.size()=%d",_messages.size()); 
 	return *pMessage;
 }
 BinaryWriter& FlowWriter::writeRawMessage(bool withoutHeader) {
@@ -401,6 +541,14 @@ BinaryWriter& FlowWriter::writeRawMessage(bool withoutHeader) {
 		message.rawWriter.write32(0);
 	}
 	return message.rawWriter;
+}
+AMFWriter& FlowWriter::writeStreamData(const string& name) {
+	MessageBuffered& message(createBufferedMessage());
+	message.rawWriter.write8(0x0F);
+	message.rawWriter.write8(0);
+	message.rawWriter.write32(0);
+	message.amfWriter.write(name);
+	return message.amfWriter;
 }
 AMFWriter& FlowWriter::writeAMFMessage(const std::string& name) {
 	MessageBuffered& message(createBufferedMessage());

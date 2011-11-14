@@ -28,25 +28,25 @@ public:
 	virtual ~Server();
 
 private:
-	void manage();
+	bool	manageRealTime(bool& terminate);
 
 	//events
 	void    onStart();
 	void    onStop();
 
-	bool	onConnection(Cumulus::Client& client,Cumulus::FlowWriterFactory& flowWriterFactory);
+	bool	onConnection(Cumulus::Client& client,Cumulus::AMFReader& parameters);
 	void	onFailed(const Cumulus::Client& client,const std::string& error);
 	void	onDisconnection(const Cumulus::Client& client);
-	bool	onMessage(const Cumulus::Client& client,const std::string& name,Cumulus::AMFReader& reader,Cumulus::FlowWriter& writer);
+	bool	onMessage(Cumulus::Client& client,const std::string& name,Cumulus::AMFReader& reader);
 
-	void	onPublish(const Cumulus::Client& client,const Cumulus::Publication& publication);
-	void	onUnpublish(const Cumulus::Client& client,const Cumulus::Publication& publication);
+	void	onPublish(Cumulus::Client& client,const Cumulus::Publication& publication);
+	void	onUnpublish(Cumulus::Client& client,const Cumulus::Publication& publication);
 
 	void	onAudioPacket(const Cumulus::Client& client,const Cumulus::Publication& publication,Poco::UInt32 time,Cumulus::PacketReader& packet);
 	void	onVideoPacket(const Cumulus::Client& client,const Cumulus::Publication& publication,Poco::UInt32 time,Cumulus::PacketReader& packet);
 
-	void	onSubscribe(const Cumulus::Client& client,const Cumulus::Listener& listener);
-	void	onUnsubscribe(const Cumulus::Client& client,const Cumulus::Listener& listener);
+	void	onSubscribe(Cumulus::Client& client,const Cumulus::Listener& listener);
+	void	onUnsubscribe(Cumulus::Client& client,const Cumulus::Listener& listener);
 
 	Auth&														_auth;
 	std::map<const Cumulus::Client* const,StatusWriter*>		_status;

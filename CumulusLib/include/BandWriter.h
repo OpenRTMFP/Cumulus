@@ -20,9 +20,6 @@
 #include "Cumulus.h"
 #include "PacketWriter.h"
 
-#define SYMETRIC_ENCODING	0x01
-#define WITHOUT_ECHO_TIME   0x02
-
 namespace Cumulus {
 
 class FlowWriter;
@@ -34,10 +31,11 @@ public:
 	virtual void			initFlowWriter(FlowWriter& flowWriter)=0;
 	virtual void			resetFlowWriter(FlowWriter& flowWriter)=0;
 
+	virtual bool			failed() const = 0;
 	virtual bool			canWriteFollowing(FlowWriter& flowWriter)=0;
 	virtual PacketWriter&	writer()=0;
 	virtual PacketWriter&	writeMessage(Poco::UInt8 type,Poco::UInt16 length,FlowWriter* pFlowWriter=NULL)=0;
-	virtual void			flush(Poco::UInt8 flags=0)=0;
+	virtual void			flush(bool echoTime=true)=0;
 	
 };
 

@@ -16,6 +16,7 @@
 */
 
 #include "Cookie.h"
+#include "Util.h"
 #include "Poco/RandomStream.h"
 #include "string.h"
 
@@ -24,12 +25,17 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Cookie::Cookie(const string& queryUrl) : _nonce(KEY_SIZE+11),pTarget(NULL),id(0),queryUrl(queryUrl),_writer(_buffer,sizeof(_buffer)) {
+Cookie::Cookie() : value(),light(true),response(0x78),_pDH(NULL),pTarget(NULL),id(0),_writer(_buffer,sizeof(_buffer)) {
+}
+
+Cookie::Cookie(const string& tag,const string& queryUrl) : tag(tag),value(),light(false),response(0x78),_pDH(NULL),_nonce(KEY_SIZE+11),pTarget(NULL),id(0),queryUrl(queryUrl),_writer(_buffer,sizeof(_buffer)) {
+	RandomInputStream().read((char*)value,COOKIE_SIZE);
 	memcpy(&_nonce[0],"\x03\x1A\x00\x00\x02\x1E\x00\x81\x02\x0D\x02",11);
 	_pDH = RTMFP::BeginDiffieHellman(&_nonce[11]);
 }
 
-Cookie::Cookie(Target& target) : _nonce(73),_pDH(target.pDH),pTarget(&target),id(0),_writer(_buffer,sizeof(_buffer)) {
+Cookie::Cookie(const string& tag,Target& target) : tag(tag),value(),light(false),response(0x78),_nonce(73),_pDH(target.pDH),pTarget(&target),id(0),_writer(_buffer,sizeof(_buffer)) {
+	RandomInputStream().read((char*)value,COOKIE_SIZE);
 	memcpy(&_nonce[0],"\x03\x1A\x00\x00\x02\x1E\x00\x41\x0E",9);
 	RandomInputStream().read((char*)&_nonce[9],64);
 }
@@ -53,14 +59,21 @@ void Cookie::computeKeys(const UInt8* initiatorKey,UInt16 initKeySize,const UInt
 	}
 }
 
-void Cookie::write(PacketWriter& writer) {
+
+void Cookie::write() {
 	if(_writer.length()==0) {
 		_writer.write32(id);
-		_writer.write7BitValue(_nonce.size());
-		_writer.writeRaw(&_nonce[0],_nonce.size());
-		_writer.write8(0x58);
+		if(!light) {
+			_writer.write7BitValue(_nonce.size());
+			_writer.writeRaw(&_nonce[0],_nonce.size());
+			_writer.write8(0x58);
+		}
 	}
+}
+
+UInt16 Cookie::read(PacketWriter& writer) {
 	writer.writeRaw(_writer.begin(),_writer.length());
+	return _writer.length();
 }
 
 

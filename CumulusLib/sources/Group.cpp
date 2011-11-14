@@ -24,20 +24,14 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Group::Group(const vector<UInt8>& id) : _id(id) {
+Group::Group(const UInt8* id) {
+	memcpy((UInt8*)this->id,id,ID_SIZE);
 }
 
 Group::~Group() {
 
 }
 
-
-bool Group::operator==(const std::vector<Poco::UInt8>& id) const {
-	return _id.size()==id.size() && memcmp(&id[0],&_id[0],id.size())==0;
-}
-bool Group::operator!=(const std::vector<Poco::UInt8>& id) const {
-	return _id.size()!=id.size() || memcmp(&id[0],&_id[0],id.size())!=0;
-}
 
 void Group::addPeer(Peer& peer) {
 	if(!peer.isIn(*this)) {

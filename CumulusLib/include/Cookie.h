@@ -22,19 +22,29 @@
 
 namespace Cumulus {
 
+#define COOKIE_SIZE 0x40
+
 class Cookie {
 	friend class Target;
 public:
-	Cookie(const std::string& queryUrl); // For normal cookie
-	Cookie(Target& target); // For a Man-In-The-Middle peer/peer cookie
+	Cookie(); // For light cookie (edge sessions)
+	Cookie(const std::string& tag,const std::string& queryUrl); // For normal cookie
+	Cookie(const std::string& tag,Target& target); // For a Man-In-The-Middle peer/peer cookie
 	virtual ~Cookie();
 
+	
+	const bool						light;
+	const std::string				tag;
+	const Poco::UInt8				value[COOKIE_SIZE];
 	const std::string				queryUrl;
 	const Poco::UInt32				id;
+	const Poco::UInt8				response;
 	
 	void							computeKeys(const Poco::UInt8* initiatorKey,Poco::UInt16 initKeySize,const Poco::UInt8* initiatorNonce,Poco::UInt16 initNonceSize,Poco::UInt8* decryptKey,Poco::UInt8* encryptKey);
 	bool							obsolete();
-	void							write(PacketWriter& writer);
+
+	void							write();
+	Poco::UInt16					read(PacketWriter& writer);
 
 	// just for middle mode!
 	Target*							pTarget;

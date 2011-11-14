@@ -57,10 +57,10 @@ public:
 	bool				reseted;
 
 private:
-	void ackMessageHandler(BinaryReader& content,UInt32 size,UInt32 lostMessages) {
+	void ackMessageHandler(UInt32 ackCount,UInt32 lostCount,BinaryReader& content,UInt32 size) {
 		if(content.read8()!=_type)
 			return;
-		qos.add(content.read32(),1,lostMessages);
+		qos.add(content.read32(),ackCount,lostCount);
 	}
 
 	// call on FlowWriter failed, we must rewritting bound infos
@@ -146,6 +146,21 @@ void Listener::stopPublishing(const string& name) {
 	_addingTime = _time;
 	_audioWriter.qos.reset();
 	_videoWriter.qos.reset();
+}
+
+
+void Listener::pushDataPacket(const string& name,PacketReader& packet) {
+	// TODO create _dataWriter ??
+	if(_unbuffered) {
+		UInt16 offset = name.size()+9;
+		if(packet.position()>=offset) {
+			packet.reset(packet.position()-offset);
+			_writer.writeUnbufferedMessage(packet.current(),packet.available());
+			return;
+		}
+		WARN("Written unbuffered impossible, it requires %u head bytes available on PacketReader given",offset);
+	}
+	StreamCopier::copyStream(packet.stream(),_writer.writeStreamData(name).writer.stream());
 }
 
 void Listener::pushVideoPacket(UInt32 time,PacketReader& packet) {

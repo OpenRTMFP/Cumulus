@@ -24,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Sessions::Sessions() {
+Sessions::Sessions(Gateway& gateway):_nextId(1),_gateway(gateway) {
 }
 
 Sessions::~Sessions() {
@@ -33,29 +33,37 @@ Sessions::~Sessions() {
 
 void Sessions::clear() {
 	// delete sessions
+	if(!_sessions.empty())
+		WARN("sessions are deleting");
 	map<UInt32,Session*>::const_iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
-		// to prevent client of session death
-		it->second->fail("sessions are deleting");
+		(bool&)it->second->died = true;
 		delete it->second;
 	}
 	_sessions.clear();
 }
 
 Session* Sessions::add(Session* pSession) {
-	Session* pSessionOther = find(pSession->id());
-	if(pSessionOther && pSessionOther != pSession) {
-		ERROR("A session exists already with the same id '%u'",pSession->id());
+
+	if(pSession->id!=_nextId) {
+		ERROR("Session can not be inserted, its id %u not egal to nextId %u",pSession->id,_nextId);
 		return NULL;
 	}
-	NOTE("Session %u created",pSession->id());
-	return _sessions[pSession->id()] = pSession;
+	
+	_sessions[_nextId] = pSession;
+	NOTE("Session %u created",_nextId);
+
+	do {
+		++_nextId;
+	} while(_nextId==0 && find(_nextId));
+
+	return pSession;
 }
 
 Session* Sessions::find(const Poco::UInt8* peerId) const {
 	Iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
-		if(it->second->peer() == peerId)
+		if(it->second->peer == peerId)
 			return it->second;
 	}
 	return NULL;
@@ -72,8 +80,9 @@ void Sessions::manage() {
 	map<UInt32,Session*>::iterator it= _sessions.begin();
 	while(it!=end()) {
 		it->second->manage();
-		if(it->second->died()) {
-			NOTE("Session %u died",it->second->id());
+		if(it->second->died) {
+			NOTE("Session %u died",it->second->id);
+			_gateway.destroySession(*it->second);
 			delete it->second;
 			_sessions.erase(it++);
 			continue;

@@ -20,12 +20,14 @@
 #include "Auth.h"
 #include "Server.h"
 #include "ApplicationKiller.h"
+#include "Poco/String.h"
 #include "Poco/File.h"
-#include "Poco/Format.h"
 #include "Poco/FileStream.h"
+#include "Poco/Format.h"
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
+#include "Poco/Util/MapConfiguration.h"
 #include "string.h"
 #include <iostream>
 
@@ -62,16 +64,26 @@ private:
 	}
 
 	void initialize(Application& self) {
-		loadConfiguration(); // load default configuration files, if present
 		ServerApplication::initialize(self);
+		string dir = config().getString("application.dir","./");
+		loadConfiguration(dir+config().getString("application.baseName","CumulusService")+".ini"); // load default configuration files, if present
 		_isInteractive = isInteractive();
-		_logDir = config().getString("logs.dir",config().getString("application.dir",".")+"/logs");
+		// logs
+		_logDir = config().getString("logs.dir",dir+"logs");
 		_pLogFile = new File(_logDir+LOG_FILE(0));
 		File(_logDir).createDirectory();
 		_logStream.open(_pLogFile->path(),ios::in | ios::ate);
 		Logs::SetLogger(*this);
+		// auth
 		_auth.authIsWhitelist=config().getBool("auth.whitelist",false);
-		_auth.load("auth");
+		_auth.load(config().getString("auth.dir",dir+"auth"));
+	}
+
+	void loadConfiguration(const string& path) {
+		try {
+			ServerApplication::loadConfiguration(path);
+		} catch(...) {
+		}
 	}
 		
 	void uninitialize() {
@@ -152,6 +164,7 @@ private:
 		_logStream << DateTimeFormatter::format(LocalDateTime(),"%d/%m %H:%M:%S.%c  ")
 				<< g_logPriorities[priority-1] << '\t' << threadName << '(' << threadId << ")\t"
 				<< Path(filePath).getFileName() << '[' << line << "]  " << text << std::endl;
+		_logStream.flush(); // TODO Pas trop consommateur en ressource?
 		manageLogFile();
 	}
 
@@ -178,20 +191,36 @@ private:
 			displayHelp();
 		}
 		else {
-			// starts the server
-			RTMFPServerParams params;
-			params.port = config().getInt("port", RTMFP_DEFAULT_PORT);
-			params.pCirrus = _pCirrus;
-			params.middle = _middle;
-			params.keepAliveServer = config().getInt("keepAliveServer",15);
-			params.keepAlivePeer = config().getInt("keepAlivePeer",10);
-			Server server(_auth,*this);
-			server.start(params);
+			try {
+				// starts the server
+				RTMFPServerParams params;
+				params.port = config().getInt("port", params.port);
+				UInt16 edgesPort = config().getInt("edges.port",RTMFP_DEFAULT_PORT+1);
+				if(config().getBool("edges.activated",false)) {
+					if(edgesPort==0)
+						WARN("edges.port must have a positive value if edges.activated is true. Server edges is disactivated.");
+					params.edgesPort=edgesPort;
+				}
+				params.pCirrus = _pCirrus;
+				params.middle = _middle;
+				params.udpBufferSize = config().getInt("udpBufferSize",params.udpBufferSize);
+				params.keepAliveServer = config().getInt("keepAliveServer",params.keepAliveServer);
+				params.keepAlivePeer = config().getInt("keepAlivePeer",params.keepAlivePeer);
+				params.edgesAttemptsBeforeFallback = config().getInt("edges.attemptsBeforeFallback",params.edgesAttemptsBeforeFallback);
+				Server server(_auth,*this);
+				server.start(params);
 
-			// wait for CTRL-C or kill
-			waitForTerminationRequest();
-			// Stop the HTTPServer
-			server.stop();
+				// wait for CTRL-C or kill
+				waitForTerminationRequest();
+				// Stop the server
+				server.stop();
+			} catch(Exception& ex) {
+				FATAL("Configuration problem : %s",ex.displayText().c_str());
+			} catch (exception& ex) {
+				FATAL("Cumulus service : %s",ex.what());
+			} catch (...) {
+				FATAL("Cumulus service unknown error");
+			}
 		}
 		return Application::EXIT_OK;
 	}

@@ -53,16 +53,13 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 			throw Exception("ObjectEncoding client must be AMF3 and not AMF0");
 
 		// Check if the client is authorized
-		++((UInt32&)handler.count);
-		((Peer::PeerState&)peer.state) = Peer::REJECTED;
-		if(!handler.onConnection(peer,writer))
+		peer.setFlowWriter(&writer);
+		if(!handler.onConnection(peer,message))
 			throw Exception("Client rejected");
 		
-		((Peer::PeerState&)peer.state) = Peer::ACCEPTED;
+		(bool&)peer.connected = true;
 
-		AMFObjectWriter response(writer.writeSuccessResponse("Connect.Success","Connection succeeded"));
-		response.write("objectEncoding",3);
-		response.write("data",peer.data);
+		AMFObjectWriter(writer.writeSuccessResponse("Connect.Success","Connection succeeded")).write("objectEncoding",3);
 
 	} else if(name == "setPeerInfo") {
 
@@ -91,7 +88,7 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		_streamIndex.erase(index);
 		handler.streams.destroy(index);
 	} else {
-		if(!handler.onMessage(peer,name,message,writer))
+		if(!handler.onMessage(peer,name,message))
 			writer.writeErrorResponse("Call.Failed","Method '" + name + "' not found");
 	}
 }

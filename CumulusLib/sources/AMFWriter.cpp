@@ -24,7 +24,7 @@ using namespace Poco::Util;
 
 namespace Cumulus {
 
-AMFWriter::AMFWriter(BinaryWriter& writer) : _writer(writer) {
+AMFWriter::AMFWriter(BinaryWriter& writer) : writer(writer) {
 
 }
 
@@ -33,43 +33,43 @@ AMFWriter::~AMFWriter() {
 }
 
 void AMFWriter::writeArray(UInt32 count) {
-	_writer.write8(AMF_STRICT_ARRAY);
-	_writer.write32(count);
+	writer.write8(AMF_STRICT_ARRAY);
+	writer.write32(count);
 }
 
 void AMFWriter::writeResponseHeader(const string& key,double callbackHandle) {
-	_writer.write8(0x14);
-	_writer.write32(0);
+	writer.write8(0x14);
+	writer.write32(0);
 	write(key);
 	writeNumber(callbackHandle);
 	writeNull();
 }
 
 void AMFWriter::writeBool(bool value){
-	_writer.write8(AMF_BOOLEAN); // marker
-	_writer << value;
+	writer.write8(AMF_BOOLEAN); // marker
+	writer << value;
 }
 
 void AMFWriter::write(const char* value,UInt16 size) {
 	if(size==0) {
-		_writer.write8(AMF_UNDEFINED);
+		writer.write8(AMF_UNDEFINED);
 		return;
 	}
-	_writer.write8(AMF_STRING); // marker
-	_writer.writeString16(value,size);
+	writer.write8(AMF_STRING); // marker
+	writer.writeString16(value,size);
 }
 void AMFWriter::write(const string& value) {
 	if(value.empty()) {
-		_writer.write8(AMF_UNDEFINED);
+		writer.write8(AMF_UNDEFINED);
 		return;
 	}
-	_writer.write8(AMF_STRING); // marker
-	_writer.writeString16(value);
+	writer.write8(AMF_STRING); // marker
+	writer.writeString16(value);
 }
 
 void AMFWriter::writeNumber(double value){
-	_writer.write8(AMF_NUMBER); // marker
-	_writer << value;
+	writer.write8(AMF_NUMBER); // marker
+	writer << value;
 }
 
 void AMFWriter::writeObject(const AMFObject& amfObject) {
@@ -79,7 +79,7 @@ void AMFWriter::writeObject(const AMFObject& amfObject) {
 	AbstractConfiguration::Keys::const_iterator it;
 	for(it=keys.begin();it!=keys.end();++it) {
 		string name = *it;
-		_writer.writeString16(name);
+		writer.writeString16(name);
 		int type = amfObject.getInt(name+".type",-1);
 		switch(type) {
 			case AMF_BOOLEAN:
@@ -105,51 +105,55 @@ void AMFWriter::writeObject(const AMFObject& amfObject) {
 }
 
 void AMFWriter::writeObjectArrayProperty(const string& name,UInt32 count) {
-	_writer.writeString16(name);
+	writer.writeString16(name);
 	writeArray(count);
 }
 
 void AMFWriter::beginSubObject(const string& name) {
-	_writer.writeString16(name);
+	writer.writeString16(name);
 	beginObject();
 }
 
 void AMFWriter::writeObjectProperty(const string& name,double value) {
-	_writer.writeString16(name);
+	writer.writeString16(name);
 	writeNumber(value);
 }
 
 void AMFWriter::writeObjectProperty(const string& name,const vector<UInt8>& data) {
-	_writer.writeString16(name);
+	writer.writeString16(name);
 	writeByteArray(data);
 }
 
 void AMFWriter::writeObjectProperty(const string& name,const string& value) {
-	_writer.writeString16(name);
+	writer.writeString16(name);
 	write(value);
 }
 
 void AMFWriter::writeObjectProperty(const string& name,const char* value,UInt16 size) {
-	_writer.writeString16(name);
+	writer.writeString16(name);
 	write(value,size);
 }
 
-void AMFWriter::writeByteArray(const vector<UInt8>& data) {
-	if(data.size()==0) {
-		_writer.write8(AMF_UNDEFINED);
-		return;
+BinaryWriter& AMFWriter::writeByteArray(UInt32 size) {
+	if(size==0) {
+		writer.write8(AMF_UNDEFINED);
+		return writer;
 	}
-	_writer.write8(AMF_AVMPLUS_OBJECT); // switch in AMF3 format 
-	_writer.write8(AMF_LONG_STRING); // bytearray in AMF3 format!
-	_writer.write7BitValue((data.size() << 1) | 1);
-	_writer.writeRaw(&data[0],data.size());
+	writer.write8(AMF_AVMPLUS_OBJECT); // switch in AMF3 format 
+	writer.write8(AMF_LONG_STRING); // bytearray in AMF3 format!
+	writer.write7BitValue((size << 1) | 1);
+	return writer;
+}
 
+void AMFWriter::writeByteArray(const UInt8* data,UInt32 size) {
+	BinaryWriter& writer = writeByteArray(size);
+	writer.writeRaw(data,size);
 }
 
 void AMFWriter::endObject() {
 	// mark end
-	_writer.write16(0); 
-	_writer.write8(AMF_END_OBJECT);
+	writer.write16(0); 
+	writer.write8(AMF_END_OBJECT);
 }
 
 

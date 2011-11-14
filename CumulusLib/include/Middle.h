@@ -18,7 +18,7 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Session.h"
+#include "ServerSession.h"
 #include "Sessions.h"
 #include "Target.h"
 #include "Poco/URI.h"
@@ -27,14 +27,13 @@
 namespace Cumulus {
 
 
-class Middle : public Session {
+class Middle : public ServerSession {
 public:
 	Middle(Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
-			Poco::Net::DatagramSocket& socket,
 			Handler& handler,
 			const Sessions&	sessions,
 			Target& target);
@@ -50,6 +49,9 @@ public:
 	void				manage();
 	
 private:
+	bool decode(PacketReader& packet);
+	void encode(PacketWriter& packet);
+
 	PacketWriter&		writer();
 
 	void				targetHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
@@ -73,7 +75,6 @@ private:
 	Poco::UInt8					_sharedSecret[KEY_SIZE];
 
 	Poco::Net::DatagramSocket	_socket;
-	Poco::Timespan				_span;
 	Poco::UInt8					_buffer[PACKETRECV_SIZE];
 
 	bool						_firstResponse;

@@ -24,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Message::Message(istream& istr,bool repeatable) : startStage(0),_reader(istr),repeatable(repeatable) {
+Message::Message(istream& istr,bool repeatable) : _reader(istr),repeatable(repeatable) {
 	
 }
 
@@ -34,11 +34,15 @@ Message::~Message() {
 }
 
 BinaryReader& Message::reader(UInt32& size) {
-	list<UInt32>::const_iterator it = fragments.begin();
-	size =  init(it==fragments.end() ? 0 : (*it));
+	map<UInt32,UInt32>::const_iterator it = fragments.begin();
+	size =  init(it==fragments.end() ? 0 : it->first);
 	return _reader;
 }
 
+BinaryReader& Message::reader(UInt32 fragment,UInt32& size) {
+	size =  init(fragment);
+	return _reader;
+}
 
 MessageBuffered::MessageBuffered() : rawWriter(_stream),amfWriter(rawWriter),Message(_stream,true) {
 	
@@ -75,6 +79,13 @@ UInt32 MessageUnbuffered::init(UInt32 position) {
 BinaryReader& MessageUnbuffered::memAck(UInt32& size) {
 	size = _pMemAck->available();
 	return *_pReaderAck;
+}
+
+MessageNull::MessageNull() {
+	rawWriter.stream().setstate(ios_base::eofbit);
+}
+
+MessageNull::~MessageNull() {
 }
 
 

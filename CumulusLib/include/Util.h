@@ -16,6 +16,8 @@
 #pragma once
 
 #include "Cumulus.h"
+#include "Poco/Net/SocketAddress.h"
+#include "Poco/Util/AbstractConfiguration.h"
 #include <map>
 
 
@@ -26,11 +28,16 @@ public:
 	Util();
 	~Util();
 
+	static bool		   SameAddress(const Poco::Net::SocketAddress& address1,const Poco::Net::SocketAddress& address2);
 	static std::string FormatHex(const Poco::UInt8* data,Poco::UInt32 size);
 	static Poco::UInt8 Get7BitValueSize(Poco::UInt32 value);
 
-	static void UnpackUrl(const std::string& url,std::string& path,std::map<std::string,std::string>& parameters);
-	static void UnpackQuery(const std::string& query,std::map<std::string,std::string>& parameters);
+	static void Dump(const Poco::UInt8* in, Poco::UInt32 size,std::vector<Poco::UInt8>& out,const char* header=NULL);
+
+	static void UnpackUrl(const std::string& url,std::string& path,Poco::Util::AbstractConfiguration& parameters);
+	static void UnpackQuery(const std::string& query,Poco::Util::AbstractConfiguration& parameters);
+
+	static std::string NullString;
 };
 
 } // namespace Cumulus

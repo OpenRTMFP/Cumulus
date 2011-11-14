@@ -333,7 +333,7 @@
 	</References>
 	<Files>
 		<Filter
-			Name="Sources"
+			Name="sources"
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
@@ -473,7 +473,11 @@
 					>
 				</File>
 				<File
-					RelativePath=".\include\Client.h"
+					RelativePath=".\sources\Clients.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Clients.h"
 					>
 				</File>
 				<File
@@ -570,6 +574,22 @@
 				</File>
 				<File
 					RelativePath=".\include\Handshake.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\ServerConnection.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\ServerConnection.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\ServerSession.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\ServerSession.h"
 					>
 				</File>
 				<File
@@ -729,6 +749,34 @@
 				</File>
 				<File
 					RelativePath=".\include\Target.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Edges"
+				>
+				<File
+					RelativePath=".\sources\Edges.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Edges.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\EdgeSession.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\EdgeSession.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\RTMFPServerEdge.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\RTMFPServerEdge.h"
 					>
 				</File>
 			</Filter>

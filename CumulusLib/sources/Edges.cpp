@@ -15,30 +15,35 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "Edges.h"
 
-#include "Cumulus.h"
-#include "Entity.h"
-#include "Poco/URI.h"
-#include <map>
+using namespace std;
+using namespace Poco;
+using namespace Poco::Net;
 
 namespace Cumulus {
 
+Edge::Edge() : _raise(0),count(0) {
+	
+}
 
-class Client : public Entity {
-public:
-	Client() {}
-	virtual ~Client() {}
+Edge::~Edge() {
+	map<UInt32,Session*>::const_iterator it;
+	for(it=_sessions.begin();it!=_sessions.end();++it)
+		(bool&)it->second->died = true;
+}
 
-	const Poco::URI								swfUrl;
-	const Poco::URI								pageUrl;
+void Edge::update() {
+	_raise=0;
+	_timeLastExchange.update();
+}
 
-	std::vector<Poco::UInt8>					data;
-
-	// Query URL content
-	const std::string							path;
-	const std::map<std::string,std::string>		parameters;
-};
+Edge* Edges::operator()(const SocketAddress& address) {
+	Iterator it = _edges.find(address.toString());
+	if(it==_edges.end())
+		return NULL;
+	return it->second;
+}
 
 
 } // namespace Cumulus

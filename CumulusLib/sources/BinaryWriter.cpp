@@ -36,6 +36,11 @@ void BinaryWriter::writeString(const string& value) {
 	writeRaw(value);
 }
 
+void BinaryWriter::writeString(const char* value,UInt32 size) {
+	write7BitValue(size);
+	writeRaw(value,size);
+}
+
 void BinaryWriter::writeString8(const char* value,UInt8 size) {
 	write8(size);
 	writeRaw(value,size);

@@ -32,10 +32,10 @@ public:
 	Poco::UInt32	create();
 	void			destroy(Poco::UInt32 id);
 
-	bool			publish(const Client& client,Poco::UInt32 id,const std::string& name);
-	void			unpublish(const Client& client,Poco::UInt32 id,const std::string& name);
-	void			subscribe(const Client& client,Poco::UInt32 id,const std::string& name,FlowWriter& writer,double start=-2000);
-	void			unsubscribe(const Client& client,Poco::UInt32 id,const std::string& name);
+	bool			publish(Client& client,Poco::UInt32 id,const std::string& name);
+	void			unpublish(Client& client,Poco::UInt32 id,const std::string& name);
+	void			subscribe(Client& client,Poco::UInt32 id,const std::string& name,FlowWriter& writer,double start=-2000);
+	void			unsubscribe(Client& client,Poco::UInt32 id,const std::string& name);
 
 	Publications	publications;
 

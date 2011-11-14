@@ -100,9 +100,8 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		disengage();
 		_state = PLAYING;
 
-		// TODO add a failed scenario?
 		message.read((string&)name);
-		// TODO implements completly NetStream.play method
+		// TODO implements completly NetStream.play method, with possible NetStream.play.failed too!
 		double start = -2000;
 		if(message.available())
 			start = message.readNumber();
@@ -131,7 +130,7 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		string type;
 		message.read((string&)name);
 		if(message.available())
-			message.read(type); // TODO record!
+			message.read(type); // TODO recording publication feature!
 
 		if(handler.streams.publish(peer,_index,name)) {
 			writer.writeStatusResponse("Publish.Start",name +" is now published");
@@ -139,6 +138,16 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		} else
 			writer.writeStatusResponse("Publish.BadName",name +" is already publishing");
 
+	} else if(_state==PUBLISHING) {
+		if(!_pPublication) {
+			Publications::Iterator it = handler.streams.publications(name);
+			if(it!=handler.streams.publications.end())
+				_pPublication = it->second;
+			else
+				ERROR("Publication %s unfound, related for the %s message",name.c_str(),action.c_str());
+		}
+		if(_pPublication)
+			_pPublication->pushDataPacket(peer,action,message.reader);
 	} else
 		Flow::messageHandler(action,message);
 

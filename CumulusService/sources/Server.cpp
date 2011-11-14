@@ -16,13 +16,9 @@
 */
 
 #include "Server.h"
-#include "Util.h"
-#include "Poco/Util/ServerApplication.h"
 
 using namespace std;
 using namespace Poco;
-using namespace Poco::Util;
-using namespace Poco::Net;
 using namespace Cumulus;
 
 
@@ -34,9 +30,9 @@ Server::~Server() {
 
 }
 
-void Server::manage() {
+bool Server::manageRealTime(bool& terminate) {
 	// TODO LUA
-	RTMFPServer::manage();
+	return RTMFPServer::manageRealTime(terminate);
 }
 
 void Server::onStart() {
@@ -46,18 +42,18 @@ void Server::onStop() {
 	_applicationKiller.kill();
 }
 
+
 //// CLIENT_HANDLER /////
-bool Server::onConnection(Client& client,FlowWriterFactory& flowWriterFactory) {
+bool Server::onConnection(Client& client,AMFReader& parameters) {
 	// Here you can read custom client http parameters in reading "client.parameters".
-	// Also you can send custom data for the client in writing in "client.data",
-	// on flash side you could read that on "data" property from NetStatusEvent::NET_STATUS event of NetConnection object
-	bool result = _auth.check(client);
+	if(!_auth.check(client))
+		return false;
 
 	// Status page
-	if(result && client.path == "/status")
-		_status.insert(pair<const Client* const,StatusWriter*>(&client,&flowWriterFactory.newFlowWriter<StatusWriter>())).first->second->init(*this);
+	if(client.path == "/status")
+		_status.insert(pair<const Client* const,StatusWriter*>(&client,&client.writer().newFlowWriter<StatusWriter>())).first->second->init(*this);
 
-	return result;
+	return true;
 }
 void Server::onFailed(const Client& client,const string& msg) {
 	WARN("Client failed : %s",msg.c_str());
@@ -67,7 +63,7 @@ void Server::onDisconnection(const Client& client) {
 	_status.erase(&client);
 }
 
-bool Server::onMessage(const Client& client,const string& name,AMFReader& reader,FlowWriter& writer) {
+bool Server::onMessage(Client& client,const string& name,AMFReader& reader) {
 	DEBUG("onMessage %s",name.c_str());
 
 	// Status page
@@ -88,24 +84,24 @@ bool Server::onMessage(const Client& client,const string& name,AMFReader& reader
 }
 
 //// PUBLICATION_HANDLER /////
-void Server::onPublish(const Client& client,const Publication& publication) {
+void Server::onPublish(Client& client,const Publication& publication) {
 	// Status
 	map<const Client* const,StatusWriter*>::const_iterator it2;
 	for(it2=_status.begin();it2!=_status.end();++it2)
 		it2->second->addPublication(publication);
 }
 
-void Server::onUnpublish(const Client& client,const Publication& publication) {
+void Server::onUnpublish(Client& client,const Publication& publication) {
 	// Status page
 	map<const Client* const,StatusWriter*>::const_iterator it2;
 	for(it2=_status.begin();it2!=_status.end();++it2)
 		it2->second->removePublication(publication);
 }
 
-void Server::onSubscribe(const Client& client,const Listener& listener) {
+void Server::onSubscribe(Client& client,const Listener& listener) {
 }
 
-void Server::onUnsubscribe(const Client& client,const Listener& listener) {
+void Server::onUnsubscribe(Client& client,const Listener& listener) {
 }
 
 void Server::onAudioPacket(const Client& client,const Publication& publication,UInt32 time,PacketReader& packet) {

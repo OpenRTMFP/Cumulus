@@ -23,7 +23,9 @@ using namespace Poco;
 
 namespace Cumulus {
 
-AESEngine::AESEngine(const UInt8* key,Direction direction) : _direction(direction) {
+AESEngine::AESEngine(const UInt8* key,Direction direction) : _direction(direction),null(key?false:true) {
+	if(null)
+		return;
 	if(_direction==DECRYPT)
 		AES_set_decrypt_key(key, 0x80,&_key);
 	else
@@ -35,6 +37,8 @@ AESEngine::~AESEngine() {
 }
 
 void AESEngine::process(const UInt8* in,UInt8* out,UInt32 size) {
+	if(null)
+		return;
 	UInt8	iv[AES_KEY_SIZE];
 	memset(iv,0,sizeof(iv));
 	AES_cbc_encrypt(in, out,size,&_key,iv, _direction);

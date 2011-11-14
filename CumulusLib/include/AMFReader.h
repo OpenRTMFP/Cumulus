@@ -35,14 +35,13 @@ public:
 	double	readNumber();
 	void	skipNull();
 
-	bool available();
+	bool	available();
 	
-private:
-	PacketReader& _reader;
+	PacketReader& reader;
 };
 
 inline bool AMFReader::available() {
-	return _reader.available()>0;
+	return reader.available()>0;
 }
 
 } // namespace Cumulus

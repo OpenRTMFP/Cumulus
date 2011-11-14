@@ -41,7 +41,7 @@ Publication::~Publication() {
 }
 
 
-void Publication::addListener(const Client& client,UInt32 id,FlowWriter& writer,bool unbuffered) {
+void Publication::addListener(Client& client,UInt32 id,FlowWriter& writer,bool unbuffered) {
 	map<UInt32,Listener*>::iterator it = _listeners.lower_bound(id);
 	if(it!=_listeners.end() && it->first==id) {
 		WARN("Listener %u is already subscribed for publication %u",id,_publisherId);
@@ -54,7 +54,7 @@ void Publication::addListener(const Client& client,UInt32 id,FlowWriter& writer,
 	_handler.onSubscribe(client,*pListener);
 }
 
-void Publication::removeListener(const Client& client,UInt32 id) {
+void Publication::removeListener(Client& client,UInt32 id) {
 	map<UInt32,Listener*>::iterator it = _listeners.find(id);
 	if(it==_listeners.end()) {
 		WARN("Listener %u is already unsubscribed of publication %u",id,_publisherId);
@@ -65,7 +65,7 @@ void Publication::removeListener(const Client& client,UInt32 id) {
 	_listeners.erase(it);	
 }
 
-bool Publication::start(const Client& client,UInt32 publisherId) {
+bool Publication::start(Client& client,UInt32 publisherId) {
 	if(_publisherId!=0)
 		return false; // has already a publisher
 	_publisherId = publisherId;
@@ -73,11 +73,12 @@ bool Publication::start(const Client& client,UInt32 publisherId) {
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->startPublishing(_name);
+	flush();
 	_handler.onPublish(client,*this);
 	return true;
 }
 
-void Publication::stop(const Client& client,UInt32 publisherId) {
+void Publication::stop(Client& client,UInt32 publisherId) {
 	if(_publisherId==0)
 		return; // already done
 	if(_publisherId!=publisherId) {
@@ -87,6 +88,7 @@ void Publication::stop(const Client& client,UInt32 publisherId) {
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->stopPublishing(_name);
+	flush();
 	_handler.onUnpublish(client,*this);
 	_videoQOS.reset();
 	_audioQOS.reset();
@@ -99,6 +101,20 @@ void Publication::flush() {
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->flush();
+}
+
+void Publication::pushDataPacket(const Client& client,const string& name,PacketReader& packet) {
+	if(_publisherId==0) {
+		ERROR("Data packet pushed on a publication %u who is idle",_publisherId);
+		return;
+	}
+	int pos = packet.position();
+	map<UInt32,Listener*>::const_iterator it;
+	for(it=_listeners.begin();it!=_listeners.end();++it) {
+		it->second->pushDataPacket(name,packet);
+		packet.reset(pos);
+	}
+	_handler.onDataPacket(client,*this,name,packet);
 }
 
 void Publication::pushAudioPacket(const Client& client,UInt32 time,PacketReader& packet,UInt32 numberLostFragments) {

@@ -37,10 +37,12 @@ class RTMFP
 {
 public:
 	static Poco::UInt32				Unpack(PacketReader& packet);
-	static void						Pack(PacketWriter& packet,Poco::UInt32 farId=0);
+	static void						Pack(PacketWriter& packet,Poco::UInt32 farId);
 
+	static bool						ReadCRC(PacketReader& packet);
 	static bool						Decode(PacketReader& packet);
 	static bool						Decode(AESEngine& aesDecrypt,PacketReader& packet);
+	static void						WriteCRC(PacketWriter& packet);
 	static void						Encode(PacketWriter& packet);
 	static void						Encode(AESEngine& aesEncrypt,PacketWriter& packet);
 	

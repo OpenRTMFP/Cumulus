@@ -18,8 +18,8 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketWriter.h"
-#include "Peer.h"
+#include "Session.h"
+#include "Cookie.h"
 
 namespace Cumulus {
 
@@ -30,8 +30,10 @@ public:
 	Gateway(){}
 	virtual ~Gateway(){}
 
-	virtual Poco::UInt8 p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted)=0;
-	virtual Poco::UInt32 createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie)=0;
+	virtual Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted)=0;
+	virtual Session&		createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie)=0;
+	virtual void			destroySession(Session& session)=0;
+	virtual void			repeatCookie(Poco::UInt32 farId,Cookie& cookie){}
 };
 
 

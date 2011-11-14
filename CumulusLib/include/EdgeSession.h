@@ -18,39 +18,37 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Peer.h"
-#include "Peers.h"
-
+#include "Session.h"
+#include "Cookie.h"
 
 namespace Cumulus {
 
-
-class Group : public Entity {
-	friend class Peer;
+class EdgeSession : public Session {
 public:
-	Group(const Poco::UInt8* id);
-	virtual ~Group();
+	EdgeSession(Poco::UInt32 id,
+			Poco::UInt32 farId,
+			const Peer& peer,
+			const Poco::UInt8* decryptKey,
+			const Poco::UInt8* encryptKey,
+			Poco::Net::DatagramSocket& serverSocket,
+			Cookie& cookie);
+	~EdgeSession();
 
-	bool hasPeer(const Poco::UInt8* peerId);
-	void addPeer(Peer& peer);
-	void removePeer(Peer& peer);
-	void bestPeers(std::list<const Peer*>& peers,const Peer& askerPeer);
-	bool empty();
+	const Poco::UInt32			farServerId;
 
+	void						serverPacketHandler(PacketReader& packet);
+	
 private:
-	Peers						_peers;
+	void						encode(PacketWriter& packet);
+	void						packetHandler(PacketReader& packet);
+
+	Poco::Net::DatagramSocket&	_serverSocket;
+	Poco::Net::SocketAddress	_sender;
+
+	Cookie*						_pCookie;
+	bool						_handshaking;
+	
 };
 
-inline bool Group::hasPeer(const Poco::UInt8* peerId) {
-	return _peers.has(peerId);
-}
-
-inline bool Group::empty() {
-	return _peers.empty();
-}
-
-inline void Group::bestPeers(std::list<const Peer*>& peers,const Peer& askerPeer) {
-	_peers.best(peers,askerPeer);
-}
 
 } // namespace Cumulus

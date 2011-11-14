@@ -17,6 +17,7 @@
 
 #include "FlowNull.h"
 #include "FlowWriter.h"
+#include "Util.h"
 #include "Poco/Format.h"
 
 using namespace std;
@@ -25,10 +26,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-string FlowNull::_Name;
-string FlowNull::_Signature;
-
-FlowNull::FlowNull(Peer& peer,Handler& handler,BandWriter& band) : Flow(0,_Signature,_Name,peer,handler,band) {
+FlowNull::FlowNull(Peer& peer,Handler& handler,BandWriter& band) : Flow(0,Util::NullString,Util::NullString,peer,handler,band) {
 	
 }
 

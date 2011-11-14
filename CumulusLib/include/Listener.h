@@ -36,6 +36,7 @@ public:
 
 	void pushAudioPacket(Poco::UInt32 time,PacketReader& packet); 
 	void pushVideoPacket(Poco::UInt32 time,PacketReader& packet);
+	void pushDataPacket(const std::string& name,PacketReader& packet);
 
 	void flush();
 

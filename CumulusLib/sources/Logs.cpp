@@ -16,7 +16,7 @@
 */
 
 #include "Logs.h"
-#include "Poco/File.h"
+#include "Util.h"
 #include "string.h"
 
 using namespace std;
@@ -38,45 +38,10 @@ Logs::~Logs() {
 void Logs::Dump(const UInt8* data,UInt32 size,const char* header,bool middle) {
 	UInt8 type = middle ? MIDDLE : EXTERNAL;
 	if(GetLogger() && _DumpMode&type) {
-		char out[PACKETRECV_SIZE*4];
-		int len = 0;
-		int i = 0;
-		int c = 0;
-		unsigned char b;
-		if(header) {
-			out[len++] = '\t';
-			c = strlen(header);
-			memcpy(out+len,header,c);
-			len += c;
-			out[len++] = '\n';
-		}
-		while (i<size) {
-			c = 0;
-			out[len++] = '\t';
-			while ( (c < 16) && (i+c < size) ) {
-				b = data[i+c];
-				sprintf(out+len,"%X%X ", b/16, b & 0x0f );
-				len += 3;
-				++c;
-			}
-			while (c++ < 16) {
-				strcpy(out+len,"   ");
-				len += 3;
-			}
-			out[len++] = ' ';
-			c = 0;
-			while ( (c < 16) && (i+c < size) ) {
-				b = data[i+c];
-				if (b > 31)
-					out[len++] = b;
-				else
-					out[len++] = '.';
-				++c;
-			}
-			i += 16;
-			out[len++] = '\n';
-		}
-		GetLogger()->dumpHandler(out,len);
+		vector<UInt8> out;
+		Util::Dump(data,size,out,header);
+		if(out.size()>0)
+			GetLogger()->dumpHandler((const char*)&out[0],out.size());
 	}
 }
 

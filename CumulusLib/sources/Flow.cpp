@@ -85,7 +85,16 @@ Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,Handl
 }
 
 Flow::~Flow() {
-	complete(); // just to display "consumed"
+	complete();
+	writer.close();
+}
+
+void Flow::complete() {
+	if(_completed)
+		return;
+
+	if(!writer.signature.empty()) // writer.signature.empty() == FlowNull instance, not display the message in FullNull case
+		DEBUG("Flow %u consumed",id);
 
 	// delete fragments
 	map<UInt32,Fragment*>::const_iterator it;
@@ -96,12 +105,6 @@ Flow::~Flow() {
 	if(_pPacket)
 		delete _pPacket;
 
-	writer.close();
-}
-
-void Flow::complete() {
-	if(!_completed && !writer.signature.empty())
-		DEBUG("Flow %u consumed",id);
 	_completed=true;
 }
 
@@ -143,11 +146,40 @@ UInt8 Flow::unpack(PacketReader& reader) {
 }
 
 void Flow::commit() {
-	// ACK
-	PacketWriter& ack = _band.writeMessage(0x51,1+Util::Get7BitValueSize(id)+Util::Get7BitValueSize(stage));
+
+	// Lost informations!
+	UInt32 size = 0;
+	list<UInt32> lost;
+	UInt32 current=stage;
+	UInt32 count=0;
+	map<UInt32,Fragment*>::const_iterator it=_fragments.begin();
+	while(it!=_fragments.end()) {
+		current = it->first-current-2;
+		size += Util::Get7BitValueSize(current);
+		lost.push_back(current);
+		current = it->first;
+		while(++it!=_fragments.end() && it->first==(++current))
+			++count;
+		--current;
+		size += Util::Get7BitValueSize(count);
+		lost.push_back(count);
+		count=0;
+	}
+
+	PacketWriter& ack = _band.writeMessage(0x51,1+Util::Get7BitValueSize(id)+Util::Get7BitValueSize(stage)+size);
+//	UInt32 pos = ack.position();
 	ack.write7BitValue(id);
-	ack.write8(writer.signature.empty() ? 0x00 : 0x7f);
+	UInt8 bufferSize = _pPacket ? (0x7F-_pPacket->fragments) : 0x7F;
+	if(writer.signature.empty())
+		bufferSize=0;
+	ack.write8(bufferSize);
 	ack.write7BitValue(stage);
+
+	list<UInt32>::const_iterator it2;
+	for(it2=lost.begin();it2!=lost.end();++it2)
+		ack.write7BitValue(*it2);
+	
+//	TRACE("Commit : %s",Util::FormatHex(ack.begin()+pos,ack.position()-pos).c_str());
 
 	commitHandler();
 	writer.flush();
@@ -156,6 +188,8 @@ void Flow::commit() {
 void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,UInt8 flags) {
 	if(_completed)
 		return;
+
+	// TRACE("Flow %u stage %u",id,stage);
 
 	UInt32 nextStage = this->stage+1;
 
@@ -168,7 +202,7 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 		deltaNAck=stage;
 	
 	if(flags&MESSAGE_ABANDONMENT || this->stage < (stage-deltaNAck)) {
-		DEBUG("Abandonment signal (flag:%2x)",flags);
+		DEBUG("Abandonment signal (flag:%2x), size %u",flags,fragment.available());
 		map<UInt32,Fragment*>::iterator it=_fragments.begin();
 		while(it!=_fragments.end()) {
 			if( it->first > stage) // Abandon all stages <= stage
@@ -186,10 +220,13 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 
 	
 	if(stage>nextStage) {
-		// not following stage!
-		if(_fragments.find(stage) == _fragments.end()) {
-			_fragments[stage] = new Fragment(fragment,flags);
-			 if(_fragments.size()>100)
+		// not following stage, bufferizes the stage
+		map<UInt32,Fragment*>::iterator it = _fragments.lower_bound(stage);
+		if(it==_fragments.end() || it->first!=stage) {
+			if(it!=_fragments.begin())
+				--it;
+			_fragments.insert(it,pair<UInt32,Fragment*>(stage,new Fragment(fragment,flags)));
+			if(_fragments.size()>100)
 				DEBUG("_fragments.size()=%d",_fragments.size()); 
 		} else
 			DEBUG("Stage %u on flow %u has already been received",stage,id);
@@ -197,7 +234,7 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 		fragmentSortedHandler(nextStage++,fragment,flags);
 		map<UInt32,Fragment*>::iterator it=_fragments.begin();
 		while(it!=_fragments.end()) {
-			if( it->first >nextStage)
+			if( it->first > nextStage)
 				break;
 			PacketReader reader(it->second->begin(),it->second->size());
 			fragmentSortedHandler(nextStage++,reader,it->second->flags);
@@ -280,7 +317,7 @@ void Flow::fragmentSortedHandler(UInt32 stage,PacketReader& fragment,UInt8 flags
 					rawHandler(type,*pMessage);
 			}
 		} catch(Exception& ex) {
-			_error = "flow error, " + ex.message();
+			_error = "flow error, " + ex.displayText();
 		} catch(exception& ex) {
 			_error = string("flow error, ") + ex.what();
 		} catch(...) {

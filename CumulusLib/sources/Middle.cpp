@@ -38,15 +38,15 @@ Middle::Middle(UInt32 id,
 				const Peer& peer,
 				const UInt8* decryptKey,
 				const UInt8* encryptKey,
-				DatagramSocket& socket,
 				Handler& handler,
 				const Sessions&	sessions,
-				Target& target) : Session(id,farId,peer,decryptKey,encryptKey,socket,handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
+				Target& target) : ServerSession(id,farId,peer,decryptKey,encryptKey,handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
 					_middleId(0),_sessions(sessions),_firstResponse(false),_queryUrl("rtmfp://"+target.address.toString()+peer.path),_middlePeer(peer),_target(target) {
 
-	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.parameters);
+	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,_middlePeer);
 
 	// connection to target
+	_socket.setReceiveBufferSize(handler.udpBufferSize);_socket.setSendBufferSize(handler.udpBufferSize);
 	_socket.connect(target.address);
 
 	INFO("Handshake Target");
@@ -88,8 +88,21 @@ Middle::~Middle() {
 		delete _pMiddleAesEncrypt;
 }
 
+bool Middle::decode(PacketReader& packet) {
+	if(farId==0)
+		return RTMFP::Decode(packet);
+	return Session::decode(packet);
+}
+void Middle::encode(PacketWriter& packet) {
+	if(farId==0) {
+		RTMFP::Encode(packet);
+		return;
+	}
+	Session::encode(packet);
+}
+
 PacketWriter& Middle::handshaker() {
-	PacketWriter& writer(Session::writer());
+	PacketWriter& writer(ServerSession::writer());
 	writer.clear(12);
 	return writer;
 }
@@ -122,7 +135,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 			
 			// request reply
 			PacketWriter& request = handshaker();
-			request << id(); // id session, we use the same that Cumulus id session for Flash client
+			request << id; // id session, we use the same that Cumulus id session for Flash client
 			request.writeString8(cookie); // cookie
 			request.write7BitValue(sizeof(nonce));
 			request.writeRaw(nonce,sizeof(nonce));
@@ -147,10 +160,10 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 				response.writeRaw(packet.current(),packet.available());
 
 				// to send in handshake mode!
-				UInt32 farId = _farId;
-				_farId = 0;
-				flush(SYMETRIC_ENCODING | WITHOUT_ECHO_TIME);
-				_farId = farId;
+				UInt32 oldFarId = farId;
+				(UInt32&)farId = 0;
+				flush(0x0b,false);
+				(UInt32&)farId = oldFarId;
 
 			}  else {
 				// redirection request
@@ -164,7 +177,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 				   }
 				}
 				
-				Session::fail("Redirection 'man in the middle' request"); // to prevent the other side
+				ServerSession::fail("Redirection 'man in the middle' request"); // to prevent the other side
 				kill(); // In this redirection request case, the target session has never existed!
 			}
 
@@ -199,7 +212,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 }
 
 void Middle::sendHandshakeToTarget(UInt8 type) {
-	PacketWriter& packet(Session::writer());
+	PacketWriter& packet(ServerSession::writer());
 	packet.reset(6);
 	packet.write8(0x0b);
 	packet << RTMFP::TimeNow();
@@ -209,20 +222,20 @@ void Middle::sendHandshakeToTarget(UInt8 type) {
 	Logs::Dump(packet,6,format("Middle to %s handshaking",_target.address.toString()).c_str(),true);
 
 	RTMFP::Encode(packet);
-	RTMFP::Pack(packet);
+	RTMFP::Pack(packet,0);
 	_socket.sendBytes(packet.begin(),(int)packet.length());
 	writer(); // To delete the handshake response!
 }
 
 PacketWriter& Middle::requester() {
-	PacketWriter& writer(Session::writer());
+	PacketWriter& writer(ServerSession::writer());
 	writer.clear(6);
 	writer.limit(PACKETSEND_SIZE-4);
 	return writer;
 }
 
 PacketWriter& Middle::writer() {
-	PacketWriter& writer(Session::writer());
+	PacketWriter& writer(ServerSession::writer());
 	writer.clear(11);
 	writer.limit(PACKETSEND_SIZE-4);
 	return writer;
@@ -326,7 +339,7 @@ void Middle::packetHandler(PacketReader& packet) {
 									UInt8 result1[AES_KEY_SIZE];
 									UInt8 result2[AES_KEY_SIZE];
 									HMAC(EVP_sha256(),_sharedSecret,KEY_SIZE,&_targetNonce[0],_targetNonce.size(),result1,NULL);
-									HMAC(EVP_sha256(),&(*it)->id()[1],(*it)->id().size()-1,result1,AES_KEY_SIZE,result2,NULL);
+									HMAC(EVP_sha256(),(*it)->id,ID_SIZE,result1,AES_KEY_SIZE,result2,NULL);
 									out.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
 									out.writeRaw(content.current(),4);content.next(4);
 									out.writeRaw(_target.peerId,ID_SIZE);content.next(ID_SIZE);
@@ -365,7 +378,7 @@ void Middle::sendToTarget() {
 		return;
 	}
 	
-	PacketWriter& packet(Session::writer());
+	PacketWriter& packet(ServerSession::writer());
 
 	Logs::Dump(packet,6,format("Middle to %s",_target.address.toString()).c_str(),true);
 
@@ -452,7 +465,7 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 					for(it=_sessions.begin();it!=_sessions.end();++it) {
 						Middle* pMiddle = (Middle*)it->second;
 						if(pMiddle->middlePeer() == middlePeerIdWanted) {
-							memcpy(middlePeerIdWanted,pMiddle->peer().id,ID_SIZE);
+							memcpy(middlePeerIdWanted,pMiddle->peer.id,ID_SIZE);
 							break;
 						}
 					}
@@ -468,10 +481,10 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 							UInt8 result1[AES_KEY_SIZE];
 							UInt8 result2[AES_KEY_SIZE];
 							HMAC(EVP_sha256(),_target.sharedSecret,KEY_SIZE,&_target.initiatorNonce[0],_target.initiatorNonce.size(),result1,NULL);
-							HMAC(EVP_sha256(),&(*it)->id()[1],(*it)->id().size()-1,result1,AES_KEY_SIZE,result2,NULL);
+							HMAC(EVP_sha256(),(*it)->id,ID_SIZE,result1,AES_KEY_SIZE,result2,NULL);
 							packetOut.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
 							packetOut.writeRaw(content.current(),4);content.next(4);
-							packetOut.writeRaw(peer().id,ID_SIZE);content.next(ID_SIZE);
+							packetOut.writeRaw(peer.id,ID_SIZE);content.next(ID_SIZE);
 							break;
 						}
 					}
@@ -487,10 +500,10 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 			UInt8 peerId[ID_SIZE];
 			content.readRaw(peerId,ID_SIZE);
 
-			if(memcmp(peerId,peer().id,ID_SIZE)!=0 && memcmp(peerId,_middlePeer.id,ID_SIZE)!=0)
+			if(memcmp(peerId,peer.id,ID_SIZE)!=0 && memcmp(peerId,_middlePeer.id,ID_SIZE)!=0)
 				WARN("The p2pHandshake target packet doesn't match the peerId (or the middlePeerId)");
 			// Replace by the peer.id
-			packetOut.writeRaw(peer().id,ID_SIZE);
+			packetOut.writeRaw(peer.id,ID_SIZE);
 		}
 
 		packetOut.writeRaw(content.current(),content.available());
@@ -509,7 +522,7 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 
 
 void Middle::manage() {
-	if(died())
+	if(died)
 		return;
 
 	while(_socket.available()>0) {
@@ -518,14 +531,14 @@ void Middle::manage() {
 		try {
 			len = _socket.receiveBytes(_buffer,sizeof(_buffer));
 		} catch(Exception& ex) {
-			ERROR("Middle socket reception error : %s",ex.message().c_str());
+			ERROR("Middle socket reception error : %s",ex.displayText().c_str());
 			return;
 		}
 
 		PacketReader packet(_buffer,len);
 
 		if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
-			ERROR(format("Middle from %s : invalid packet",_target.address.toString()).c_str());
+			ERROR("Middle from %s : invalid packet",_target.address.toString().c_str());
 			return;
 		}
 
@@ -569,7 +582,7 @@ void Middle::manage() {
 }
 
 void Middle::failSignal() {
-	Session::failSignal();
+	ServerSession::failSignal();
 	if(_pMiddleAesEncrypt) {
 		PacketWriter& request = requester();
 		request.write8(0x4a);

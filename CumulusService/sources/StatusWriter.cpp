@@ -42,7 +42,8 @@ void StatusWriter::refresh(Handler& handler) {
 	AMFWriter& writer = writeAMFMessage("status");
 	writer.beginObject();
 		writer.writeObjectProperty("type","refresh");
-		writer.writeObjectProperty("clients",handler.count);
+		writer.writeObjectProperty("clients",handler.clients.count());
+
 		writer.writeObjectArrayProperty("publications",_publications.size());
 		map<UInt32,const Publication* const>::const_iterator it;
 		const Publication* pListenersPublication=NULL;
@@ -53,6 +54,7 @@ void StatusWriter::refresh(Handler& handler) {
 					pListenersPublication = it->second;
 			writer.endObject();
 		}
+
 		if(pListenersPublication) {
 			writer.writeObjectArrayProperty("listeners",pListenersPublication->listeners.count());
 			Listeners::Iterator it2;
@@ -67,6 +69,19 @@ void StatusWriter::refresh(Handler& handler) {
 				writer.endObject();
 			}
 		}
+
+		if(handler.edges.count()>0) {
+			writer.writeObjectArrayProperty("edges",handler.edges.count());
+			map<string,Edge*>::const_iterator it3;
+			for(it3=handler.edges.begin();it3!=handler.edges.end();++it3) {
+				writer.beginObject();
+					writer.writeObjectProperty("count",it3->second->count);
+					writer.writeObjectProperty("host",it3->second->address.host);
+					writer.writeObjectProperty("port",it3->second->address.port);
+				writer.endObject();
+			}
+		}
+
 	writer.endObject();
 	flush(true);
 }

@@ -31,12 +31,12 @@ Streams::~Streams() {
 	
 }
 
-bool Streams::publish(const Client& client,UInt32 id,const string& name) {
+bool Streams::publish(Client& client,UInt32 id,const string& name) {
 	Publications::Iterator it = publications.create(name);
 	return it->second->start(client,id);
 }
 
-void Streams::unpublish(const Client& client,UInt32 id,const string& name) {
+void Streams::unpublish(Client& client,UInt32 id,const string& name) {
 	Publications::Iterator it = publications(name);
 	if(it == publications.end()) {
 		DEBUG("The stream '%s' with a %u id doesn't exist, unpublish useless",name.c_str(),id);
@@ -48,11 +48,11 @@ void Streams::unpublish(const Client& client,UInt32 id,const string& name) {
 		publications.destroy(it);
 }
 
-void Streams::subscribe(const Client& client,UInt32 id,const string& name,FlowWriter& writer,double start) {
+void Streams::subscribe(Client& client,UInt32 id,const string& name,FlowWriter& writer,double start) {
 	publications.create(name)->second->addListener(client,id,writer,start==-3000 ? true : false);
 }
 
-void Streams::unsubscribe(const Client& client,UInt32 id,const string& name) {
+void Streams::unsubscribe(Client& client,UInt32 id,const string& name) {
 	Publications::Iterator it = publications(name);
 	if(it == publications.end()) {
 		DEBUG("The stream '%s' doesn't exists, unsubscribe useless",name.c_str());

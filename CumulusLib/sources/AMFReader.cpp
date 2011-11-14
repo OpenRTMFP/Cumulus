@@ -23,7 +23,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-AMFReader::AMFReader(PacketReader& reader) : _reader(reader) {
+AMFReader::AMFReader(PacketReader& reader) : reader(reader) {
 
 }
 
@@ -33,66 +33,74 @@ AMFReader::~AMFReader() {
 }
 
 void AMFReader::read(string& value) {
-	UInt8 c = _reader.read8();
-	if(c!=AMF_STRING) {
-		ERROR("byte '%02x' is not a AMF String marker",c);
+	UInt8 marker = reader.read8();
+	if(marker==AMF_NULL || marker==AMF_UNDEFINED)
+		return;
+	if(marker!=AMF_STRING) {
+		ERROR("byte %u is not a AMF String marker",marker);
 		return;
 	}
-	_reader.readString16(value);
+	reader.readString16(value);
 }
 
 double AMFReader::readNumber() {
-	UInt8 c = _reader.read8();
-	if(c!=AMF_NUMBER) {
-		ERROR("byte '%02x' is not a AMF number marker",c);
+	UInt8 marker = reader.read8();
+	if(marker==AMF_NULL || marker==AMF_UNDEFINED)
+		return 0;
+	if(marker!=AMF_NUMBER) {
+		ERROR("byte %u is not a AMF number marker",marker);
 		return 0;
 	}
 	double result;
-	_reader >> result;
+	reader >> result;
 	return result;
 }
 
 bool AMFReader::readBool() {
-	UInt8 c = _reader.read8();
-	if(c!=AMF_BOOLEAN) {
-		ERROR("byte '%02x' is not a AMF boolean marker",c);
+	UInt8 marker = reader.read8();
+	if(marker==AMF_NULL || marker==AMF_UNDEFINED)
+		return false;
+	if(marker!=AMF_BOOLEAN) {
+		ERROR("byte %u is not a AMF boolean marker",marker);
 		return false;
 	}
-	return _reader.read8()==0x00 ? true : false;
+	return reader.read8()==0x00 ? true : false;
 }
 
 
 void AMFReader::skipNull() {
-	while(AMF_NULL == _reader.read8() && _reader.available());
-	_reader.reset(_reader.position()-1);
+	while(AMF_NULL == reader.read8() && reader.available());
+	reader.reset(reader.position()-1);
 }
 
 void AMFReader::readObject(AMFObject& amfObject) {
-	UInt8 marker = _reader.read8();
+	UInt8 marker = reader.read8();
+	if(marker==AMF_NULL || marker==AMF_UNDEFINED)
+		return;
 	if(marker!=AMF_BEGIN_OBJECT) {
-		ERROR("byte '%02x' is not a AMF begin-object marker",marker);
+		ERROR("byte %u is not a AMF begin-object marker",marker);
 		return;
 	}
 	string name;
-	_reader.readString16(name);
+	reader.readString16(name);
 	while(!name.empty()) {
-		marker = _reader.read8();
+		marker = reader.read8();
 		switch(marker) {
 			case AMF_BOOLEAN: {
 				bool value;
-				_reader >> value;
+				reader >> value;
 				amfObject.setBool(name,value);
 				break;
 			}
 			case AMF_STRING: {
 				string value;
-				_reader.readString16(value);
+				reader.readString16(value);
 				amfObject.setString(name,value);
 				break;
 			}
 			case AMF_NUMBER: {
 				double value;
-				_reader >> value;
+				reader >> value;
 				amfObject.setDouble(name,value);
 				break;
 			}
@@ -100,17 +108,17 @@ void AMFReader::readObject(AMFObject& amfObject) {
 				amfObject.setString(name,"");
 				break;
 			default:
-				ERROR("Unknown AMF '%02x' marker",marker);
+				ERROR("Unknown AMF %u marker",marker);
 			case AMF_NULL:
 				amfObject.setInt(name,0);
 				amfObject.setInt(name+".type",AMF_NULL);
 				break;
 		}
-		_reader.readString16(name);
+		reader.readString16(name);
 	}
-	marker = _reader.read8();
+	marker = reader.read8();
 	if(marker!=AMF_END_OBJECT) {
-		ERROR("byte '%02x' is not a AMF end-object marker",marker);
+		ERROR("byte %u is not a AMF end-object marker",marker);
 		return;
 	}
 }

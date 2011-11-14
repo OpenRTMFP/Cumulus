@@ -4,8 +4,8 @@ CC=g++
 EXEC=CumulusService
 INCLUDES=-I./../CumulusLib/include/
 SOURCES=./sources/
-CFLAGS=-D CUMULUS_EXPORTS
-LIBS = -lCumulus -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lssl
+CFLAGS+=-D CUMULUS_EXPORTS
+LIBS ?= -lCumulus -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lssl
 OBJECT = $(OBJECTS:%=%.o)
 
 main: $(OBJECT)

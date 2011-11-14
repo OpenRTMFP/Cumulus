@@ -51,19 +51,24 @@ public:
 	void write(const char* value,Poco::UInt16 size);
 	void writeBool(bool value);
 	void writeNull();
+	BinaryWriter& writeByteArray(Poco::UInt32 size);
 	void writeByteArray(const std::vector<Poco::UInt8>& data);
+	void writeByteArray(const Poco::UInt8* data,Poco::UInt32 size);
 	
-private:
-	BinaryWriter& _writer;
+	BinaryWriter& writer;
 };
 
 
 inline void AMFWriter::beginObject() {
-	_writer.write8(AMF_BEGIN_OBJECT); // mark deb
+	writer.write8(AMF_BEGIN_OBJECT); // mark deb
 }
 
 inline void AMFWriter::writeNull() {
-	_writer.write8(AMF_NULL); // marker
+	writer.write8(AMF_NULL); // marker
+}
+
+inline void AMFWriter::writeByteArray(const std::vector<Poco::UInt8>& data) {
+	writeByteArray(data.size()>0 ? &data[0] : NULL,data.size());
 }
 
 

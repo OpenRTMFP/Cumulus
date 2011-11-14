@@ -26,7 +26,7 @@
 #include <stdio.h>
 
 
-#if defined(_WIN32)
+#if defined(POCO_OS_FAMILY_WINDOWS)
 
 	#define snprintf _snprintf
 
@@ -85,7 +85,7 @@
 // Memory Leak
 //
 
-#if defined(_WIN32) && defined(_DEBUG)
+#if defined(POCO_OS_FAMILY_WINDOWS) && defined(_DEBUG)
 	#include <map> // A cause d'un pb avec le nouveau new debug!
 	#define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
 #endif

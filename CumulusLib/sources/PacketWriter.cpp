@@ -23,12 +23,12 @@ using namespace Poco;
 
 namespace Cumulus {
 
-PacketWriter::PacketWriter(const UInt8* buffer,UInt32 size) : _memory((char*)buffer,size),BinaryWriter(_memory),_pOther(NULL),_skip(0),_size(size) {
+PacketWriter::PacketWriter(const UInt8* buffer,UInt32 size) : _memory((char*)buffer,size),BinaryWriter(_memory),_pOther(NULL),_size(size) {
 }
 
 // Consctruction by copy
-PacketWriter::PacketWriter(PacketWriter& other,UInt32 skip) : _pOther(&other),_memory(other._memory),BinaryWriter(_memory),_skip(skip),_size(other._size) {
-	this->next(skip);
+PacketWriter::PacketWriter(PacketWriter& other) : _pOther(&other),_memory(other._memory),BinaryWriter(_memory),_size(other._size) {
+	
 }
 
 PacketWriter::~PacketWriter() {
@@ -51,7 +51,7 @@ void PacketWriter::clear(UInt32 pos) {
 }
 
 void PacketWriter::flush() {
-	if(_pOther && (_memory.written()-_skip)>_pOther->_memory.written())
+	if(_pOther && _memory.written()>_pOther->_memory.written())
 		_pOther->_memory.written(_memory.written());
 	BinaryWriter::flush();
 }

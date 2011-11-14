@@ -19,7 +19,7 @@
 
 #include "Cumulus.h"
 #include "Listeners.h"
-#include "Client.h"
+#include "Clients.h"
 
 namespace Cumulus {
 
@@ -38,14 +38,15 @@ public:
 	const QualityOfService&	videoQOS() const;
 	const QualityOfService&	audioQOS() const;
 
-	bool					start(const Client& client,Poco::UInt32	publisherId);
-	void					stop(const Client& client,Poco::UInt32	publisherId);
+	bool					start(Client& client,Poco::UInt32	publisherId);
+	void					stop(Client& client,Poco::UInt32	publisherId);
 
 	void					pushAudioPacket(const Client& client,Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
 	void					pushVideoPacket(const Client& client,Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
+	void					pushDataPacket(const Client& client,const std::string& name,PacketReader& packet);
 
-	void					addListener(const Client& client,Poco::UInt32 id,FlowWriter& writer,bool unbuffered);
-	void					removeListener(const Client& client,Poco::UInt32 id);
+	void					addListener(Client& client,Poco::UInt32 id,FlowWriter& writer,bool unbuffered);
+	void					removeListener(Client& client,Poco::UInt32 id);
 
 	void					flush();
 private:

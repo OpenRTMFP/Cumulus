@@ -36,6 +36,7 @@ public:
 
 	void process(const Poco::UInt8* in,Poco::UInt8* out,Poco::UInt32 size);
 
+	const bool null;
 private:
 	Direction	_direction;
 	AES_KEY		_key;

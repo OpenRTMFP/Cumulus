@@ -35,14 +35,14 @@ public:
 	virtual ~Message();
 
 	BinaryReader&			reader(Poco::UInt32& size);
+	BinaryReader&			reader(Poco::UInt32 fragment,Poco::UInt32& size);
 	virtual BinaryReader&	memAck(Poco::UInt32& size);
-	virtual	Poco::UInt32	init(Poco::UInt32 position)=0;
 	
-	std::list<Poco::UInt32>		fragments;
-	Poco::UInt32				startStage;
-	const bool					repeatable;
+	std::map<Poco::UInt32,Poco::UInt32>		fragments;
+	const bool								repeatable;
 
 private:
+	virtual	Poco::UInt32	init(Poco::UInt32 position)=0;
 	BinaryReader			_reader;
 };
 
@@ -55,10 +55,11 @@ public:
 	MessageUnbuffered(const Poco::UInt8* data,Poco::UInt32 size,const Poco::UInt8* memAckData=NULL,Poco::UInt32 memAckSize=0);
 	virtual ~MessageUnbuffered();
 
-	Poco::UInt32		init(Poco::UInt32 position);
 	BinaryReader&		memAck(Poco::UInt32& size);
 	
 private:
+	Poco::UInt32				init(Poco::UInt32 position);
+
 	MemoryInputStream			_stream;
 	BinaryReader*				_pReaderAck;
 	MemoryInputStream*			_pMemAck;
@@ -70,13 +71,19 @@ public:
 	MessageBuffered();
 	virtual ~MessageBuffered();
 
-	Poco::UInt32		init(Poco::UInt32 position);
-
 	AMFWriter			amfWriter;
 	BinaryWriter		rawWriter;
 	
 private:
+	Poco::UInt32		init(Poco::UInt32 position);
+
 	BinaryStream		_stream;
+};
+
+class MessageNull : public MessageBuffered {
+public:
+	MessageNull();
+	virtual ~MessageNull();
 };
 
 

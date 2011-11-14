@@ -33,8 +33,15 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(*this,_socket,*this),_nextIdSession(0) {
-#ifndef _WIN32
+RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(*this,_edgesSocket,*this),_sessions(*this) {
+#ifndef POCO_OS_FAMILY_WINDOWS
+//	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
+//	RAND_seed(rnd_seed, sizeof(rnd_seed));
+#endif
+}
+
+RTMFPServer::RTMFPServer(const string& name) : Startable(name),_pCirrus(NULL),_handshake(*this,_edgesSocket,*this),_sessions(*this) {
+#ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
 #endif
@@ -52,14 +59,10 @@ Session* RTMFPServer::findSession(UInt32 id) {
 		return &_handshake;
 	}
 	Session* pSession = _sessions.find(id);
-	if(pSession) {
-	//	TRACE("Session d'identification '%u'",id);
-		if(!pSession->checked)
-			_handshake.commitCookie(*pSession);
+	if(pSession)
 		return pSession;
-	}
 
-	WARN("Unknown session '%u'",id);
+	WARN("Unknown session %u",id);
 	return NULL;
 }
 
@@ -74,6 +77,15 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 		return;
 	}
 	_port = params.port;
+	if(_port==0) {
+		ERROR("RTMFPServer port must have a positive value");
+		return;
+	}
+	_edgesPort = params.edgesPort;
+	if(_port==_edgesPort) {
+		ERROR("RTMFPServer port must different than RTMFPServer edges.port");
+		return;
+	}
 	_freqManage = 2000000; // 2 sec by default
 	if(params.pCirrus) {
 		_pCirrus = new Target(*params.pCirrus);
@@ -81,12 +93,28 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 	}
 	_middle = params.middle;
 
+	(UInt32&)udpBufferSize = params.udpBufferSize==0 ? _socket.getReceiveBufferSize() : params.udpBufferSize;
+	_socket.setReceiveBufferSize(udpBufferSize);_socket.setSendBufferSize(udpBufferSize);
+	_edgesSocket.setReceiveBufferSize(udpBufferSize);_edgesSocket.setSendBufferSize(udpBufferSize);
+	DEBUG("Socket buffer receving/sending size = %d/%d",udpBufferSize,udpBufferSize);
+
 	(UInt32&)keepAliveServer = params.keepAliveServer<5 ? 5000 : params.keepAliveServer*1000;
 	(UInt32&)keepAlivePeer = params.keepAlivePeer<5 ? 5000 : params.keepAlivePeer*1000;
+	(UInt8&)edgesAttemptsBeforeFallback = params.edgesAttemptsBeforeFallback;
 	
-	onStart();
 	setPriority(params.threadPriority);
 	Startable::start();
+}
+
+bool RTMFPServer::prerun() {
+	NOTE("RTMFP server starts on %u port",_port);
+	if(_edgesPort>0)
+		NOTE("RTMFP edges server starts on %u port",_edgesPort);
+	onStart();
+	bool result=Startable::prerun();
+	onStop();
+	NOTE("RTMFP server stops");
+	return result;
 }
 
 
@@ -94,73 +122,90 @@ void RTMFPServer::run(const volatile bool& terminate) {
 	SocketAddress address("0.0.0.0",_port);
 	_socket.bind(address,true);
 
+	SocketAddress edgesAddress("0.0.0.0",_edgesPort);
+	if(_edgesPort>0)
+		_edgesSocket.bind(edgesAddress,true);
+
 	SocketAddress sender;
 	UInt8 buff[PACKETRECV_SIZE];
 	int size = 0;
 
-	NOTE("RTMFP server starts on %hu port",_port);
-
 	try {
 
+#ifndef POCO_OS_FAMILY_WINDOWS
+		poco_throw_on_signal;
+#endif
+
 		while(!terminate) {
-			manage();
+			bool stop=false;
+			bool idle = manageRealTime(stop);
+			if(stop)
+				break;
 
-			Thread::sleep(1);
-
-			while(!terminate && _socket.available()>0) {
-				manage();
-
+			_handshake.isEdges=false;
+			if(_socket.available()>0) {
 				try {
 					size = _socket.receiveFrom(buff,sizeof(buff),sender);
 				} catch(Exception& ex) {
-					WARN("Main socket reception : %s",ex.message().c_str());
+					WARN("Main socket reception : %s",ex.displayText().c_str());
 					_socket.close();
 					_socket.bind(address,true);
 					continue;
 				}
-
-				//TRACE("Sender : %s",sender.toString().c_str());
-
-				PacketReader packet(buff,size);
-				if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
-					ERROR("Invalid packet");
+				
+			} else if(_edgesPort>0 && _edgesSocket.available()>0) {
+				try {
+					size = _edgesSocket.receiveFrom(buff,sizeof(buff),sender);
+					_handshake.isEdges=true;
+				} catch(Exception& ex) {
+					WARN("Main socket reception : %s",ex.displayText().c_str());
+					_edgesSocket.close();
+					_edgesSocket.bind(edgesAddress,true);
 					continue;
 				}
-
-				UInt32 idSession = RTMFP::Unpack(packet);
-				Session* pSession = this->findSession(idSession);
-
-				if(!pSession)
-					continue;
-
-				if(!pSession->decode(packet,sender)) {
-					Logs::Dump(packet,"Packet decrypted:");
-					ERROR("Decrypt error");
-					continue;
-				}
-			
-				Logs::Dump(packet,format("Request from %s",sender.toString()).c_str());
-
-				pSession->packetHandler(packet);
+				Edge* pEdge = edges(sender);
+				if(pEdge)
+					pEdge->update();
+			} else {
+				if(idle)
+					Thread::sleep(1);
+				continue;
 			}
 
+			if(size<RTMFP_MIN_PACKET_SIZE) {
+				ERROR("Invalid packet");
+				continue;
+			}
+			
+			PacketReader packet(buff,size);
+			Session* pSession=findSession(RTMFP::Unpack(packet));
+			
+			if(!pSession)
+				continue;
+
+			if(!pSession->checked)
+				_handshake.commitCookie(*pSession);
+
+			pSession->setEndPoint(_handshake.isEdges ? _edgesSocket : _socket,sender);
+			pSession->receive(packet);
 		}
+
+	} catch (SignalException& ex) {
+		FATAL("RTMFPServer : %s",ex.displayText().c_str());
 	} catch(Exception& ex) {
-		FATAL("RTMFPServer error : %s",ex.message().c_str());
+		FATAL("RTMFPServer : %s",ex.displayText().c_str());
 	} catch (exception& ex) {
-		FATAL("RTMFPServer error : %s",ex.what());
+		FATAL("RTMFPServer : %s",ex.what());
 	} catch (...) {
 		FATAL("RTMFPServer unknown error");
 	}
 
-	INFO("RTMFP server stopping");
-	
-	_sessions.clear();
 	_handshake.clear();
+	_sessions.clear();
 	_socket.close();
+	if(_edgesPort>0)
+		_edgesSocket.close();
 
-	NOTE("RTMFP server stops");
-	onStop();
 	if(_pCirrus) {
 		delete _pCirrus;
 		_pCirrus = NULL;
@@ -174,13 +219,13 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	Sessions::Iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
 		pSession = it->second;
-		if(memcmp(pSession->peer().address.addr(),address.addr(),address.length())==0 && pSession->peer().address.port() == address.port())
+		if(Util::SameAddress(pSession->peer.address,address))
 			break;
 	}
 	if(it==_sessions.end())
 		pSession=NULL;
 
-	Session* pSessionWanted = _sessions.find(peerIdWanted);
+	ServerSession* pSessionWanted = (ServerSession*)_sessions.find(peerIdWanted);
 
 	if(_pCirrus) {
 		// Just to make working the man in the middle mode !
@@ -210,35 +255,41 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 		return 0;
 	}
 
+	UInt8 result = 0x00;
 	if(_middle) {
 		if(pSessionWanted->pTarget) {
-			_handshake.createCookie(response,new Cookie(*pSessionWanted->pTarget));
+			HelloAttempt& attempt = _handshake.helloAttempt<HelloAttempt>(tag);
+			attempt.pTarget = pSessionWanted->pTarget;
+			_handshake.createCookie(response,attempt,tag,"");
 			response.writeRaw("\x81\x02\x1D\x02");
 			response.writeRaw(pSessionWanted->pTarget->publicKey,KEY_SIZE);
-			return 0x70;
+			result = 0x70;
 		} else
 			ERROR("Peer/peer dumped exchange impossible : no corresponding 'Target' with the session wanted");
 	}
-	
-	/// Udp hole punching normal process
-	pSessionWanted->p2pHandshake(address,tag,pSession);
 
-	response.writeAddress(pSessionWanted->peer().address,true);
-	vector<Address>::const_iterator it2;
-	for(it2=pSessionWanted->peer().privateAddress.begin();it2!=pSessionWanted->peer().privateAddress.end();++it2) {
-		const Address& addr = *it2;
-		if(addr == address)
-			continue;
-		response.writeAddress(addr,false);
-	}
 	
-	return 0x71;
+	if(result==0x00) {
+		/// Udp hole punching normal process
+		pSessionWanted->p2pHandshake(address,tag,pSession);
+
+		response.writeAddress(pSessionWanted->peer.address,true);
+		vector<Address>::const_iterator it2;
+		for(it2=pSessionWanted->peer.privateAddress.begin();it2!=pSessionWanted->peer.privateAddress.end();++it2) {
+			const Address& addr = *it2;
+			if(addr == address)
+				continue;
+			response.writeAddress(addr,false);
+		}
+
+		result = 0x71;
+	}
+
+	return result;
 
 }
 
-UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* decryptKey,const UInt8* encryptKey,Cookie& cookie) {
-	while(_nextIdSession==0 || _sessions.find(_nextIdSession))
-		++_nextIdSession;
+Session& RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* decryptKey,const UInt8* encryptKey,Cookie& cookie) {
 
 	Target* pTarget=_pCirrus;
 
@@ -252,25 +303,31 @@ UInt32 RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* dec
 			pTarget = cookie.pTarget;
 	}
 
-	Session* pSession;
+	ServerSession* pSession;
 	if(pTarget) {
-		pSession = new Middle(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,*this,_sessions,*pTarget);
+		pSession = new Middle(_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this,_sessions,*pTarget);
 		if(_pCirrus==pTarget)
 			pSession->pTarget = cookie.pTarget;
 		DEBUG("500ms sleeping to wait cirrus handshaking");
 		Thread::sleep(500); // to wait the cirrus handshake
 		pSession->manage();
 	} else {
-		pSession = new Session(_nextIdSession,farId,peer,decryptKey,encryptKey,_socket,*this);
+		pSession = new ServerSession(_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this);
 		pSession->pTarget = cookie.pTarget;
 	}
 
 	_sessions.add(pSession);
 
-	return _nextIdSession;
+	return *pSession;
 }
 
-void RTMFPServer::manage() {
+void RTMFPServer::destroySession(Session& session) {
+	Edge* pEdge = edges(session.peer.address);
+	if(pEdge)
+		pEdge->removeSession(session);
+}
+
+bool RTMFPServer::manageRealTime(bool& terminate) {
 	if(!_timeLastManage.isElapsed(_freqManage)) {
 		// Just middle session!
 		if(_middle) {
@@ -281,8 +338,13 @@ void RTMFPServer::manage() {
 					pMiddle->manage();
 			}
 		}
-		return;
+		return true;
 	}
+	manage();
+	return true;
+}
+
+void RTMFPServer::manage() {
 	_timeLastManage.update();
 	_handshake.manage();
 	_sessions.manage();

@@ -16,20 +16,31 @@
 */
 
 #include "Util.h"
+#include "Logs.h"
 #include "Poco/URI.h"
 #include "Poco/FileStream.h"
 #include "Poco/HexBinaryEncoder.h"
+#include "string.h"
 #include <sstream>
+#include "math.h"
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Net;
+using namespace Poco::Util;
 
 namespace Cumulus {
+
+string Util::NullString;
 
 Util::Util() {
 }
 
 Util::~Util() {
+}
+
+bool Util::SameAddress(const SocketAddress& address1,const SocketAddress& address2) {
+	return memcmp(address1.addr(),address2.addr(),address1.length())==0 && address1.port() == address2.port();
 }
 
 
@@ -49,13 +60,17 @@ UInt8 Util::Get7BitValueSize(UInt32 value) {
 	return 1;
 }
 
-void Util::UnpackUrl(const string& url,string& path,map<string,string>& parameters) {
-	URI uri(url);
-	path.assign(uri.getPath());
-	UnpackQuery(uri.getRawQuery(),parameters);
+void Util::UnpackUrl(const string& url,string& path,AbstractConfiguration& parameters) {
+	try {
+		URI uri(url);
+		path = uri.getPath();
+		UnpackQuery(uri.getRawQuery(),parameters);
+	} catch(Exception& ex) {
+		ERROR("Unpack url %s impossible : %s",url.c_str(),ex.displayText().c_str());
+	}
 }
 
-void Util::UnpackQuery(const string& query,map<string,string>& parameters) {
+void Util::UnpackQuery(const string& query,AbstractConfiguration& parameters) {
 	istringstream istr(query);
 	static const int eof = std::char_traits<char>::eof();
 
@@ -84,8 +99,54 @@ void Util::UnpackQuery(const string& query,map<string,string>& parameters) {
 		string decodedValue;
 		URI::decode(name, decodedName);
 		URI::decode(value, decodedValue);
-		parameters[decodedName] = decodedValue;
+		parameters.setString(decodedName,decodedValue);
 		if (ch == '&') ch = istr.get();
+	}
+}
+
+
+void Util::Dump(const UInt8* in,UInt32 size,vector<UInt8>& out,const char* header) {
+	UInt32 len = 0;
+	UInt32 i = 0;
+	UInt32 c = 0;
+	UInt8 b;
+	out.resize((UInt32)ceil((double)size/16)*67 + (header ? (strlen(header)+2) : 0));
+
+	if(header) {
+		out[len++] = '\t';
+		c = strlen(header);
+		memcpy(&out[len],header,c);
+		len += c;
+		out[len++] = '\n';
+	}
+
+	while (i<size) {
+		c = 0;
+		out[len++] = '\t';
+		while ( (c < 16) && (i+c < size) ) {
+			b = in[i+c];
+			sprintf((char*)&out[len],"%X%X ",b>>4, b & 0x0f );
+			len += 3;
+			++c;
+		}
+		while (c++ < 16) {
+			strcpy((char*)&out[len],"   ");
+			len += 3;
+		}
+		out[len++] = ' ';
+		c = 0;
+		while ( (c < 16) && (i+c < size) ) {
+			b = in[i+c];
+			if (b > 31)
+				out[len++] = b;
+			else
+				out[len++] = '.';
+			++c;
+		}
+		while (c++ < 16)
+			out[len++] = ' ';
+		i += 16;
+		out[len++] = '\n';
 	}
 }
 

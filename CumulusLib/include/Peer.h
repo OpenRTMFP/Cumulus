@@ -18,9 +18,10 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Client.h"
+#include "Clients.h"
 #include "Address.h"
 #include "Poco/Net/SocketAddress.h"
+#include "Poco/Net/DatagramSocket.h"
 #include <vector>
 #include <list>
 
@@ -32,21 +33,16 @@ class Group;
 class Peer : public Client {
 	friend class Group;
 public:
-	enum PeerState {
-		NONE,
-		ACCEPTED,
-		REJECTED
-	};
 
 	Peer();
-	//Peer(const Poco::Net::SocketAddress& address);
 	virtual ~Peer();
 
-	const Poco::Net::SocketAddress	address;
+	Poco::Net::SocketAddress		address;
 	const std::vector<Address>		privateAddress;
 
-	const PeerState					state;
+	const bool						connected;
 
+	void setFlowWriter(FlowWriter* pWriter);
 	void setPrivateAddress(const std::list<Address>& address);
 	void setPing(Poco::UInt16 ping);
 	void unsubscribeGroups();
@@ -60,6 +56,10 @@ private:
 	std::list<Group*>			_groups;
 	Poco::UInt16				_ping;
 };
+
+inline void Peer::setFlowWriter(FlowWriter* pWriter){
+	_pFlowWriter = pWriter;
+}
 
 inline Poco::UInt16 Peer::getPing() const {
 	return _ping;

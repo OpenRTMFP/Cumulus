@@ -17,6 +17,7 @@
 
 #include "FlowGroup.h"
 #include "Logs.h"
+#include <openssl/evp.h>
 
 using namespace std;
 using namespace Poco;
@@ -42,11 +43,18 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 
 	if(type==0x01) {
 		if(data.available()>0) {
-			UInt32 size = data.read7BitValue();
+			UInt32 size = data.read7BitValue()-1;
+			UInt8 flag = data.read8();
 
-			vector<UInt8> groupId(size);
-			data.readRaw(&groupId[0],size);
+			UInt8 groupId[ID_SIZE];
 
+			if(flag==0x10) {
+				vector<UInt8> groupIdVar(size);
+				data.readRaw(&groupIdVar[0],size);
+				EVP_Digest(&groupIdVar[0],groupIdVar.size(),(unsigned char *)groupId,NULL,EVP_sha256(),NULL);
+			} else
+				data.readRaw(groupId,ID_SIZE);
+		
 			_pGroup = &handler.group(groupId);
 
 			_pGroup->bestPeers(_bestPeers,peer);

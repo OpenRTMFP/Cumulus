@@ -16,6 +16,7 @@
 */
 
 #include "Handler.h"
+#include "Util.h"
 
 using namespace std;
 using namespace Poco;
@@ -23,9 +24,8 @@ using namespace Poco;
 namespace Cumulus {
 
 
-Handler::Handler() : streams(*this),count(0),
-	keepAliveServer(15000),
-	keepAlivePeer(10000) {
+Handler::Handler() : streams(*this),edges(_edges),clients(_clients),edgesAttemptsBeforeFallback(0),udpBufferSize(0),
+	keepAliveServer(0),keepAlivePeer(0) {
 }
 
 
@@ -37,7 +37,7 @@ Handler::~Handler() {
 	_groups.clear();
 }
 
-Group& Handler::group(const vector<UInt8>& id) {
+Group& Handler::group(const UInt8* id) {
 	Group* pGroup;
 	list<Group*>::iterator it=_groups.begin();
 	while(it!=_groups.end()) {

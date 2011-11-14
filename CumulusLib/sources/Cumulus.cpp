@@ -20,7 +20,7 @@
 
 std::string MainThreadName;
 
-#if defined(_WIN32) && defined(_DEBUG)
+#if defined(POCO_OS_FAMILY_WINDOWS) && defined(_DEBUG)
 
 #define FALSE   0
 #define TRUE    1
