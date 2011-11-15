@@ -206,6 +206,8 @@ private:
 				params.udpBufferSize = config().getInt("udpBufferSize",params.udpBufferSize);
 				params.keepAliveServer = config().getInt("keepAliveServer",params.keepAliveServer);
 				params.keepAlivePeer = config().getInt("keepAlivePeer",params.keepAlivePeer);
+				params.videoSampleAccess = config().getBool("videoSampleAccess",params.videoSampleAccess);
+				params.audioSampleAccess = config().getBool("audioSampleAccess",params.audioSampleAccess);
 				params.edgesAttemptsBeforeFallback = config().getInt("edges.attemptsBeforeFallback",params.edgesAttemptsBeforeFallback);
 				Server server(_auth,*this);
 				server.start(params);

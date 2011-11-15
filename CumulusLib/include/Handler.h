@@ -56,6 +56,8 @@ public:
 
 	// properties
 	const Poco::UInt32	udpBufferSize;
+	const bool			videoSampleAccess;
+	const bool			audioSampleAccess;
 	const Poco::UInt32	keepAlivePeer;
 	const Poco::UInt32	keepAliveServer;
 	const Poco::UInt8	edgesAttemptsBeforeFallback;

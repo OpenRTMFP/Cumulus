@@ -92,11 +92,7 @@ void FlowStream::lostFragmentsHandler(UInt32 count) {
 
 void FlowStream::messageHandler(const string& action,AMFReader& message) {
 
-	if(action=="|RtmpSampleAccess") {
-		// TODO?
-		bool value1 = message.readBool();
-		bool value2 = message.readBool();
-	} else if(action=="play") {
+	if(action=="play") {
 		disengage();
 		_state = PLAYING;
 
@@ -112,8 +108,8 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		data.write8(0x00);
 		AMFWriter amf(data);
 		amf.write("|RtmpSampleAccess");
-		amf.writeBool(false);
-		amf.writeBool(false);
+		amf.writeBool(handler.audioSampleAccess);
+		amf.writeBool(handler.videoSampleAccess);
 
 		writer.writeStatusResponse("Play.Reset","Playing and resetting " + name);
 

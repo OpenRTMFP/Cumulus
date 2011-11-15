@@ -24,7 +24,7 @@ using namespace Poco;
 namespace Cumulus {
 
 
-Handler::Handler() : streams(*this),edges(_edges),clients(_clients),edgesAttemptsBeforeFallback(0),udpBufferSize(0),
+Handler::Handler() : streams(*this),edges(_edges),clients(_clients),edgesAttemptsBeforeFallback(0),udpBufferSize(0),videoSampleAccess(false),audioSampleAccess(false),
 	keepAliveServer(0),keepAlivePeer(0) {
 }
 

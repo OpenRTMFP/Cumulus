@@ -56,7 +56,6 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 				data.readRaw(groupId,ID_SIZE);
 		
 			_pGroup = &handler.group(groupId);
-
 			_pGroup->bestPeers(_bestPeers,peer);
 
 			_pGroup->addPeer(peer);

@@ -31,7 +31,7 @@ namespace Cumulus {
 
 class RTMFPServerParams {
 public:
-	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),edgesAttemptsBeforeFallback(2),udpBufferSize(0),edgesPort(0),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15) {
+	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),edgesAttemptsBeforeFallback(2),udpBufferSize(0),edgesPort(0),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15),audioSampleAccess(false),videoSampleAccess(false) {
 	}
 	Poco::UInt16				port;
 	Poco::UInt32				udpBufferSize;
@@ -41,6 +41,8 @@ public:
 	Poco::Net::SocketAddress*	pCirrus;
 	Poco::Thread::Priority		threadPriority;
 
+	bool						audioSampleAccess;
+	bool						videoSampleAccess;
 	Poco::UInt16				keepAlivePeer;
 	Poco::UInt16				keepAliveServer;
 };

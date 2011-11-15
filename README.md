@@ -28,6 +28,12 @@ time in seconds for periodically sending packets keep-alive with server, 15s by 
 - **keepAlivePeer**,
 time in seconds for periodically sending packets keep-alive between peers, 10s by default (valid value is from 5s to 255s).
 
+- **audioSampleAccess**,
+boolean value to allow audio sample access on publication (false, value by default).
+
+- **videoSampleAccess**,
+boolean value to allow video sample access on publication (false, value by default).
+
 - **auth.whitelist**,
 boolean value to interpret the *auth* file as a whitelist (true) or a blacklist (false, value by default).
 

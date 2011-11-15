@@ -100,6 +100,8 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 
 	(UInt32&)keepAliveServer = params.keepAliveServer<5 ? 5000 : params.keepAliveServer*1000;
 	(UInt32&)keepAlivePeer = params.keepAlivePeer<5 ? 5000 : params.keepAlivePeer*1000;
+	(UInt32&)audioSampleAccess = params.audioSampleAccess;
+	(UInt32&)videoSampleAccess = params.videoSampleAccess;
 	(UInt8&)edgesAttemptsBeforeFallback = params.edgesAttemptsBeforeFallback;
 	
 	setPriority(params.threadPriority);
