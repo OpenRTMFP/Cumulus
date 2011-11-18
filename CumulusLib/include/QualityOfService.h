@@ -39,6 +39,9 @@ private:
 	std::list<Sample*>	_samples;
 	Poco::UInt32		_prevTime;
 	Poco::Timestamp		_reception;
+
+	Poco::UInt32		_num;
+	Poco::UInt32		_den;
 };
 
 

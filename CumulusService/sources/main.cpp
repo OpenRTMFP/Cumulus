@@ -20,14 +20,12 @@
 #include "Auth.h"
 #include "Server.h"
 #include "ApplicationKiller.h"
-#include "Poco/String.h"
 #include "Poco/File.h"
 #include "Poco/FileStream.h"
 #include "Poco/Format.h"
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
-#include "Poco/Util/MapConfiguration.h"
 #include "string.h"
 #include <iostream>
 

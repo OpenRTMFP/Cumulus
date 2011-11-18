@@ -32,7 +32,7 @@ public:
 	const UInt32 lost;
 };
 
-QualityOfService::QualityOfService() : lostRate(0),latency(0),_prevTime(0),droppedFrames(0) {
+QualityOfService::QualityOfService() : lostRate(0),latency(0),_prevTime(0),droppedFrames(0),_num(0),_den(0) {
 }
 
 
@@ -43,39 +43,45 @@ QualityOfService::~QualityOfService() {
 void QualityOfService::add(UInt32 time,UInt32 received,UInt32 lost) {
 
 	if(_prevTime>0) {
-		if(time>=_prevTime) {
+		if(time>_prevTime) {
 			UInt32 delta = time-_prevTime;
 			UInt32 deltaReal =  UInt32(_reception.elapsed()/1000);
 			Int64 result = latency+(Int64)deltaReal-delta;
 			if(result<0)
 				result=0;
 			(UInt32&)latency = (UInt32)result;
+			_reception.update();
 		} else {
-			ERROR("Latency computing with a impossible time value (%u) inferior than precedent time (%u)",time,_prevTime);
+			ERROR("QoS computing with a error time value (%u) inferiors or egals than precedent time (%u)",time,_prevTime);
+			time = _prevTime+1;
 		}
 	}
-	_reception.update();
-	_prevTime=time;
 
+	_prevTime=time;
+	_num += lost;
+	_den += (lost+received);
+	
 	Sample* pSample = new Sample(time,received,lost);
 		
 	list<Sample*>::iterator it=_samples.begin();
+	
+	UInt32 boundTime = time<10000 ? 0 : (time-10000);
+
 	while(it!=_samples.end()) {
 		Sample& sample(**it);
-		if(sample.time<(time-10000)) { // 10 secondes
-			delete *it;
-			_samples.erase(it++);
-			continue;
-		}
-		received += sample.received;
-		lost += sample.lost;
-		++it;
+		if(sample.time>=boundTime) // 10 secondes
+			break;
+		_den -= (sample.received+sample.lost);
+		_num -= sample.lost;
+		delete *it;
+		_samples.erase(it++);
 	}
+	//TRACE("_samples.size()=%u",_samples.size());
 	
-	if(received==0)
+	if(_den==0)
 		ERROR("Lost rate computing with a impossible null number of fragments received")
 	else
-		(double&)lostRate = (double)lost/(received+lost);
+		(double&)lostRate = (double)_num/_den;
 
 	_samples.push_back(pSample);
 }
@@ -84,7 +90,7 @@ void QualityOfService::reset() {
 	(double&)lostRate = 0;
 	(UInt32&)latency = 0;
 	(UInt32&)droppedFrames = 0;
-	_prevTime=0;
+	_num=_den=_prevTime=0;
 	list<Sample*>::iterator it;
 	for(it=_samples.begin();it!=_samples.end();++it)
 		delete (*it);

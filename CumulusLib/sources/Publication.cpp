@@ -144,9 +144,7 @@ void Publication::pushVideoPacket(const Client& client,UInt32 time,PacketReader&
 		ERROR("Video packet pushed on a publication %u who is idle",_publisherId);
 		return;
 	}
-	
-	if(time&0xFF000000) // TODO solve it!
-		time = _time;
+
 	_time = time;
 
 	// if some lost packet, it can be a keyframe, to avoid break video, we must wait next key frame
