@@ -70,7 +70,7 @@ private:
 class Clients {
 public:
 	struct Compare {
-	   bool operator()(const Poco::UInt8* a,const Poco::UInt8* b) {
+	   bool operator()(const Poco::UInt8* a,const Poco::UInt8* b) const {
 		   return memcmp(a,b,ID_SIZE)<0;
 	   }
 	};

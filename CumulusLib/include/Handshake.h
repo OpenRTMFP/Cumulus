@@ -57,7 +57,7 @@ private:
 	Poco::UInt8	handshakeHandler(Poco::UInt8 id,PacketReader& request,PacketWriter& response);
 
 	struct CompareCookies {
-	   bool operator()(const Poco::UInt8* a,const Poco::UInt8* b) {
+	   bool operator()(const Poco::UInt8* a,const Poco::UInt8* b) const {
 		   return memcmp(a,b,COOKIE_SIZE)<0;
 	   }
 	};
