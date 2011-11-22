@@ -106,7 +106,7 @@ void ServerSession::failSignal() {
 
 void ServerSession::kill() {
 	if(peer.connected) {
-		(bool&)peer.connected = false;
+		peer.connected = false;
 		_handler.onDisconnection(peer);
 		if(_handler._clients.erase(peer.id)==0)
 			WARN("Client %s seems already disconnected!",Util::FormatHex(peer.id,ID_SIZE).c_str())
@@ -334,7 +334,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 
 	// with time echo
 	if(marker == 0xFD)
-		(Poco::UInt16&)peer.ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16();
+		peer.ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16();
 	else if(marker != 0xF9)
 		WARN("Packet marker unknown : %02x",marker);
 
@@ -364,8 +364,8 @@ void ServerSession::packetHandler(PacketReader& packet) {
 				if(peer.addresses.size()==0)
 					CRITIC("Session %u has no any addresses!",id)
 				else
-					((list<Address>&)peer.addresses).pop_front();
-				((list<Address>&)peer.addresses).push_front(address);
+					peer.addresses.pop_front();
+				peer.addresses.push_front(address);
 				writeMessage(0x71,address.size()).writeRaw(address);
 				break;
 			}

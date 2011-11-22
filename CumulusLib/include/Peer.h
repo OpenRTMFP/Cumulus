@@ -33,16 +33,16 @@ public:
 	Peer();
 	virtual ~Peer();
 
-	const Poco::Net::SocketAddress	address;
-	const std::list<Address>		addresses;
+	Poco::Net::SocketAddress		address;
+	std::list<Address>				addresses;
 
-	const bool						connected;
-	const Poco::UInt16				ping;
+	bool							connected;
+	Poco::UInt16					ping;
 
 	void setFlowWriter(FlowWriter* pWriter);
 	void unsubscribeGroups();
 
-	bool isIn(Group& group) const;
+	bool isIn(Group& group);
 
 private:
 	bool isIn(Group& group,std::list<Group*>::iterator& it);

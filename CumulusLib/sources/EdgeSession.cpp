@@ -69,7 +69,7 @@ void EdgeSession::packetHandler(PacketReader& packet) {
 
 	if(peer.addresses.size()==0) {
 		CRITIC("Session %u has no any addresses!",id);
-		((list<Address>&)peer.addresses).push_front(peer.address.toString());
+		peer.addresses.push_front(peer.address.toString());
 	} else if(peer.addresses.front()!=peer.address) {
 		// Tell to server that peer address has changed!
 		INFO("Session %u has changed its public address",id);
@@ -154,8 +154,8 @@ void EdgeSession::serverPacketHandler(PacketReader& packet) {
 				if(peer.addresses.size()==0)
 					CRITIC("Session %u has no any addresses!",id)
 				else
-					((list<Address>&)peer.addresses).pop_front();
-				((list<Address>&)peer.addresses).push_front(peer.address.toString());
+					peer.addresses.pop_front();
+				peer.addresses.push_front(peer.address.toString());
 				DEBUG("Public address change of session %u has been commited",id);
 			} else
 				DEBUG("Obsolete commiting of public address change for session %u",id);

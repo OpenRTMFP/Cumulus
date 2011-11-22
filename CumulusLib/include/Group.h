@@ -19,7 +19,7 @@
 
 #include "Cumulus.h"
 #include "Peer.h"
-
+#include <set>
 
 namespace Cumulus {
 

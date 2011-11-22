@@ -42,7 +42,7 @@ Session::~Session() {
 void Session::setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address) {
 	if(_pSocket!=&socket)
 		_pSocket=&socket;
-	(SocketAddress&)peer.address = address;
+	peer.address = address;
 }
 
 void Session::receive(PacketReader& packet) {

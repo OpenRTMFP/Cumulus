@@ -57,17 +57,17 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		if(!handler.onConnection(peer,message))
 			throw Exception("Client rejected");
 		
-		(bool&)peer.connected = true;
+		peer.connected = true;
 
 		AMFObjectWriter(writer.writeSuccessResponse("Connect.Success","Connection succeeded")).write("objectEncoding",3);
 
 	} else if(name == "setPeerInfo") {
 
-		((list<Address>&)peer.addresses).erase(++peer.addresses.begin(),peer.addresses.end());
+		peer.addresses.erase(++peer.addresses.begin(),peer.addresses.end());
 		string addr;
 		while(message.available()) {
 			message.read(addr); // private host
-			((list<Address>&)peer.addresses).push_back(addr);
+			peer.addresses.push_back(addr);
 		}
 		
 		BinaryWriter& response(writer.writeRawMessage());

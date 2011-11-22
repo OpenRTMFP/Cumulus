@@ -112,7 +112,7 @@ void ServerConnection::packetHandler(PacketReader& packet) {
 				break;
 			}
 
-			(SocketAddress&)_handshake.peer.address = it->second;
+			_handshake.peer.address = it->second;
 			packet.reset(0);
 			PacketWriter writer(packet.current(),packet.available()+16); // +16 for futur 0xFFFF padding
 			writer.clear(packet.available());

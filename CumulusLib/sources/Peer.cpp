@@ -37,7 +37,7 @@ void Peer::unsubscribeGroups() {
 	}
 }
 
-bool Peer::isIn(Group& group) const {
+bool Peer::isIn(Group& group) {
 	list<Group*>::iterator it;
 	return ((Peer&)*this).isIn(group,it);
 }

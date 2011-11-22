@@ -98,8 +98,7 @@ void Handshake::manage() {
 			PacketWriter& packet(writer());
 			packet.write8(0x40);
 			packet.write16(0);
-			(SocketAddress&)peer.address = SocketAddress(it2->first);
-			setEndPoint(_edgesSocket,peer.address);
+			setEndPoint(_edgesSocket,SocketAddress(it2->first));
 			flush();
 			INFO("Keepalive RTMFP server edge %s",it2->first.c_str());
 		}
@@ -138,8 +137,7 @@ void Handshake::clear() {
 		PacketWriter& packet(writer());
 		packet.write8(0x45);
 		packet.write16(0);
-		(SocketAddress&)peer.address = SocketAddress(it2->first);
-		setEndPoint(_edgesSocket,peer.address);
+		setEndPoint(_edgesSocket,SocketAddress(it2->first));
 		flush();
 		delete it2->second;
 	}
@@ -350,8 +348,8 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				} else // Session direct
 					address = session.peer.address.toString();
 
-				((list<Address>&)session.peer.addresses).clear();
-				((list<Address>&)session.peer.addresses).push_back(address);
+				session.peer.addresses.clear();
+				session.peer.addresses.push_back(address);
 
 				cookie.write();
 			} else
