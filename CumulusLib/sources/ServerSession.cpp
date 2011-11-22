@@ -40,7 +40,7 @@ ServerSession::ServerSession(UInt32 id,
 	_pFlowNull = new FlowNull(this->peer,_handler,*this);
 	_writer.next(11);
 	_writer.limit(RTMFP_MAX_PACKET_LENGTH); // set normal limit
-
+	
 }
 
 
@@ -196,30 +196,39 @@ void ServerSession::eraseHelloAttempt(const string& tag) {
 
 void ServerSession::p2pHandshake(const SocketAddress& address,const std::string& tag,Session* pSession) {
 
-	DEBUG("Peer newcomer address send to peer '%u' connected",id);
+	bool good=true;
+
+	if(pSession) {
+		if(pSession->peer.addresses.size()==0) {
+			CRITIC("Session %u without peer addresses!",pSession->id);
+			good = false;
+		}
+	} else
+		good = false;
+
+	DEBUG("Peer newcomer address send to peer %u connected",id);
 	
-	Address const* pAddress = NULL;
 	UInt16 size = 0x36;
-	
-	if(pSession && pSession->peer.privateAddress.size()>0) {
+	UInt32 count = helloAttempt(tag);
+	UInt8 index=0;
 
-		UInt32 count = helloAttempt(tag);
-
+	Address const* pAddress = NULL;
+	if(good) {
 		// If two clients are on the same lan, starts with private address
-		if(memcmp(address.addr(),peer.address.addr(),address.length())==0)
+		if(peer.addresses.size()==0)
+			CRITIC("Session %u without peer addresses!",id)
+		else if(pSession->peer.addresses.front().host==peer.addresses.front().host)
 			++count;
 
-		UInt8 index=count%(pSession->peer.privateAddress.size()+1);
-		if(index>0) {
-			pAddress = &pSession->peer.privateAddress[index-1];
-			size +=  pAddress->host.size();
-		}
-
-	}
-
-	if(!pAddress)
+		index=count%pSession->peer.addresses.size();
+		list<Address>::const_iterator it=peer.addresses.begin();
+		advance(it,index);
+		pAddress = &(*it);
+		size +=  pAddress->host.size();
+	} else
 		size += (address.host().family() == IPAddress::IPv6 ? 16 : 4);
-	
+
+
 	PacketWriter& writer = writeMessage(0x0F,size);
 
 	writer.write8(0x22);
@@ -229,7 +238,7 @@ void ServerSession::p2pHandshake(const SocketAddress& address,const std::string&
 	writer.writeRaw(peer.id,ID_SIZE);
 	
 	if(pAddress)
-		writer.writeAddress(*pAddress,false);
+		writer.writeAddress(*pAddress,index==0);
 	else
 		writer.writeAddress(address,true);
 
@@ -297,8 +306,14 @@ PacketWriter& ServerSession::writeMessage(UInt8 type,UInt16 length,FlowWriter* p
 
 	UInt16 size = length + 3; // for type and size
 
-	if(size>writer.available())
+	if(size>writer.available()) {
 		flush(false); // send packet (and without time echo)
+		if(size > writer.available()) {
+			CRITIC("Message truncated because exceeds maximum UDP packet size on session %u",id);
+			size = writer.available();
+		}
+		_pLastFlowWriter=NULL;
+	}
 
 	writer.limit(writer.position()+size);
 
@@ -319,7 +334,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 
 	// with time echo
 	if(marker == 0xFD)
-		peer.setPing(RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16());
+		(Poco::UInt16&)peer.ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16();
 	else if(marker != 0xF9)
 		WARN("Packet marker unknown : %02x",marker);
 
@@ -341,6 +356,19 @@ void ServerSession::packetHandler(PacketReader& packet) {
 		PacketReader message(packet.current(),size);		
 
 		switch(type) {
+			case 0x70 : {
+				// only for edge: tell that peer addess has changed!
+				INFO("Edge tells that Session %u has changed its public address",id);
+				string address;
+				message >> address;
+				if(peer.addresses.size()==0)
+					CRITIC("Session %u has no any addresses!",id)
+				else
+					((list<Address>&)peer.addresses).pop_front();
+				((list<Address>&)peer.addresses).push_front(address);
+				writeMessage(0x71,address.size()).writeRaw(address);
+				break;
+			}
 			case 0x0c :
 				fail("failed on client side");
 				break;
@@ -462,8 +490,10 @@ void ServerSession::packetHandler(PacketReader& packet) {
 							++(UInt32&)pEdge->count;
 					}
 				}
-				if(!pFlow->error().empty())
+				if(!pFlow->error().empty()) {
 					fail(pFlow->error()); // send fail message immediatly
+					pFlow = NULL;
+				}
 
 				break;
 			}

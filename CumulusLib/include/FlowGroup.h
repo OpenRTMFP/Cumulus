@@ -35,8 +35,7 @@ private:
 
 	void rawHandler(Poco::UInt8 type,PacketReader& data);
 
-	std::list<const Peer*>		_bestPeers;
-	Group*						_pGroup;
+	Group*										_pGroup;
 };
 
 } // namespace Cumulus

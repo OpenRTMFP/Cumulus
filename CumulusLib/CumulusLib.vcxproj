@@ -197,7 +197,7 @@
     <ClCompile Include="sources\BinaryReader.cpp" />
     <ClCompile Include="sources\BinaryStream.cpp" />
     <ClCompile Include="sources\BinaryWriter.cpp" />
-    <ClCompile Include="sources\EdgeDescriptor.cpp" />
+    <ClCompile Include="sources\Edges.cpp" />
     <ClCompile Include="sources\EdgeSession.cpp" />
     <ClCompile Include="sources\MemoryStream.cpp" />
     <ClCompile Include="sources\PacketReader.cpp" />
@@ -209,12 +209,11 @@
     <ClCompile Include="sources\Startable.cpp" />
     <ClCompile Include="sources\Util.cpp" />
     <ClCompile Include="sources\AESEngine.cpp" />
-	<ClCompile Include="sources\Clients.cpp" />
+    <ClCompile Include="sources\Clients.cpp" />
     <ClCompile Include="sources\Entity.cpp" />
     <ClCompile Include="sources\Group.cpp" />
     <ClCompile Include="sources\Handler.cpp" />
     <ClCompile Include="sources\Peer.cpp" />
-    <ClCompile Include="sources\Peers.cpp" />
     <ClCompile Include="sources\RTMFP.cpp" />
     <ClCompile Include="sources\RTMFPServer.cpp" />
     <ClCompile Include="sources\Logs.cpp" />
@@ -248,7 +247,7 @@
     <ClInclude Include="include\BinaryReader.h" />
     <ClInclude Include="include\BinaryStream.h" />
     <ClInclude Include="include\BinaryWriter.h" />
-    <ClInclude Include="include\EdgeDescriptor.h" />
+    <ClInclude Include="include\Edges.h" />
     <ClInclude Include="include\EdgeSession.h" />
     <ClInclude Include="include\MemoryStream.h" />
     <ClInclude Include="include\Middle.h" />
@@ -266,7 +265,6 @@
     <ClInclude Include="include\Group.h" />
     <ClInclude Include="include\Handler.h" />
     <ClInclude Include="include\Peer.h" />
-    <ClInclude Include="include\Peers.h" />
     <ClInclude Include="include\RTMFP.h" />
     <ClInclude Include="include\RTMFPServer.h" />
     <ClInclude Include="include\Logger.h" />

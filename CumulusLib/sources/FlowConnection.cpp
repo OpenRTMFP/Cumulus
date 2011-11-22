@@ -63,13 +63,12 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 
 	} else if(name == "setPeerInfo") {
 
-		list<Address> address;
+		((list<Address>&)peer.addresses).erase(++peer.addresses.begin(),peer.addresses.end());
 		string addr;
 		while(message.available()) {
 			message.read(addr); // private host
-			address.push_back(addr);
+			((list<Address>&)peer.addresses).push_back(addr);
 		}
-		peer.setPrivateAddress(address);
 		
 		BinaryWriter& response(writer.writeRawMessage());
 		response.write16(0x29); // Unknown!

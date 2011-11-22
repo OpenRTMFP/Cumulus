@@ -43,7 +43,7 @@ QualityOfService::~QualityOfService() {
 void QualityOfService::add(UInt32 time,UInt32 received,UInt32 lost) {
 
 	if(_prevTime>0) {
-		if(time>_prevTime) {
+		if(time>=_prevTime) {
 			UInt32 delta = time-_prevTime;
 			UInt32 deltaReal =  UInt32(_reception.elapsed()/1000);
 			Int64 result = latency+(Int64)deltaReal-delta;
@@ -52,8 +52,8 @@ void QualityOfService::add(UInt32 time,UInt32 received,UInt32 lost) {
 			(UInt32&)latency = (UInt32)result;
 			_reception.update();
 		} else {
-			ERROR("QoS computing with a error time value (%u) inferiors or egals than precedent time (%u)",time,_prevTime);
-			time = _prevTime+1;
+			ERROR("QoS computing with a error time value (%u) inferiors than precedent time (%u)",time,_prevTime);
+			time = _prevTime;
 		}
 	}
 

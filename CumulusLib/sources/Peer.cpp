@@ -17,16 +17,12 @@
 
 #include "Peer.h"
 #include "Group.h"
-#include "Logs.h"
-#include "Util.h"
 
 using namespace std;
-using namespace Poco;
-using namespace Poco::Net;
 
 namespace Cumulus {
 
-Peer::Peer():_ping(0),connected(false) {
+Peer::Peer():ping(0),connected(false) {
 }
 
 Peer::~Peer() {
@@ -34,33 +30,10 @@ Peer::~Peer() {
 }
 
 void Peer::unsubscribeGroups() {
-	list<Group*>::iterator it=_groups.begin();
+	list<Group*>::const_iterator it=_groups.begin();
 	while(it!=_groups.end()) {
-		(*it)->_peers.remove(*this);
-		_groups.erase(it);
+		(*it)->removePeer(*this);
 		it = _groups.begin();
-	}
-}
-
-void Peer::setPing(Poco::UInt16 ping) {
-	UInt16 oldPing = _ping;
-	_ping=ping;
-	list<Group*>::const_iterator it;
-	for(it=_groups.begin();it!=_groups.end();++it)
-		(*it)->_peers.update(*this,oldPing);
-}
-
-void Peer::setPrivateAddress(const list<Address>& address) {
-	((vector<Address>&)privateAddress).resize(address.size());
-	list<Address>::const_iterator it;
-	int i=0;
-	for(it=address.begin();it!=address.end();++it) {
-		const Address& addr = *it;
-		// Set a port if egals 0!
-		if(addr.port==0)
-			((UInt16&)addr.port) = this->address.port();
-		((vector<Address>&)privateAddress)[i] = addr;
-		++i;
 	}
 }
 

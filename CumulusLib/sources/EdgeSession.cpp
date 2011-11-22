@@ -17,6 +17,7 @@
 
 #include "EdgeSession.h"
 #include "Logs.h"
+#include "Util.h"
 #include "Poco/Format.h"
 
 using namespace std;
@@ -63,10 +64,33 @@ void EdgeSession::encode(PacketWriter& packet) {
 
 void EdgeSession::packetHandler(PacketReader& packet) {
 
-	// Detect died!
-	if((packet.read8()|0xF0) == 0xFD)
+	UInt8 marker = packet.read8();
+	UInt16 time = packet.read16();
+
+	if(peer.addresses.size()==0) {
+		CRITIC("Session %u has no any addresses!",id);
+		((list<Address>&)peer.addresses).push_front(peer.address.toString());
+	} else if(peer.addresses.front()!=peer.address) {
+		// Tell to server that peer address has changed!
+		INFO("Session %u has changed its public address",id);
+		UInt8 data[100];
+		PacketWriter writer(data,100);
+		writer.clear(6);
+		writer.write8(0x89);
+		writer.write16(time);
+		writer.write8(0x70);
+		string address = peer.address.toString();
+		writer.write16(address.size() + Util::Get7BitValueSize(address.size()));
+		writer << address;
+		middleDump=true;
+		send(writer,farServerId,_serverSocket,_serverSocket.peerAddress());
+		middleDump=false;
+	}
+	
+	// echo time
+	if((marker|0xF0) == 0xFD)
 		packet.next(2);
-	packet.next(2);
+	// Detect died!
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 	while(type!=0xFF && type!=0x4C) {
 		packet.next(packet.read16());
@@ -92,7 +116,8 @@ void EdgeSession::serverPacketHandler(PacketReader& packet) {
 	}
 	Logs::Dump(packet,format("Request from %s",_serverSocket.peerAddress().toString()).c_str(),true);
 
-	if(_pCookie && packet.read8()==0x0b) {
+	UInt8 marker = packet.read8();
+	if(_pCookie && marker==0x0b) {
 		_handshaking=true;
 		packet.next(5);
 		(UInt32&)farServerId = packet.read32();
@@ -111,6 +136,30 @@ void EdgeSession::serverPacketHandler(PacketReader& packet) {
 		
 		_handshaking=false;
 		return;
+	} else if((marker|0x0F) == 0x4F) {
+		// echo time?
+		packet.next(2);
+		if((marker|0xF0) == 0xFE)
+			packet.next(2);
+		// Detect changing address received!
+		UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
+		while(type!=0xFF && type!=0x71) {
+			packet.next(packet.read16());
+			type = packet.available()>0 ? packet.read8() : 0xFF;
+		}
+		if(type==0x71) {
+			string address;
+			packet.readString16(address);
+			if(Address(address) == peer.address) {
+				if(peer.addresses.size()==0)
+					CRITIC("Session %u has no any addresses!",id)
+				else
+					((list<Address>&)peer.addresses).pop_front();
+				((list<Address>&)peer.addresses).push_front(peer.address.toString());
+				DEBUG("Public address change of session %u has been commited",id);
+			} else
+				DEBUG("Obsolete commiting of public address change for session %u",id);
+		}
 	}
 
 	packet.reset(0);

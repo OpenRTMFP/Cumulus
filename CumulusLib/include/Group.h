@@ -19,38 +19,37 @@
 
 #include "Cumulus.h"
 #include "Peer.h"
-#include "Peers.h"
 
 
 namespace Cumulus {
 
-
 class Group : public Entity {
 	friend class Peer;
+	friend class Middle;
 public:
 	Group(const Poco::UInt8* id);
 	virtual ~Group();
 
-	bool hasPeer(const Poco::UInt8* peerId);
-	void addPeer(Peer& peer);
-	void removePeer(Peer& peer);
-	void bestPeers(std::list<const Peer*>& peers,const Peer& askerPeer);
-	bool empty();
+	void						addPeer(Peer& peer);
+	void						removePeer(Peer& peer);
+
+	const std::list<Peer*>&		lastPeers();
+	bool						empty();
 
 private:
-	Peers						_peers;
+	bool						hasPeer(const Poco::UInt8* id);
+
+	std::set<Peer*> 			_peers;
+	std::list<Peer*> 			_lastPeers;
 };
 
-inline bool Group::hasPeer(const Poco::UInt8* peerId) {
-	return _peers.has(peerId);
+inline const std::list<Peer*>& Group::lastPeers() {
+	return _lastPeers;
 }
 
 inline bool Group::empty() {
 	return _peers.empty();
 }
 
-inline void Group::bestPeers(std::list<const Peer*>& peers,const Peer& askerPeer) {
-	_peers.best(peers,askerPeer);
-}
 
 } // namespace Cumulus

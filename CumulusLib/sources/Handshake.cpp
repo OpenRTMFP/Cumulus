@@ -84,7 +84,6 @@ void Handshake::manage() {
 
 	// keepalive edges
 	isEdges=true;
-	setEndPoint(_edgesSocket,peer.address);
 	map<string,Edge*>::iterator it2=edges().begin();
 	while(it2!=edges().end()) {
 		if(it2->second->obsolete()) {
@@ -99,7 +98,8 @@ void Handshake::manage() {
 			PacketWriter& packet(writer());
 			packet.write8(0x40);
 			packet.write16(0);
-			peer.address = SocketAddress(it2->first);
+			(SocketAddress&)peer.address = SocketAddress(it2->first);
+			setEndPoint(_edgesSocket,peer.address);
 			flush();
 			INFO("Keepalive RTMFP server edge %s",it2->first.c_str());
 		}
@@ -108,8 +108,6 @@ void Handshake::manage() {
 }
 
 void Handshake::commitCookie(const Session& session) {
-	if(isEdges)
-		return;
 	(bool&)session.checked = true;
 	map<const UInt8*,Cookie*,CompareCookies>::iterator it;
 	for(it=_cookies.begin();it!=_cookies.end();++it) {
@@ -135,13 +133,13 @@ void Handshake::clear() {
 	_cookies.clear();
 	// clear edges and warn them on server death
 	isEdges=true;
-	setEndPoint(_edgesSocket,peer.address);
 	map<string,Edge*>::iterator it2;
 	for(it2=edges().begin();it2!=edges().end();++it2) {
 		PacketWriter& packet(writer());
 		packet.write8(0x45);
 		packet.write16(0);
-		peer.address = SocketAddress(it2->first);
+		(SocketAddress&)peer.address = SocketAddress(it2->first);
+		setEndPoint(_edgesSocket,peer.address);
 		flush();
 		delete it2->second;
 	}
@@ -329,6 +327,8 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 					pDecryptKey=NULL;
 					pEncryptKey=NULL;
 					memcpy((UInt8*)peer.id,request.current(),ID_SIZE);
+					request.next(COOKIE_SIZE);
+					request.next(request.read7BitEncoded());
 				}
 
 				// Fill peer infos
@@ -338,13 +338,20 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				Session& session = _gateway.createSession(farId,peer,pDecryptKey,pEncryptKey,cookie);
 				(UInt32&)cookie.id = session.id;
 
+				string address;
 				if(id==0x39) {
+					// Session by edge 
 					Edge* pEdge = _handler.edges(peer.address);
 					if(!pEdge)
 						ERROR("Edge session creation by an unknown server edge %s",peer.address.toString().c_str())
 					else
 						pEdge->addSession(session);
-				}
+					request >> address;
+				} else // Session direct
+					address = session.peer.address.toString();
+
+				((list<Address>&)session.peer.addresses).clear();
+				((list<Address>&)session.peer.addresses).push_back(address);
 
 				cookie.write();
 			} else

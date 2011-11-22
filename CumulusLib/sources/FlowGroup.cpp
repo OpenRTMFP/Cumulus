@@ -56,19 +56,18 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 				data.readRaw(groupId,ID_SIZE);
 		
 			_pGroup = &handler.group(groupId);
-			_pGroup->bestPeers(_bestPeers,peer);
+
+			list<Peer*>::const_iterator it;
+			for(it=_pGroup->lastPeers().begin();it!=_pGroup->lastPeers().end();++it) {
+				if((**it)==peer)
+					continue;
+				BinaryWriter& response(writer.writeRawMessage(true));
+				response.write8(0x0b); // unknown
+				response.writeRaw((*it)->id,ID_SIZE);
+			}
 
 			_pGroup->addPeer(peer);
-			if(_bestPeers.empty())
-				return;
 
-			while(!_bestPeers.empty()) {
-				BinaryWriter& response(writer.writeRawMessage(true));
-			
-				response.write8(0x0b); // unknown
-				response.writeRaw(_bestPeers.front()->id,ID_SIZE);
-				_bestPeers.pop_front();
-			}
 		}
 	} else
 		Flow::rawHandler(type,data);

@@ -100,6 +100,7 @@ void Flow::complete() {
 	map<UInt32,Fragment*>::const_iterator it;
 	for(it=_fragments.begin();it!=_fragments.end();++it)
 		delete it->second;
+	_fragments.clear();
 
 	// delete receive buffer
 	if(_pPacket)
@@ -166,13 +167,14 @@ void Flow::commit() {
 		count=0;
 	}
 
-	PacketWriter& ack = _band.writeMessage(0x51,1+Util::Get7BitValueSize(id)+Util::Get7BitValueSize(stage)+size);
-//	UInt32 pos = ack.position();
-	ack.write7BitValue(id);
-	UInt8 bufferSize = _pPacket ? (0x7F-_pPacket->fragments) : 0x7F;
+	UInt32 bufferSize = _pPacket ? ((_pPacket->fragments>0x3F00) ? 0 : (0x3F00-_pPacket->fragments)) : 0x7F;
 	if(writer.signature.empty())
 		bufferSize=0;
-	ack.write8(bufferSize);
+
+	PacketWriter& ack = _band.writeMessage(0x51,Util::Get7BitValueSize(id)+Util::Get7BitValueSize(bufferSize)+Util::Get7BitValueSize(stage)+size);
+//	UInt32 pos = ack.position();
+	ack.write7BitValue(id);
+	ack.write7BitValue(bufferSize);
 	ack.write7BitValue(stage);
 
 	list<UInt32>::const_iterator it2;
@@ -210,6 +212,8 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 			if( it->first <= (stage-1)) {
 				PacketReader reader(it->second->begin(),it->second->size());
 				fragmentSortedHandler(it->first,reader,it->second->flags);
+				if(_completed)
+					return;
 			}
 			delete it->second;
 			_fragments.erase(it++);
@@ -217,7 +221,6 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 
 		nextStage = stage;
 	}
-
 	
 	if(stage>nextStage) {
 		// not following stage, bufferizes the stage
@@ -238,6 +241,8 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 				break;
 			PacketReader reader(it->second->begin(),it->second->size());
 			fragmentSortedHandler(nextStage++,reader,it->second->flags);
+			if(_completed)
+				break;
 			delete it->second;
 			_fragments.erase(it++);
 		}

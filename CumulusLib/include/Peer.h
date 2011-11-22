@@ -22,10 +22,6 @@
 #include "Address.h"
 #include "Poco/Net/SocketAddress.h"
 #include "Poco/Net/DatagramSocket.h"
-#include <vector>
-#include <list>
-
-#include "AESEngine.h"
 
 namespace Cumulus {
 
@@ -37,32 +33,25 @@ public:
 	Peer();
 	virtual ~Peer();
 
-	Poco::Net::SocketAddress		address;
-	const std::vector<Address>		privateAddress;
+	const Poco::Net::SocketAddress	address;
+	const std::list<Address>		addresses;
 
 	const bool						connected;
+	const Poco::UInt16				ping;
 
 	void setFlowWriter(FlowWriter* pWriter);
-	void setPrivateAddress(const std::list<Address>& address);
-	void setPing(Poco::UInt16 ping);
 	void unsubscribeGroups();
 
-	Poco::UInt16 getPing() const;
 	bool isIn(Group& group) const;
 
 private:
 	bool isIn(Group& group,std::list<Group*>::iterator& it);
 
 	std::list<Group*>			_groups;
-	Poco::UInt16				_ping;
 };
 
 inline void Peer::setFlowWriter(FlowWriter* pWriter){
 	_pFlowWriter = pWriter;
-}
-
-inline Poco::UInt16 Peer::getPing() const {
-	return _ping;
 }
 
 } // namespace Cumulus

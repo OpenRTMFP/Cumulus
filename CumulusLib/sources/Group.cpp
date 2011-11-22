@@ -16,7 +16,6 @@
 */
 
 #include "Group.h"
-#include "Logs.h"
 #include "string.h"
 
 using namespace std;
@@ -36,7 +35,10 @@ Group::~Group() {
 void Group::addPeer(Peer& peer) {
 	if(!peer.isIn(*this)) {
 		peer._groups.push_back(this);
-		_peers.add(peer);
+		_peers.insert(&peer);
+		if(_lastPeers.size()==6)
+			_lastPeers.pop_front();
+		_lastPeers.push_back(&peer);
 	}
 }
 
@@ -44,8 +46,25 @@ void Group::removePeer(Peer& peer) {
 	list<Group*>::iterator itG;
 	if(peer.isIn(*this,itG)) {
 		peer._groups.erase(itG);
-		_peers.remove(peer);
+		_peers.erase(&peer);
+		list<Peer*>::iterator itP;
+		for(itP=_lastPeers.begin();itP!=_lastPeers.end();++itP) {
+			if((**itP)==peer) {
+				_lastPeers.erase(itP);
+				break;
+			}
+		}
 	}
 }
+
+bool Group::hasPeer(const UInt8* id) {
+	set<Peer*>::const_iterator it;
+	for(it=_peers.begin();it!=_peers.end();++it) {
+		if((**it)==id)
+			return true;
+	}
+	return false;
+}
+
 
 } // namespace Cumulus

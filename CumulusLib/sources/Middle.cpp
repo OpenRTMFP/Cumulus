@@ -263,22 +263,22 @@ void Middle::packetHandler(PacketReader& packet) {
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 	while(type!=0xFF) {
-		UInt16 oldSize = packet.read16();
-		UInt16 newSize = oldSize;
-		PacketReader content(packet.current(),oldSize);
+		UInt16 size = packet.read16();
+		PacketReader content(packet.current(),size);
 
 		{
 			PacketWriter out(request); // 3 for future type and size
 			out.next(3);
-			
+
 			if(type==0x10) {
 
 				out.write8(content.read8());
 				UInt32 idFlow = content.read7BitValue();out.write7BitValue(idFlow);
 				UInt32 stage = content.read7BitValue();out.write7BitValue(stage);
 
-				if(!_isPeer) {
-					if(idFlow==0x02 && stage==0x01) {
+				if(idFlow==0x02 && stage==0x01) {
+					if(!_isPeer) {
+					
 						/// Replace NetConnection infos
 
 						out.writeRaw(content.current(),14);content.next(14);
@@ -295,39 +295,13 @@ void Middle::packetHandler(PacketReader& packet) {
 						reader.readObject(obj);
 						
 						/// Replace tcUrl
-						if(obj.has("tcUrl")) {
-							string oldUrl = obj.getString("tcUrl");
+						if(obj.has("tcUrl"))
 							obj.setString("tcUrl",_queryUrl);
-							newSize += _queryUrl.size()-oldUrl.size();
-						}
 						
 						writer.writeObject(obj);
-					} else if(idFlow==0x02 && stage==0x02) {
-						// Replace setPeerInfo
-						out.writeRaw(content.current(),7);content.next(7);
-						AMFReader reader(content);
-						AMFWriter writer(out);
 
-						string name;
-						reader.read(name);
-						writer.write(name);
+					} else {
 
-						if(name=="setPeerInfo") {
-							writer.writeNumber(reader.readNumber());
-							reader.skipNull();writer.writeNull();
-							while(reader.available()) {
-								string address;
-								reader.read(address);
-								size_t pos = address.find_last_of(':');
-								if(pos==string::npos)
-									pos = address.size();
-								writer.write(SocketAddress(address.substr(0,pos),_socket.address().port()).toString());
-							}
-						}
-						
-					}
-				} else {
-					if(idFlow==0x02 && stage==0x01) {
 						out.writeRaw(content.current(),3);content.next(3);
 						UInt16 netGroupHeader = content.read16();out.write16(netGroupHeader);
 						if(netGroupHeader==0x4752) {
@@ -359,12 +333,15 @@ void Middle::packetHandler(PacketReader& packet) {
 			}
 			out.writeRaw(content.current(),content.available());
 		}
-		if((request.length()-request.position())==(newSize+3)) {
+
+		packet.next(size);
+
+		size = request.length()-request.position()-3;
+		if(size>0) {
 			request<<type;
-			request.write16(newSize);request.next(newSize);
+			request.write16(size);request.next(size);
 		}
 
-		packet.next(oldSize);
 		type = packet.available()>0 ? packet.read8() : 0xFF;
 	}
 

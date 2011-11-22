@@ -74,6 +74,7 @@ void ServerConnection::createSession(EdgeSession& session,const string& url) {
 	packet.writeRaw(session.peer.id,ID_SIZE);
 	packet.writeRaw(peer.id,ID_SIZE);
 	packet << url;
+	packet << session.peer.address.toString();
 	flush();
 }
 

@@ -123,8 +123,6 @@ void Publication::pushAudioPacket(const Client& client,UInt32 time,PacketReader&
 		return;
 	}
 
-	if(time&0xFF000000) // TODO solve it!
-		time = _time;
 	_time = time;
 
 	int pos = packet.position();

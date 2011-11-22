@@ -77,13 +77,14 @@ public:
 	AMFWriter&		writeAMFMessage(const std::string& name);
 	AMFWriter&		writeAMFResult();
 
-	AMFObjectWriter	writeAMFResponse(const std::string& name,const std::string& code,const  std::string& description);
 	AMFObjectWriter	writeSuccessResponse(const std::string& code,const std::string& description);
 	AMFObjectWriter	writeStatusResponse(const std::string& code,const std::string& description);
 	AMFObjectWriter	writeErrorResponse(const std::string& code,const std::string& description);
 
 private:
 	FlowWriter(FlowWriter& flowWriter);
+
+	AMFObjectWriter			writeAMFResponse(const std::string& name,const std::string& code,const  std::string& description);
 	
 	Poco::UInt32			headerSize(Poco::UInt32 stage);
 	void					flush(PacketWriter& writer,Poco::UInt32 stage,Poco::UInt8 flags,bool header,BinaryReader& reader,Poco::UInt16 size);
@@ -110,8 +111,8 @@ private:
 	// For single thread AMF response!
 	double					_callbackHandle;
 	std::string				_obj;
-	Poco::UInt32			_resetCount;
 
+	Poco::UInt32			_resetCount;
 	static MessageNull		_MessageNull;
 };
 

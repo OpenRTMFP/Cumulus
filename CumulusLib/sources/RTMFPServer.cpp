@@ -275,13 +275,16 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 		/// Udp hole punching normal process
 		pSessionWanted->p2pHandshake(address,tag,pSession);
 
-		response.writeAddress(pSessionWanted->peer.address,true);
-		vector<Address>::const_iterator it2;
-		for(it2=pSessionWanted->peer.privateAddress.begin();it2!=pSessionWanted->peer.privateAddress.end();++it2) {
+		bool first=true;
+		list<Address>::const_iterator it2;
+		for(it2=pSessionWanted->peer.addresses.begin();it2!=pSessionWanted->peer.addresses.end();++it2) {
 			const Address& addr = *it2;
-			if(addr == address)
+			if(addr == address) {
+				CRITIC("Two peers with the same %s address?",address.toString().c_str());
 				continue;
-			response.writeAddress(addr,false);
+			}
+			response.writeAddress(addr,first);
+			first=false;
 		}
 
 		result = 0x71;

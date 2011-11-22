@@ -435,19 +435,7 @@ void FlowWriter::raiseMessage() {
 
 void FlowWriter::flush(bool full) {
 
-	/* abandonement?
-	if((_messagesSent.size()-_repeatable)>100) {
-		list<Message*>::const_iterator it;
-		UInt32 count=0;
-		for(it=_messagesSent.begin();it!=_messagesSent.end();++it) {
-			if((*it)->repeatable)
-				break;
-		}
-		if(it!=_messagesSent.begin()) {
-			--it;
-		}
-	}*/
-	 if(_messagesSent.size()>100)
+	if(_messagesSent.size()>100)
 		DEBUG("_messagesSent.size()=%d",_messagesSent.size());
 
 	// flush
@@ -491,7 +479,7 @@ void FlowWriter::flush(bool full) {
 				flags |= MESSAGE_WITH_BEFOREPART;
 
 			if(size>packet.available()) {
-				// the packet will changed! The message will be fragmented.
+				// the packet will change! The message will be fragmented.
 				flags |= MESSAGE_WITH_AFTERPART;
 				contentSize = packet.available()-(size-contentSize);
 				size=packet.available();
@@ -567,10 +555,9 @@ AMFObjectWriter FlowWriter::writeAMFResponse(const string& name,const string& co
 	}
 
 	AMFObjectWriter object(message.amfWriter);
-	if(name=="_error") {
+	if(name=="_error")
 		object.write("level","error");
-		
-	} else
+	else
 		object.write("level","status");
 	object.write("code",entireCode);
 	if(!description.empty())
