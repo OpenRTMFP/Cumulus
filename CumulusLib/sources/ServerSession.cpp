@@ -329,7 +329,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 		CRITIC("Session %u has no any addresses!",id);
 		peer.addresses.push_front(peer.address.toString());
 	} else if(peer.addresses.front()!=peer.address) {
-		INFO("Session %u has changed its public address");
+		INFO("Session %u has changed its public address",id);
 		peer.addresses.pop_front();
 		peer.addresses.push_front(peer.address.toString());
 	}
