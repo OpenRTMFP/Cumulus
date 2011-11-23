@@ -221,7 +221,7 @@ void ServerSession::p2pHandshake(const SocketAddress& address,const std::string&
 			++count;
 
 		index=count%pSession->peer.addresses.size();
-		list<Address>::const_iterator it=peer.addresses.begin();
+		list<Address>::const_iterator it=pSession->peer.addresses.begin();
 		advance(it,index);
 		pAddress = &(*it);
 		size +=  pAddress->host.size();
