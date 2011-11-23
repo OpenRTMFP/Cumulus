@@ -325,6 +325,15 @@ PacketWriter& ServerSession::writeMessage(UInt8 type,UInt16 length,FlowWriter* p
 
 void ServerSession::packetHandler(PacketReader& packet) {
 
+	if(peer.addresses.size()==0) {
+		CRITIC("Session %u has no any addresses!",id);
+		peer.addresses.push_front(peer.address.toString());
+	} else if(peer.addresses.front()!=peer.address) {
+		INFO("Session %u has changed its public address");
+		peer.addresses.pop_front();
+		peer.addresses.push_front(peer.address.toString());
+	}
+
 	_recvTimestamp.update();
 
 	// Read packet
