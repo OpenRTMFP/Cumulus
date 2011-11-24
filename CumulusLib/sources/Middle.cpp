@@ -266,81 +266,89 @@ void Middle::packetHandler(PacketReader& packet) {
 		UInt16 size = packet.read16();
 		PacketReader content(packet.current(),size);
 
-		{
-			PacketWriter out(request); // 3 for future type and size
-			out.next(3);
+		PacketWriter out(request.begin()+request.position(),request.available()); // 3 for future type and size
+		out.clear(3);
 
-			if(type==0x10) {
+		if(type==0x10) {
 
-				out.write8(content.read8());
-				UInt32 idFlow = content.read7BitValue();out.write7BitValue(idFlow);
-				UInt32 stage = content.read7BitValue();out.write7BitValue(stage);
+			out.write8(content.read8());
+			UInt32 idFlow = content.read7BitValue();out.write7BitValue(idFlow);
+			UInt32 stage = content.read7BitValue();out.write7BitValue(stage);
 
-				if(idFlow==0x02 && stage==0x01) {
-					if(!_isPeer) {
+			if(idFlow==0x02 && stage==0x01) {
+				if(!_isPeer) {
+				
+					/// Replace NetConnection infos
+
+					out.writeRaw(content.current(),14);content.next(14);
+
+					// first string
+					string tmp;
+					content.readString16(tmp);out.writeString16(tmp);
+
+					AMFWriter writer(out);
+					AMFReader reader(content);
+					writer.writeNumber(reader.readNumber()); // double
 					
-						/// Replace NetConnection infos
+					AMFObject obj;
+					reader.readObject(obj);
+					
+					/// Replace tcUrl
+					if(obj.has("tcUrl"))
+						obj.setString("tcUrl",_queryUrl);
+					
+					writer.writeObject(obj);
 
-						out.writeRaw(content.current(),14);content.next(14);
+				} else {
 
-						// first string
-						string tmp;
-						content.readString16(tmp);out.writeString16(tmp);
-
-						AMFWriter writer(out);
-						AMFReader reader(content);
-						writer.writeNumber(reader.readNumber()); // double
+					out.writeRaw(content.current(),3);content.next(3);
+					UInt16 netGroupHeader = content.read16();out.write16(netGroupHeader);
+					if(netGroupHeader==0x4752) {
+						out.writeRaw(content.current(),71);content.next(71);
 						
-						AMFObject obj;
-						reader.readObject(obj);
-						
-						/// Replace tcUrl
-						if(obj.has("tcUrl"))
-							obj.setString("tcUrl",_queryUrl);
-						
-						writer.writeObject(obj);
-
-					} else {
-
-						out.writeRaw(content.current(),3);content.next(3);
-						UInt16 netGroupHeader = content.read16();out.write16(netGroupHeader);
-						if(netGroupHeader==0x4752) {
-							out.writeRaw(content.current(),71);content.next(71);
-							
-							list<Group*>::const_iterator it;
-							for(it = _handler._groups.begin();it!=_handler._groups.end();++it) {
-								if((*it)->hasPeer(_target.id)) {
+						list<Group*>::const_iterator it;
+						for(it = _handler._groups.begin();it!=_handler._groups.end();++it) {
+	
+							Group& group = **it;						
+			
+							map<UInt32,const Peer*>::const_iterator itP;
+							for(itP=group.peers().begin();itP!=group.peers().end();++itP) {
+								if((*itP->second)==_target.id) {
 									UInt8 result1[AES_KEY_SIZE];
 									UInt8 result2[AES_KEY_SIZE];
 									HMAC(EVP_sha256(),_sharedSecret,KEY_SIZE,&_targetNonce[0],_targetNonce.size(),result1,NULL);
-									HMAC(EVP_sha256(),(*it)->id,ID_SIZE,result1,AES_KEY_SIZE,result2,NULL);
+									HMAC(EVP_sha256(),group.id,ID_SIZE,result1,AES_KEY_SIZE,result2,NULL);
 									out.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
 									out.writeRaw(content.current(),4);content.next(4);
 									out.writeRaw(_target.peerId,ID_SIZE);content.next(ID_SIZE);
 									break;
 								}
 							}
-						
-							if(it==_handler._groups.end())
-								ERROR("Handshake NetGroup packet between peers without corresponding Group");
-							
+							if(itP!=group.peers().end())
+								break;
+
 						}
+						if(it==_handler._groups.end())
+							ERROR("Handshake NetGroup packet between peers without corresponding Group");
+						
 					}
 				}
-
-			}  else if(type == 0x4C) {
-				 kill();
 			}
-			out.writeRaw(content.current(),content.available());
+
+		}  else if(type == 0x4C) {
+			 kill();
+		}  else if(type == 0x51) {
+			//printf("%s\n",Util::FormatHex(content.current(),content.available()).c_str());
 		}
+		out.writeRaw(content.current(),content.available());
 
 		packet.next(size);
 
-		size = request.length()-request.position()-3;
-		if(size>0) {
+		if(out.length()>=3) {
 			request<<type;
-			request.write16(size);request.next(size);
+			request.write16(out.length()-3);request.next(size);
 		}
+
 
 		type = packet.available()>0 ? packet.read8() : 0xFF;
 	}
@@ -454,16 +462,25 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 					
 					list<Group*>::const_iterator it;
 					for(it = _handler._groups.begin();it!=_handler._groups.end();++it) {
-						if((*it)->hasPeer(_target.id)) {
-							UInt8 result1[AES_KEY_SIZE];
-							UInt8 result2[AES_KEY_SIZE];
-							HMAC(EVP_sha256(),_target.sharedSecret,KEY_SIZE,&_target.initiatorNonce[0],_target.initiatorNonce.size(),result1,NULL);
-							HMAC(EVP_sha256(),(*it)->id,ID_SIZE,result1,AES_KEY_SIZE,result2,NULL);
-							packetOut.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
-							packetOut.writeRaw(content.current(),4);content.next(4);
-							packetOut.writeRaw(peer.id,ID_SIZE);content.next(ID_SIZE);
-							break;
+
+						Group& group = **it;						
+			
+						map<UInt32,const Peer*>::const_iterator itP;
+						for(itP=group.peers().begin();itP!=group.peers().end();++itP) {
+							if((*itP->second)==_target.id) {
+								UInt8 result1[AES_KEY_SIZE];
+								UInt8 result2[AES_KEY_SIZE];
+								HMAC(EVP_sha256(),_target.sharedSecret,KEY_SIZE,&_target.initiatorNonce[0],_target.initiatorNonce.size(),result1,NULL);
+								HMAC(EVP_sha256(),group.id,ID_SIZE,result1,AES_KEY_SIZE,result2,NULL);
+								packetOut.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
+								packetOut.writeRaw(content.current(),4);content.next(4);
+								packetOut.writeRaw(peer.id,ID_SIZE);content.next(ID_SIZE);
+								break;
+							}
 						}
+						if(itP!=group.peers().end())
+							break;
+
 					}
 				
 					if(it==_handler._groups.end())

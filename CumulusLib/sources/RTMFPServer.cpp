@@ -90,8 +90,11 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 	if(params.pCirrus) {
 		_pCirrus = new Target(*params.pCirrus);
 		_freqManage = 0; // no waiting, direct process in the middle case!
+		NOTE("RTMFPServer started in man-in-the-middle mode with server %s (unstable debug mode)",_pCirrus->address.toString().c_str());
 	}
 	_middle = params.middle;
+	if(_middle)
+		NOTE("RTMFPServer started in man-in-the-middle mode between peers (unstable debug mode)");
 
 	(UInt32&)udpBufferSize = params.udpBufferSize==0 ? _socket.getReceiveBufferSize() : params.udpBufferSize;
 	_socket.setReceiveBufferSize(udpBufferSize);_socket.setSendBufferSize(udpBufferSize);
@@ -352,7 +355,8 @@ bool RTMFPServer::manageRealTime(bool& terminate) {
 void RTMFPServer::manage() {
 	_timeLastManage.update();
 	_handshake.manage();
-	_sessions.manage();
+	if(_sessions.manage())
+		INFO("%u clients",clients.count());
 	if(!_middle && !_pCirrus && _timeLastManage.isElapsed(20000))
 		WARN("Process management has lasted more than 20ms : %ums",UInt32(_timeLastManage.elapsed()/1000));
 }

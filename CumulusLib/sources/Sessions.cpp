@@ -24,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Sessions::Sessions(Gateway& gateway):_nextId(1),_gateway(gateway) {
+Sessions::Sessions(Gateway& gateway):_nextId(1),_gateway(gateway),_changed(false) {
 }
 
 Sessions::~Sessions() {
@@ -33,8 +33,10 @@ Sessions::~Sessions() {
 
 void Sessions::clear() {
 	// delete sessions
-	if(!_sessions.empty())
+	if(!_sessions.empty()) {
 		WARN("sessions are deleting");
+		_changed=true;
+	}
 	map<UInt32,Session*>::const_iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
 		(bool&)it->second->died = true;
@@ -51,7 +53,8 @@ Session* Sessions::add(Session* pSession) {
 	}
 	
 	_sessions[_nextId] = pSession;
-	NOTE("Session %u created",_nextId);
+	DEBUG("Session %u created",_nextId);
+	_changed=true;
 
 	do {
 		++_nextId;
@@ -76,12 +79,13 @@ Session* Sessions::find(UInt32 id) const {
 	return it->second;
 }
 
-void Sessions::manage() {
+bool Sessions::manage() {
 	map<UInt32,Session*>::iterator it= _sessions.begin();
 	while(it!=end()) {
 		it->second->manage();
 		if(it->second->died) {
-			NOTE("Session %u died",it->second->id);
+			DEBUG("Session %u died",it->second->id);
+			_changed=true;
 			_gateway.destroySession(*it->second);
 			delete it->second;
 			_sessions.erase(it++);
@@ -89,6 +93,9 @@ void Sessions::manage() {
 		}
 		++it;
 	}
+	bool result = _changed;
+	_changed=false;
+	return result;
 }
 
 

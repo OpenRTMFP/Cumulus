@@ -45,9 +45,9 @@ public:
 	bool isIn(Group& group);
 
 private:
-	bool isIn(Group& group,std::list<Group*>::iterator& it);
+	bool isIn(Group& group,std::map<Group*,Poco::UInt32>::iterator& it);
 
-	std::list<Group*>			_groups;
+	std::map<Group*,Poco::UInt32>			_groups;
 };
 
 inline void Peer::setFlowWriter(FlowWriter* pWriter){

@@ -19,6 +19,7 @@
 #include "Group.h"
 
 using namespace std;
+using namespace Poco;
 
 namespace Cumulus {
 
@@ -30,24 +31,23 @@ Peer::~Peer() {
 }
 
 void Peer::unsubscribeGroups() {
-	list<Group*>::const_iterator it=_groups.begin();
+	map<Group*,UInt32>::const_iterator it=_groups.begin();
 	while(it!=_groups.end()) {
-		(*it)->removePeer(*this);
+		it->first->removePeer(*this);
 		it = _groups.begin();
 	}
+	if(_groups.size()!=0)
+		CRITIC("unsubscribeGroups fails, it stay always some group subscription for %s peer",address.toString().c_str())
 }
 
 bool Peer::isIn(Group& group) {
-	list<Group*>::iterator it;
-	return ((Peer&)*this).isIn(group,it);
+	map<Group*,UInt32>::iterator it;
+	return isIn(group,it);
 }
 
-bool Peer::isIn(Group& group,list<Group*>::iterator& it) {
-	for(it=_groups.begin();it!=_groups.end();++it) {
-		if(group == **it)
-			return true;
-	}
-	return false;
+bool Peer::isIn(Group& group,map<Group*,UInt32>::iterator& it) {
+	it = _groups.find(&group);
+	return it != _groups.end();
 }
 
 

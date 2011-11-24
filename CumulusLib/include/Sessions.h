@@ -33,6 +33,7 @@ public:
 	Sessions(Gateway& gateway);
 	virtual ~Sessions();
 
+	Poco::UInt32	count() const;
 	Poco::UInt32	nextId() const;
 	Session* find(Poco::UInt32 id) const;
 	Session* find(const Poco::UInt8* peerId) const;
@@ -41,8 +42,10 @@ public:
 
 	Iterator begin() const;
 	Iterator end() const;
+
+	bool    changed() const;
 	
-	void	manage();
+	bool	manage();
 	void	clear();
 protected:
 	
@@ -51,7 +54,12 @@ private:
 	Poco::UInt32					_nextId;
 	std::map<Poco::UInt32,Session*>	_sessions;
 	Gateway&						_gateway;
+	bool							_changed;
 };
+
+inline bool Sessions::changed() const {
+	return _changed;
+}
 
 inline Poco::UInt32	Sessions::nextId() const {
 	return _nextId;
@@ -59,6 +67,10 @@ inline Poco::UInt32	Sessions::nextId() const {
 
 inline Sessions::Iterator Sessions::begin() const {
 	return _sessions.begin();
+}
+
+inline Poco::UInt32 Sessions::count() const {
+	return _sessions.size();
 }
 
 inline Sessions::Iterator Sessions::end() const {

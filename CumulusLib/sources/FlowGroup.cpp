@@ -18,6 +18,7 @@
 #include "FlowGroup.h"
 #include "Logs.h"
 #include <openssl/evp.h>
+#include <math.h>
 
 using namespace std;
 using namespace Poco;
@@ -56,14 +57,20 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 				data.readRaw(groupId,ID_SIZE);
 		
 			_pGroup = &handler.group(groupId);
+		
+			UInt16 count=13;
+			if(_pGroup->peers().size()>600)
+				count=(UInt16)floor(2*log((double)_pGroup->peers().size()));
 
-			list<Peer*>::const_iterator it;
-			for(it=_pGroup->lastPeers().begin();it!=_pGroup->lastPeers().end();++it) {
-				if((**it)==peer)
+			map<UInt32,const Peer*>::const_iterator it;
+			for(it=_pGroup->peers().begin();it!=_pGroup->peers().end();++it) {
+				if((*it->second)==peer)
 					continue;
 				BinaryWriter& response(writer.writeRawMessage(true));
 				response.write8(0x0b); // unknown
-				response.writeRaw((*it)->id,ID_SIZE);
+				response.writeRaw(it->second->id,ID_SIZE);
+				if(--count==0)
+					break;
 			}
 
 			_pGroup->addPeer(peer);

@@ -34,37 +34,18 @@ Group::~Group() {
 
 void Group::addPeer(Peer& peer) {
 	if(!peer.isIn(*this)) {
-		peer._groups.push_back(this);
-		_peers.insert(&peer);
-		if(_lastPeers.size()==6)
-			_lastPeers.pop_front();
-		_lastPeers.push_back(&peer);
+		UInt32 index = _peers.size()==0 ? 0 : _peers.rbegin()->first;
+		_peers[index] = &peer;
+		peer._groups[this] = index;
 	}
 }
 
 void Group::removePeer(Peer& peer) {
-	list<Group*>::iterator itG;
+	map<Group*,UInt32>::iterator itG;
 	if(peer.isIn(*this,itG)) {
+		_peers.erase(itG->second);
 		peer._groups.erase(itG);
-		_peers.erase(&peer);
-		list<Peer*>::iterator itP;
-		for(itP=_lastPeers.begin();itP!=_lastPeers.end();++itP) {
-			if((**itP)==peer) {
-				_lastPeers.erase(itP);
-				break;
-			}
-		}
 	}
 }
-
-bool Group::hasPeer(const UInt8* id) {
-	set<Peer*>::const_iterator it;
-	for(it=_peers.begin();it!=_peers.end();++it) {
-		if((**it)==id)
-			return true;
-	}
-	return false;
-}
-
 
 } // namespace Cumulus

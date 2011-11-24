@@ -45,7 +45,7 @@ Group& Handler::group(const UInt8* id) {
 		if(pGroup->operator==(id))
 			return *pGroup;
 		// delete a possible empty group in same time
-		if(pGroup->empty()) {
+		if(pGroup->peers().empty()) {
 			NOTE("Group %s deleted",Util::FormatHex(pGroup->id,ID_SIZE).c_str());
 			delete pGroup;
 			_groups.erase(it++);

@@ -24,32 +24,23 @@
 namespace Cumulus {
 
 class Group : public Entity {
-	friend class Peer;
-	friend class Middle;
 public:
 	Group(const Poco::UInt8* id);
 	virtual ~Group();
 
-	void						addPeer(Peer& peer);
-	void						removePeer(Peer& peer);
+	void										addPeer(Peer& peer);
+	void										removePeer(Peer& peer);
 
-	const std::list<Peer*>&		lastPeers();
-	bool						empty();
+	const std::map<Poco::UInt32,const Peer*>&	peers();
 
 private:
-	bool						hasPeer(const Poco::UInt8* id);
-
-	std::set<Peer*> 			_peers;
-	std::list<Peer*> 			_lastPeers;
+	std::map<Poco::UInt32,const Peer*> 			_peers;
 };
 
-inline const std::list<Peer*>& Group::lastPeers() {
-	return _lastPeers;
+inline const std::map<Poco::UInt32,const Peer*>& Group::peers() {
+	return _peers;
 }
 
-inline bool Group::empty() {
-	return _peers.empty();
-}
 
 
 } // namespace Cumulus
