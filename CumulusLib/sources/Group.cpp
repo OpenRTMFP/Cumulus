@@ -34,7 +34,7 @@ Group::~Group() {
 
 void Group::addPeer(Peer& peer) {
 	if(!peer.isIn(*this)) {
-		UInt32 index = _peers.size()==0 ? 0 : _peers.rbegin()->first;
+		UInt32 index = _peers.size()==0 ? 0 : (_peers.rbegin()->first+1);
 		_peers[index] = &peer;
 		peer._groups[this] = index;
 	}
