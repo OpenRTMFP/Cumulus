@@ -62,8 +62,8 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 			if(_pGroup->peers().size()>600)
 				count=(UInt16)floor(2*log((double)_pGroup->peers().size()));
 
-			map<UInt32,const Peer*>::const_iterator it;
-			for(it=_pGroup->peers().begin();it!=_pGroup->peers().end();++it) {
+			map<UInt32,const Peer*>::const_reverse_iterator it;
+			for(it=_pGroup->peers().rbegin();it!=_pGroup->peers().rend();++it) {
 				if((*it->second)==peer)
 					continue;
 				BinaryWriter& response(writer.writeRawMessage(true));
