@@ -42,8 +42,6 @@ public:
 
 	Iterator begin() const;
 	Iterator end() const;
-
-	bool    changed() const;
 	
 	bool	manage();
 	void	clear();
@@ -54,12 +52,9 @@ private:
 	Poco::UInt32					_nextId;
 	std::map<Poco::UInt32,Session*>	_sessions;
 	Gateway&						_gateway;
-	bool							_changed;
+	Poco::UInt32					_oldCount;
 };
 
-inline bool Sessions::changed() const {
-	return _changed;
-}
 
 inline Poco::UInt32	Sessions::nextId() const {
 	return _nextId;
