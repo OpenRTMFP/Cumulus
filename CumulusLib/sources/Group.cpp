@@ -32,20 +32,4 @@ Group::~Group() {
 }
 
 
-void Group::addPeer(Peer& peer) {
-	if(!peer.isIn(*this)) {
-		UInt32 index = _peers.size()==0 ? 0 : (_peers.rbegin()->first+1);
-		_peers[index] = &peer;
-		peer._groups[this] = index;
-	}
-}
-
-void Group::removePeer(Peer& peer) {
-	map<Group*,UInt32>::iterator itG;
-	if(peer.isIn(*this,itG)) {
-		_peers.erase(itG->second);
-		peer._groups.erase(itG);
-	}
-}
-
 } // namespace Cumulus

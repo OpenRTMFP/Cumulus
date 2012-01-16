@@ -26,7 +26,7 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-ServerConnection::ServerConnection(Handler& handler,Session& handshake) : ServerSession(0,0,Peer(),NULL,NULL,handler),_handshake(handshake),_connected(false) {
+ServerConnection::ServerConnection(Handler& handler,Session& handshake) : ServerSession(0,0,Peer(handler),NULL,NULL,(Invoker&)handler),_handshake(handshake),_connected(false) {
 	RandomInputStream().read((char*)peer.id,ID_SIZE);
 }
 

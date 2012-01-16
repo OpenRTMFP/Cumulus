@@ -26,22 +26,24 @@ namespace Cumulus {
 
 class Streams {
 public:
-	Streams(Handler& handler);
+	Streams(std::map<std::string,Publication*>&	publications);
 	virtual ~Streams();
 
 	Poco::UInt32	create();
 	void			destroy(Poco::UInt32 id);
 
-	bool			publish(Client& client,Poco::UInt32 id,const std::string& name);
-	void			unpublish(Client& client,Poco::UInt32 id,const std::string& name);
-	void			subscribe(Client& client,Poco::UInt32 id,const std::string& name,FlowWriter& writer,double start=-2000);
-	void			unsubscribe(Client& client,Poco::UInt32 id,const std::string& name);
-
-	Publications	publications;
+	Publication&			publish(Peer& peer,Poco::UInt32 id,const std::string& name);
+	void					unpublish(Peer& peer,Poco::UInt32 id,const std::string& name);
+	bool					subscribe(Peer& peer,Poco::UInt32 id,const std::string& name,FlowWriter& writer,double start=-2000);
+	void					unsubscribe(Peer& peer,Poco::UInt32 id,const std::string& name);
 
 private:
-	std::set<Poco::UInt32>		_streams;
-	Poco::UInt32				_nextId;
+	Publications::Iterator	createPublication(const std::string& name);
+	void					destroyPublication(const Publications::Iterator& it);
+
+	std::map<std::string,Publication*>&	_publications;
+	std::set<Poco::UInt32>				_streams;
+	Poco::UInt32						_nextId;
 };
 
 

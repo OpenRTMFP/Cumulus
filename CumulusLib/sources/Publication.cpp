@@ -17,7 +17,6 @@
 
 #include "Publication.h"
 #include "Logs.h"
-#include "Handler.h"
 #include "Poco/StreamCopier.h"
 #include "string.h"
 
@@ -27,7 +26,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Publication::Publication(const string& name,Handler& handler):_handler(handler),_publisherId(0),_name(name),_time(0),_firstKeyFrame(false),listeners(_listeners) {
+Publication::Publication(const string& name):_publisherId(0),_name(name),_firstKeyFrame(false),listeners(_listeners),_pPublisher(NULL) {
 	DEBUG("New publication %s",_name.c_str());
 }
 
@@ -41,44 +40,62 @@ Publication::~Publication() {
 }
 
 
-void Publication::addListener(Client& client,UInt32 id,FlowWriter& writer,bool unbuffered) {
+bool Publication::addListener(Peer& peer,UInt32 id,FlowWriter& writer,bool unbuffered) {
 	map<UInt32,Listener*>::iterator it = _listeners.lower_bound(id);
 	if(it!=_listeners.end() && it->first==id) {
 		WARN("Listener %u is already subscribed for publication %u",id,_publisherId);
-		return;
+		return true;
 	}
 	if(it!=_listeners.begin())
 		--it;
 	Listener* pListener = new Listener(id,*this,writer,unbuffered);
-	_listeners.insert(it,pair<UInt32,Listener*>(id,pListener));
-	_handler.onSubscribe(client,*pListener);
+	string error;
+	if(peer.onSubscribe(*pListener,error)) {
+		_listeners.insert(it,pair<UInt32,Listener*>(id,pListener));
+		writer.writeStatusResponse("Play.Reset","Playing and resetting " + _name);
+		writer.writeStatusResponse("Play.Start","Started playing " + _name);
+		pListener->init();
+		return true;
+	}
+	writer.writeStatusResponse("Play.Failed",error.empty() ? ("Not authorized to play " + _name) : error);
+	delete pListener;
+	return false;
 }
 
-void Publication::removeListener(Client& client,UInt32 id) {
+void Publication::removeListener(Peer& peer,UInt32 id) {
 	map<UInt32,Listener*>::iterator it = _listeners.find(id);
 	if(it==_listeners.end()) {
 		WARN("Listener %u is already unsubscribed of publication %u",id,_publisherId);
 		return;
 	}
-	_handler.onUnsubscribe(client,*it->second);
-	delete it->second;
-	_listeners.erase(it);	
+	Listener* pListener = it->second;
+	_listeners.erase(it);
+	peer.onUnsubscribe(*pListener);
+	delete pListener;
 }
 
-bool Publication::start(Client& client,UInt32 publisherId) {
-	if(_publisherId!=0)
-		return false; // has already a publisher
+Publication::StartCode Publication::start(Peer& peer,UInt32 publisherId,string& error) {
+	if(_publisherId!=0) {
+		error = name() +" is already published";
+		return BADNAME; // has already a publisher
+	}
 	_publisherId = publisherId;
+	if(!peer.onPublish(*this,error)) {
+		if(error.empty())
+			error = "Not allowed to publish " + name();
+		_publisherId=0;
+		return FAILED;
+	}
+	_pPublisher=&peer;
 	_firstKeyFrame=false;
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->startPublishing(_name);
 	flush();
-	_handler.onPublish(client,*this);
-	return true;
+	return OK;
 }
 
-void Publication::stop(Client& client,UInt32 publisherId) {
+void Publication::stop(Peer& peer,UInt32 publisherId) {
 	if(_publisherId==0)
 		return; // already done
 	if(_publisherId!=publisherId) {
@@ -89,11 +106,11 @@ void Publication::stop(Client& client,UInt32 publisherId) {
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->stopPublishing(_name);
 	flush();
-	_handler.onUnpublish(client,*this);
+	peer.onUnpublish(*this);
 	_videoQOS.reset();
 	_audioQOS.reset();
-	_time=0;
 	_publisherId = 0;
+	_pPublisher=NULL;
 	return;
 }
 
@@ -103,7 +120,7 @@ void Publication::flush() {
 		it->second->flush();
 }
 
-void Publication::pushDataPacket(const Client& client,const string& name,PacketReader& packet) {
+void Publication::pushDataPacket(const string& name,PacketReader& packet) {
 	if(_publisherId==0) {
 		ERROR("Data packet pushed on a publication %u who is idle",_publisherId);
 		return;
@@ -114,36 +131,32 @@ void Publication::pushDataPacket(const Client& client,const string& name,PacketR
 		it->second->pushDataPacket(name,packet);
 		packet.reset(pos);
 	}
-	_handler.onDataPacket(client,*this,name,packet);
+	_pPublisher->onDataPacket(*this,name,packet);
 }
 
-void Publication::pushAudioPacket(const Client& client,UInt32 time,PacketReader& packet,UInt32 numberLostFragments) {
+void Publication::pushAudioPacket(UInt32 time,PacketReader& packet,UInt32 numberLostFragments) {
 	if(_publisherId==0) {
 		ERROR("Audio packet pushed on a publication %u who is idle",_publisherId);
 		return;
 	}
 
-	_time = time;
-
 	int pos = packet.position();
 	if(numberLostFragments>0)
 		INFO("%u audio fragments lost on publication %u",numberLostFragments,_publisherId);
-	_audioQOS.add(_time,packet.fragments,numberLostFragments);
+	_audioQOS.add(time,packet.fragments,numberLostFragments);
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
-		it->second->pushAudioPacket(_time,packet);
+		it->second->pushAudioPacket(time,packet);
 		packet.reset(pos);
 	}
-	_handler.onAudioPacket(client,*this,_time,packet);
+	_pPublisher->onAudioPacket(*this,time,packet);
 }
 
-void Publication::pushVideoPacket(const Client& client,UInt32 time,PacketReader& packet,UInt32 numberLostFragments) {
+void Publication::pushVideoPacket(UInt32 time,PacketReader& packet,UInt32 numberLostFragments) {
 	if(_publisherId==0) {
 		ERROR("Video packet pushed on a publication %u who is idle",_publisherId);
 		return;
 	}
-
-	_time = time;
 
 	// if some lost packet, it can be a keyframe, to avoid break video, we must wait next key frame
 	if(numberLostFragments>0)
@@ -153,12 +166,12 @@ void Publication::pushVideoPacket(const Client& client,UInt32 time,PacketReader&
 	if(((*packet.current())&0xF0) == 0x10)
 		_firstKeyFrame = true;
 
-	_videoQOS.add(_time,packet.fragments,numberLostFragments);
+	_videoQOS.add(time,packet.fragments,numberLostFragments);
 	if(numberLostFragments>0)
 		INFO("%u video fragments lost on publication %u",numberLostFragments,_publisherId);
 
 	if(!_firstKeyFrame) {
-		WARN("No key frame available on publication %u, frame dropped to wait first key frame",_publisherId);
+		DEBUG("No key frame available on publication %u, frame dropped to wait first key frame",_publisherId);
 		++(UInt32&)_videoQOS.droppedFrames;
 		return;
 	}
@@ -166,10 +179,10 @@ void Publication::pushVideoPacket(const Client& client,UInt32 time,PacketReader&
 	int pos = packet.position();
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
-		it->second->pushVideoPacket(_time,packet);
+		it->second->pushVideoPacket(time,packet);
 		packet.reset(pos);
 	}
-	_handler.onVideoPacket(client,*this,_time,packet);
+	_pPublisher->onVideoPacket(*this,time,packet);
 }
 
 

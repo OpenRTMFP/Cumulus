@@ -16,8 +16,8 @@
 */
 
 #include "BinaryStream.h"
+#include "Util.h"
 #include "Poco/StreamCopier.h"
-#include "Poco/NullStream.h"
 
 using namespace std;
 using namespace Poco;
@@ -38,7 +38,7 @@ BinaryBuffer::int_type BinaryBuffer::readFromDevice() {
 }
 
 inline Poco::UInt32 BinaryBuffer::size() {
-	int result = _buf.pubseekoff(0,std::ios_base::cur,std::ios_base::out) - _buf.pubseekoff(0,std::ios_base::cur,std::ios_base::in);
+	streamoff result = _buf.pubseekoff(0,std::ios_base::cur,std::ios_base::out) - _buf.pubseekoff(0,std::ios_base::cur,std::ios_base::in);
 	if(result<0)
 		result=0;
 	return (UInt32)result;
@@ -60,8 +60,7 @@ BinaryStream::~BinaryStream() {
 
 void BinaryStream::clear() {
     // vider le stream buf
-    NullOutputStream nos;
-    StreamCopier::copyStream(*this,nos);
+	StreamCopier::copyStream(*this,Util::NullOutputStream);
     rdbuf()->pubseekoff(0,ios::beg);
 	iostream::clear();
 }

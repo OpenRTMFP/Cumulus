@@ -34,6 +34,8 @@ public:
 	void startPublishing(const std::string& name); 
 	void stopPublishing(const std::string& name); 
 
+	void sampleAccess(bool audio,bool video) const;
+
 	void pushAudioPacket(Poco::UInt32 time,PacketReader& packet); 
 	void pushVideoPacket(Poco::UInt32 time,PacketReader& packet);
 	void pushDataPacket(const std::string& name,PacketReader& packet);
@@ -43,8 +45,13 @@ public:
 	const Publication&	publication;
 	const Poco::UInt32  id;
 
+	const bool audioSampleAccess;
+	const bool videoSampleAccess;
+
 	const QualityOfService&	videoQOS() const;
 	const QualityOfService&	audioQOS() const;
+
+	void init();
 
 private:
 	Poco::UInt32 	computeTime(Poco::UInt32 time);
@@ -62,8 +69,8 @@ private:
 	Poco::UInt32 			_time;
 
 	FlowWriter&				_writer;
-	AudioWriter&			_audioWriter;
-	VideoWriter&			_videoWriter;
+	AudioWriter*			_pAudioWriter;
+	VideoWriter*			_pVideoWriter;
 };
 
 

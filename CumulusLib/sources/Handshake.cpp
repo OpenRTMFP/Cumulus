@@ -28,7 +28,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(Gateway& gateway,DatagramSocket& edgesSocket,Handler& handler) : ServerSession(0,0,Peer(),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,handler),
+Handshake::Handshake(Gateway& gateway,DatagramSocket& edgesSocket,Handler& handler,Entity& entity) : ServerSession(0,0,Peer(handler),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,(Invoker&)handler),
 	_gateway(gateway),_edgesSocket(edgesSocket),isEdges(false) {
 	(bool&)checked=true;
 
@@ -38,10 +38,7 @@ Handshake::Handshake(Gateway& gateway,DatagramSocket& edgesSocket,Handler& handl
 
 	// Display far id flash side
 	// TODO create a Handler.serverId variable (or inherited Handler from Entity), and maybe move this log to "start" server (here, this information is never seen)
-	UInt8 id[32];
-	EVP_Digest(_certificat,sizeof(_certificat),(unsigned char *)id,NULL,EVP_sha256(),NULL);
-
-	INFO("Id of this cumulus server : %s",Util::FormatHex(id,ID_SIZE).c_str());
+	EVP_Digest(_certificat,sizeof(_certificat),(unsigned char *)entity.id,NULL,EVP_sha256(),NULL);
 }
 
 
@@ -89,7 +86,7 @@ void Handshake::manage() {
 		if(it2->second->obsolete()) {
 			if(it2->second->raise()) {
 				NOTE("RTMFP server edge %s lost",it2->first.c_str());
-				UInt32 newBufferSize = edges().size()*_handler.udpBufferSize;
+				UInt32 newBufferSize = edges().size()*_invoker.udpBufferSize;
 				_edgesSocket.setReceiveBufferSize(newBufferSize);_edgesSocket.setReceiveBufferSize(newBufferSize);
 				delete it2->second;
 				edges().erase(it2++);
@@ -142,7 +139,7 @@ void Handshake::clear() {
 		delete it2->second;
 	}
 	edges().clear();
-	_edgesSocket.setReceiveBufferSize(_handler.udpBufferSize);_edgesSocket.setReceiveBufferSize(_handler.udpBufferSize);
+	_edgesSocket.setReceiveBufferSize(_invoker.udpBufferSize);_edgesSocket.setReceiveBufferSize(_invoker.udpBufferSize);
 }
 
 void Handshake::createCookie(PacketWriter& writer,HelloAttempt& attempt,const string& tag,const string& queryUrl) {
@@ -176,7 +173,7 @@ bool Handshake::updateEdge(PacketReader& request) {
 	Edge* pEdgeDescriptor = new Edge();
 	request.readAddress(pEdgeDescriptor->address);
 	edges().insert(it,pair<string,Edge*>(address,pEdgeDescriptor));
-	UInt32 newBufferSize = (edges().size()+1)*_handler.udpBufferSize;
+	UInt32 newBufferSize = (edges().size()+1)*_invoker.udpBufferSize;
 	_edgesSocket.setReceiveBufferSize(newBufferSize);_edgesSocket.setReceiveBufferSize(newBufferSize);
 	return true;
 }
@@ -232,9 +229,9 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			if(type == 0x0a){
 				/// Handshake
 				HelloAttempt& attempt = helloAttempt<HelloAttempt>(tag);
-				if(edges().size()>0 && (_handler.edgesAttemptsBeforeFallback==0 || attempt.count <_handler.edgesAttemptsBeforeFallback)) {
+				if(edges().size()>0 && (_invoker.edgesAttemptsBeforeFallback==0 || attempt.count <_invoker.edgesAttemptsBeforeFallback)) {
 					
-					if(_handler.edgesAttemptsBeforeFallback>0) {
+					if(_invoker.edgesAttemptsBeforeFallback>0) {
 						try {
 							URI uri(epd);
 							response.writeAddress(SocketAddress(uri.getHost(),uri.getPort()),false); // TODO check with true!
@@ -265,7 +262,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				}
 
 				if(edges().size()>0)
-					WARN("After %u hello attempts, impossible to connect to edges. Edges are busy? or unreachable?",_handler.edgesAttemptsBeforeFallback);
+					WARN("After %u hello attempts, impossible to connect to edges. Edges are busy? or unreachable?",_invoker.edgesAttemptsBeforeFallback);
 	
 				// New Cookie
 				createCookie(response,attempt,tag,epd);
@@ -330,7 +327,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				}
 
 				// Fill peer infos
-				Util::UnpackUrl(cookie.queryUrl,(string&)peer.path,peer);
+				Util::UnpackUrl(cookie.queryUrl,(string&)peer.path,(map<string,string>&)peer.properties);
 
 				// RESPONSE
 				Session& session = _gateway.createSession(farId,peer,pDecryptKey,pEncryptKey,cookie);
@@ -339,7 +336,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				string address;
 				if(id==0x39) {
 					// Session by edge 
-					Edge* pEdge = _handler.edges(peer.address);
+					Edge* pEdge = _invoker.edges(peer.address);
 					if(!pEdge)
 						ERROR("Edge session creation by an unknown server edge %s",peer.address.toString().c_str())
 					else
@@ -374,7 +371,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				break;
 			}
 			NOTE("RTMFP server edge %s death",address.c_str());
-			UInt32 newBufferSize = edges().size()*_handler.udpBufferSize;
+			UInt32 newBufferSize = edges().size()*_invoker.udpBufferSize;
 			_edgesSocket.setReceiveBufferSize(newBufferSize);_edgesSocket.setReceiveBufferSize(newBufferSize);
 			delete it->second;
 			edges().erase(it);

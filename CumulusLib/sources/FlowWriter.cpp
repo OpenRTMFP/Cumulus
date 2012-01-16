@@ -16,16 +16,9 @@
 */
 
 #include "FlowWriter.h"
-#include "Clients.h"
 #include "Util.h"
 #include "Logs.h"
 #include "string.h"
-
-#define EMPTY				0x00
-#define AUDIO				0x08
-#define VIDEO				0x09
-#define AMF_WITH_HANDLER	0x14
-#define AMF					0x0F
 
 using namespace std;
 using namespace Poco;
@@ -35,12 +28,12 @@ namespace Cumulus {
 MessageNull FlowWriter::_MessageNull;
 
 
-FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),_abandoned(false),id(0),_stage(0),_stageAck(0),_closed(false),_callbackHandle(0),_resetCount(0),flowId(0),_band(band),signature(signature),_repeatable(0),_lostCount(0),_ackCount(0) {
+FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),id(0),_stage(0),_stageAck(0),_closed(false),_callbackHandle(0),_resetCount(0),flowId(0),_band(band),signature(signature),_repeatable(0),_lostCount(0),_ackCount(0),amf0Preference(false) {
 	band.initFlowWriter(*this);
 }
 
 FlowWriter::FlowWriter(FlowWriter& flowWriter) :
-		id(flowWriter.id),critical(flowWriter.critical),_abandoned(false),
+		id(flowWriter.id),critical(flowWriter.critical),amf0Preference(false),
 		_stage(flowWriter._stage),_stageAck(flowWriter._stageAck),
 		_ackCount(flowWriter._ackCount),_lostCount(flowWriter._lostCount),
 		_closed(false),_callbackHandle(0),_resetCount(0),
@@ -49,6 +42,7 @@ FlowWriter::FlowWriter(FlowWriter& flowWriter) :
 }
 
 FlowWriter::~FlowWriter() {
+	_closed=true;
 	clear();
 }
 
@@ -71,8 +65,7 @@ void FlowWriter::clear() {
 		_messagesSent.pop_front();
 	}
 	if(_stage>0) {
-		createBufferedMessage(); ; // Send a MESSAGE_ABANDONMENT just in the case where the receiver has been created
-		_abandoned=true;
+		writeAbandonMessage(); // Send a MESSAGE_ABANDONMENT just in the case where the receiver has been created
 		flush();
 		_trigger.stop();
 	}
@@ -94,9 +87,8 @@ void FlowWriter::close() {
 	if(_closed)
 		return;
 	if(_stage>0 && _messages.size()==0)
-		createBufferedMessage(); ; // Send a MESSAGE_END just in the case where the receiver has been created
+		writeAbandonMessage(); // Send a MESSAGE_END just in the case where the receiver has been created
 	_closed=true;
-	_abandoned=true;
 	flush();
 }
 
@@ -279,8 +271,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 				_ackCount=_lostCount=0;
 			}
 			delete *it;
-			_messagesSent.pop_front();
-			it=_messagesSent.begin();
+			it=_messagesSent.erase(it);
 		} else
 			++it;
 	
@@ -297,7 +288,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 		_trigger.reset();
 }
 
-void FlowWriter::manage(Handler& handler) {
+void FlowWriter::manage(Invoker& invoker) {
 	if(consumed() || _band.failed())
 		return;
 	try {
@@ -326,10 +317,8 @@ UInt32 FlowWriter::headerSize(UInt32 stage) {
 void FlowWriter::flush(PacketWriter& writer,UInt32 stage,UInt8 flags,bool header,BinaryReader& reader,UInt16 size) {
 	if(_stageAck==0 && header)
 		flags |= MESSAGE_HEADER;
-	if(_abandoned) {
+	if(size==0)
 		flags |= MESSAGE_ABANDONMENT;
-		_abandoned=false;
-	}
 	if(_closed)
 		flags |= MESSAGE_END;
 
@@ -340,7 +329,7 @@ void FlowWriter::flush(PacketWriter& writer,UInt32 stage,UInt8 flags,bool header
 	if(header) {
 		writer.write7BitValue(id);
 		writer.write7BitValue(stage);
-		writer.write7BitValue(stage-_stageAck);
+		writer.write7BitValue((flags&MESSAGE_ABANDONMENT) ? 0 : (stage-_stageAck));
 
 		// signature
 		if(_stageAck==0) {
@@ -356,8 +345,10 @@ void FlowWriter::flush(PacketWriter& writer,UInt32 stage,UInt8 flags,bool header
 
 	}
 
-	reader.readRaw(writer.begin()+writer.position(),size);
-	writer.next(size);
+	if(size>0) {
+		reader.readRaw(writer.begin()+writer.position(),size);
+		writer.next(size);
+	}
 }
 
 void FlowWriter::raiseMessage() {
@@ -436,7 +427,7 @@ void FlowWriter::raiseMessage() {
 void FlowWriter::flush(bool full) {
 
 	if(_messagesSent.size()>100)
-		DEBUG("_messagesSent.size()=%d",_messagesSent.size());
+		DEBUG("_messagesSent.size()=%lu",_messagesSent.size());
 
 	// flush
 	bool header = !_band.canWriteFollowing(*this);
@@ -507,6 +498,17 @@ void FlowWriter::flush(bool full) {
 		_band.flush();
 }
 
+void FlowWriter::cancel(UInt32 index) {
+	if(index>=queue()) {
+		ERROR("Impossible to cancel %u message on flowWriter %u",index,id);
+		return;
+	}
+	list<Message*>::iterator it = _messages.begin();
+	advance(it,index);
+	delete *it;
+	_messages.erase(it);
+}
+
 void FlowWriter::writeUnbufferedMessage(const UInt8* data,UInt32 size,const UInt8* memAckData,UInt32 memAckSize) {
 	if(_closed || signature.empty() || _band.failed()) // signature.empty() means that we are on the flowWriter of FlowNull
 		return;
@@ -519,6 +521,8 @@ MessageBuffered& FlowWriter::createBufferedMessage() {
 	if(_closed || signature.empty() || _band.failed()) // signature.empty() means that we are on the flowWriter of FlowNull
 		return _MessageNull;
 	MessageBuffered* pMessage = new MessageBuffered();
+	if(amf0Preference)
+		pMessage->amfWriter.amf0Preference = true;
 	_messages.push_back(pMessage);
 	return *pMessage;
 }
@@ -530,29 +534,46 @@ BinaryWriter& FlowWriter::writeRawMessage(bool withoutHeader) {
 	}
 	return message.rawWriter;
 }
-AMFWriter& FlowWriter::writeStreamData(const string& name) {
+AMFWriter& FlowWriter::writeAMFPacket(const string& name) {
 	MessageBuffered& message(createBufferedMessage());
-	message.rawWriter.write8(0x0F);
+	message.rawWriter.write8(Message::AMF);
 	message.rawWriter.write8(0);
 	message.rawWriter.write32(0);
 	message.amfWriter.write(name);
 	return message.amfWriter;
 }
+
+void FlowWriter::writeResponseHeader(BinaryWriter& writer,const string& name,double callbackHandle) {
+	writer.write8(Message::AMF_WITH_HANDLER);
+	writer.write32(0);
+	writer.write8(AMF_STRING);
+	writer.writeString16(name);
+	writer.write8(AMF_NUMBER); // marker
+	writer << callbackHandle;
+	writer.write8(AMF_NULL);
+}
 AMFWriter& FlowWriter::writeAMFMessage(const std::string& name) {
 	MessageBuffered& message(createBufferedMessage());
-	message.amfWriter.writeResponseHeader(name,_callbackHandle);
+	writeResponseHeader(message.rawWriter,name,0);
+	return message.amfWriter;
+}
+
+AMFWriter& FlowWriter::writeAMFResult() {
+	MessageBuffered& message(createBufferedMessage());
+	writeResponseHeader(message.rawWriter,"_result",_callbackHandle);
 	return message.amfWriter;
 }
 
 AMFObjectWriter FlowWriter::writeAMFResponse(const string& name,const string& code,const string& description) {
 	MessageBuffered& message(createBufferedMessage());
-	message.amfWriter.writeResponseHeader(name,_callbackHandle);
+	writeResponseHeader(message.rawWriter,name,_callbackHandle);
 
 	string entireCode(_obj);
 	if(!code.empty()) {
 		entireCode.append(".");
 		entireCode.append(code);
 	}
+
 
 	AMFObjectWriter object(message.amfWriter);
 	if(name=="_error")

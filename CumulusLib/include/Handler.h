@@ -18,54 +18,42 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Group.h"
-#include "Streams.h"
-#include "Edges.h"
+#include "Invoker.h"
 
 namespace Cumulus {
 
-class Handler {
-	friend class Handshake; // Handshake manage _edges list!
-	friend class Middle; // Middle access _groups list!
-	friend class ServerSession; // ServerSession manage _clients list!
+class Handler : public Invoker {
 public:
-	Handler();
-	virtual ~Handler();
+	Handler():_myself(*this) {(bool&)_myself.connected=true;}
+	virtual ~Handler(){}
 
 	//events
-	virtual bool	onConnection(Client& client,AMFReader& parameters){return true;}
-	virtual void	onFailed(const Client& client,const std::string& error){}
-	virtual void	onDisconnection(const Client& client){}
-	virtual bool	onMessage(Client& client,const std::string& name,AMFReader& reader){return false;}
+	virtual bool			onConnection(Client& client,AMFReader& parameters,AMFObjectWriter& response){return true;}
+	virtual void			onFailed(const Client& client,const std::string& error){}
+	virtual void			onDisconnection(const Client& client){}
+	virtual bool			onMessage(Client& client,const std::string& name,AMFReader& reader){return false;}
 
-	virtual void	onPublish(Client& client,const Publication& publication){}
-	virtual void	onUnpublish(Client& client,const Publication& publication){}
+	virtual void			onJoinGroup(Client& client,Group& group){}
+	virtual void			onUnjoinGroup(Client& client,Group& group){}
 
-	virtual void	onDataPacket(const Client& client,const Publication& publication,const std::string& name,PacketReader& packet){}
-	virtual void	onAudioPacket(const Client& client,const Publication& publication,Poco::UInt32 time,PacketReader& packet){}
-	virtual void	onVideoPacket(const Client& client,const Publication& publication,Poco::UInt32 time,PacketReader& packet){}
+	virtual bool			onPublish(Client& client,const Publication& publication,std::string& error){return true;}
+	virtual void			onUnpublish(Client& client,const Publication& publication){}
 
-	virtual void	onSubscribe(Client& client,const Listener& listener){}
-	virtual void	onUnsubscribe(Client& client,const Listener& listener){}
+	virtual void			onDataPacket(Client& client,const Publication& publication,const std::string& name,PacketReader& packet){}
+	virtual void			onAudioPacket(Client& client,const Publication& publication,Poco::UInt32 time,PacketReader& packet){}
+	virtual void			onVideoPacket(Client& client,const Publication& publication,Poco::UInt32 time,PacketReader& packet){}
 
-	// invocations
-	Clients				clients;
-	Group&				group(const Poco::UInt8* id);
-	Streams				streams;
-	Edges				edges;
-
-	// properties
-	const Poco::UInt32	udpBufferSize;
-	const bool			videoSampleAccess;
-	const bool			audioSampleAccess;
-	const Poco::UInt32	keepAlivePeer;
-	const Poco::UInt32	keepAliveServer;
-	const Poco::UInt8	edgesAttemptsBeforeFallback;
+	virtual bool			onSubscribe(Client& client,const Listener& listener,std::string& error){return true;}
+	virtual void			onUnsubscribe(Client& client,const Listener& listener){}
 private:
-	std::list<Group*>											_groups;
-	std::map<std::string,Edge*>									_edges;
-	std::map<const Poco::UInt8*,Client*,Clients::Compare>		_clients;
+	Peer&					myself();
+	Peer					_myself;
 };
+
+inline Peer& Handler::myself() {
+	return _myself;
+}
+
 
 
 } // namespace Cumulus

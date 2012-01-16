@@ -30,34 +30,41 @@ public:
 	~AMFObjectWriter();
 
 	// slow
-	void writeObject(const AMFObject& amfObject);
+	void write(const AMFSimpleObject& object);
 
 	// fast
+	void write(const std::string& name);
+	void write(const std::string& name,const Poco::Timestamp& date);
 	void write(const std::string& name,double value);
+	void write(const std::string& name,Poco::Int32 value);
 	void write(const std::string& name,const std::string& value);
-	void write(const std::string& name,const char* value,Poco::UInt16 size);
 	void write(const std::string& name,const std::vector<Poco::UInt8>& data);
 	
+
+	AMFWriter&	writer;
 private:
 	bool		_end;
-	AMFWriter&	_writer;
 };
-
-inline void AMFObjectWriter::writeObject(const AMFObject& amfObject) {
-	_writer.writeObject(amfObject);
+inline void AMFObjectWriter::write(const std::string& name) {
+	writer.writeObjectProperty(name);
 }
-
+inline void AMFObjectWriter::write(const std::string& name,const Poco::Timestamp& date) {
+	writer.writeObjectProperty(name,date);
+}
+inline void AMFObjectWriter::write(const AMFSimpleObject& object) {
+	writer.writeSimpleObject(object);
+}
+inline void AMFObjectWriter::write(const std::string& name,Poco::Int32 value) {
+	writer.writeObjectProperty(name,value);
+}
 inline void AMFObjectWriter::write(const std::string& name,double value) {
-	_writer.writeObjectProperty(name,value);
+	writer.writeObjectProperty(name,value);
 }
 inline void AMFObjectWriter::write(const std::string& name,const std::string& value) {
-	_writer.writeObjectProperty(name,value);
-}
-inline void AMFObjectWriter::write(const std::string& name,const char* value,Poco::UInt16 size) {
-	_writer.writeObjectProperty(name,value,size);
+	writer.writeObjectProperty(name,value);
 }
 inline void AMFObjectWriter::write(const std::string& name,const std::vector<Poco::UInt8>& data) {
-	_writer.writeObjectProperty(name,data);
+	writer.writeObjectProperty(name,data);
 }
 
 } // namespace Cumulus

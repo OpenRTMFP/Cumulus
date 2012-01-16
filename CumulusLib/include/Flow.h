@@ -20,8 +20,8 @@
 #include "Cumulus.h"
 #include "PacketReader.h"
 #include "Peer.h"
-#include "Handler.h"
 #include "FlowWriter.h"
+#include "Invoker.h"
 
 namespace Cumulus {
 
@@ -29,7 +29,7 @@ class Packet;
 class Fragment;
 class Flow {
 public:
-	Flow(Poco::UInt32 id,const std::string& signature,const std::string& name,Peer& peer,Handler& handler,BandWriter& band);
+	Flow(Poco::UInt32 id,const std::string& signature,const std::string& name,Peer& peer,Invoker& invoker,BandWriter& band);
 	virtual ~Flow();
 
 	const Poco::UInt32		id;
@@ -56,13 +56,13 @@ protected:
 	
 	Peer&					peer;
 	FlowWriter&				writer;
-	Handler&				handler;
+	Invoker&				invoker;
 	const Poco::UInt32		stage;
 	
 private:
 	virtual void		commitHandler();
 	void				complete();
-	Poco::UInt8			unpack(PacketReader& reader);
+	Message::Type		unpack(PacketReader& reader);
 
 	bool				_completed;
 	BandWriter&			_band;

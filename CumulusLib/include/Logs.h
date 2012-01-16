@@ -22,13 +22,9 @@
 #include "PacketReader.h"
 #include "PacketWriter.h"
 
-#ifdef CUMULUS_EXPORTS
-	#define CUMULUS_LOGS
-#endif
-
 namespace Cumulus {
 
-class CUMULUS_API Logs
+class Logs
 {
 public:
 	enum DumpMode {
@@ -106,7 +102,7 @@ inline void Logs::SetLogger(Logger& logger) {
 			char szzs[700];\
 			snprintf(szzs,sizeof(szzs),FMT,## __VA_ARGS__);\
 			szzs[sizeof(szzs)-1] = '\0'; \
-			Cumulus::Logs::GetLogger()->logHandler(Poco::Thread::currentTid(),GetThreadName(),PRIO,FILE,LINE,szzs); \
+			Cumulus::Logs::GetLogger()->logHandler(Poco::Thread::currentTid(),Poco::Thread::current() ? Poco::Thread::current()->name() : "",PRIO,FILE,LINE,szzs); \
 		} \
 	}
 

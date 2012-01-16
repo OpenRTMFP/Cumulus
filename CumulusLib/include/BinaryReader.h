@@ -42,6 +42,8 @@ public:
 	Poco::UInt16	read16();
 	Poco::UInt32	read32();
 	bool			readAddress(Address& address);
+
+	static BinaryReader BinaryReaderNull;
 };
 
 inline void BinaryReader::readRaw(Poco::UInt8* value,Poco::UInt32 size) {
@@ -59,9 +61,6 @@ inline void BinaryReader::readString8(std::string& value) {
 }
 inline void BinaryReader::readString16(std::string& value) {
 	readRaw(read16(),value);
-}
-inline void BinaryReader::readString(std::string& value) {
-	readRaw(read7BitValue(),value);
 }
 
 } // namespace Cumulus

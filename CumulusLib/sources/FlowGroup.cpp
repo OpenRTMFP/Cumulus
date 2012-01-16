@@ -18,7 +18,6 @@
 #include "FlowGroup.h"
 #include "Logs.h"
 #include <openssl/evp.h>
-#include <math.h>
 
 using namespace std;
 using namespace Poco;
@@ -29,7 +28,7 @@ namespace Cumulus {
 string FlowGroup::Signature("\x00\x47\x43",3);
 string FlowGroup::_Name("NetGroup");
 
-FlowGroup::FlowGroup(UInt32 id,Peer& peer,Handler& handler,BandWriter& band) : Flow(id,Signature,_Name,peer,handler,band),_pGroup(NULL) {
+FlowGroup::FlowGroup(UInt32 id,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,Signature,_Name,peer,invoker,band),_pGroup(NULL) {
 	(UInt32&)writer.flowId = id;
 }
 
@@ -37,7 +36,7 @@ FlowGroup::~FlowGroup() {
 	// delete member of group
 	DEBUG("Group closed")
 	if(_pGroup)
-		_pGroup->removePeer(peer);
+		peer.unjoinGroup(*_pGroup);
 }
 
 void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
@@ -56,25 +55,25 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 			} else
 				data.readRaw(groupId,ID_SIZE);
 		
-			_pGroup = &handler.group(groupId);
+			_pGroup = invoker.groups(groupId);
 		
-			UInt16 count=13;
-			if(_pGroup->peers().size()>600)
-				count=(UInt16)floor(2*log((double)_pGroup->peers().size()));
-
-			map<UInt32,const Peer*>::const_reverse_iterator it;
-			for(it=_pGroup->peers().rbegin();it!=_pGroup->peers().rend();++it) {
-				if((*it->second)==peer)
-					continue;
-				BinaryWriter& response(writer.writeRawMessage(true));
-				response.write8(0x0b); // unknown
-				response.writeRaw(it->second->id,ID_SIZE);
-				if(--count==0)
-					break;
-			}
-
-			_pGroup->addPeer(peer);
-
+			if(_pGroup) {
+				UInt16 count=6;
+				Group::Iterator it;
+				for(it=_pGroup->begin();it!=_pGroup->end();++it) {
+					if(peer==(*it)->id)
+						continue;
+					BinaryWriter& response(writer.writeRawMessage(true));
+					response.write8(0x0b); // unknown
+					response.writeRaw((*it)->id,ID_SIZE);
+					if((*it)->ping>=1000)
+						continue;
+					if(--count==0)
+						break;
+				}
+				peer.joinGroup(*_pGroup);
+			} else
+				peer.joinGroup(groupId);
 		}
 	} else
 		Flow::rawHandler(type,data);

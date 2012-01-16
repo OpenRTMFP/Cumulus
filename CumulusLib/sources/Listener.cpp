@@ -16,6 +16,7 @@
 */
 
 #include "Listener.h"
+#include "Publication.h"
 #include "Poco/StreamCopier.h"
 
 using namespace Poco;
@@ -83,26 +84,49 @@ public:
 };
 
 Listener::Listener(UInt32 id,Publication& publication,FlowWriter& writer,bool unbuffered) :
-	_unbuffered(unbuffered),_writer(writer),_boundId(0),
+	_unbuffered(unbuffered),_writer(writer),_boundId(0),audioSampleAccess(false),videoSampleAccess(false),
 	id(id),publication(publication),_firstKeyFrame(false),
-	_audioWriter(writer.newFlowWriter<AudioWriter>()),
-	_videoWriter(writer.newFlowWriter<VideoWriter>()),
+	_pAudioWriter(NULL),_pVideoWriter(NULL),
 	_time(0),_deltaTime(0),_addingTime(0) {
-
-	writeBounds();
 }
 
 Listener::~Listener() {
-	_audioWriter.close();
-	_videoWriter.close();
+	if(_pAudioWriter)
+		_pAudioWriter->close();
+	if(_pVideoWriter)
+		_pVideoWriter->close();
+}
+
+void Listener::init() {
+	if(!_pAudioWriter)
+		_pAudioWriter = &_writer.newFlowWriter<AudioWriter>();
+	else
+		WARN("Listener %u audio track has already been initialized",id);
+	if(!_pVideoWriter)
+		_pVideoWriter = &_writer.newFlowWriter<VideoWriter>();
+	else
+		WARN("Listener %u video track has already been initialized",id);
+	writeBounds();
+}
+
+void Listener::sampleAccess(bool audio,bool video) const {
+	(bool&)videoSampleAccess = video;
+	(bool&)audioSampleAccess = audio;
+	AMFWriter& amf = _writer.writeAMFPacket("|RtmpSampleAccess");
+	amf.writeBoolean(audioSampleAccess);
+	amf.writeBoolean(videoSampleAccess);
 }
 
 const QualityOfService& Listener::audioQOS() const {
-	return _audioWriter.qos;
+	if(!_pAudioWriter)
+		throw Exception("Listener %u must be initialized before to be used",id);
+	return _pAudioWriter->qos;
 }
 
 const QualityOfService& Listener::videoQOS() const {
-	return _videoWriter.qos;
+	if(!_pVideoWriter)
+		throw Exception("Listener %u must be initialized before to be used",id);
+	return _pVideoWriter->qos;
 }
 
 UInt32 Listener::computeTime(UInt32 time) {
@@ -129,8 +153,10 @@ void Listener::writeBound(FlowWriter& writer) {
 }
 
 void Listener::writeBounds() {
-	writeBound(_videoWriter);
-	writeBound(_audioWriter);
+	if(_pVideoWriter)
+		writeBound(*_pVideoWriter);
+	if(_pAudioWriter)
+		writeBound(*_pAudioWriter);
 	writeBound(_writer);
 	++_boundId;
 }
@@ -144,8 +170,8 @@ void Listener::stopPublishing(const string& name) {
 	_writer.writeStatusResponse("Play.UnpublishNotify",name +" is now unpublished");
 	_deltaTime=0;
 	_addingTime = _time;
-	_audioWriter.qos.reset();
-	_videoWriter.qos.reset();
+	_pAudioWriter->qos.reset();
+	_pVideoWriter->qos.reset();
 }
 
 
@@ -160,40 +186,50 @@ void Listener::pushDataPacket(const string& name,PacketReader& packet) {
 		}
 		WARN("Written unbuffered impossible, it requires %u head bytes available on PacketReader given",offset);
 	}
-	StreamCopier::copyStream(packet.stream(),_writer.writeStreamData(name).writer.stream());
+	StreamCopier::copyStream(packet.stream(),_writer.writeAMFPacket(name).writer.stream());
 }
 
 void Listener::pushVideoPacket(UInt32 time,PacketReader& packet) {
+	if(!_pVideoWriter) {
+		ERROR("Listener %u must be initialized before to be used",id);
+		return;
+	}
 	// key frame ?
 	if(((*packet.current())&0xF0) == 0x10)
 		_firstKeyFrame=true;
 
 	if(!_firstKeyFrame) {
 		DEBUG("Video frame dropped for listener %u to wait first key frame",id);
-		++(UInt32&)_videoWriter.qos.droppedFrames;
+		++(UInt32&)_pVideoWriter->qos.droppedFrames;
 		return;
 	}
 
-	if(_videoWriter.reseted) {
-		_videoWriter.reseted=false;
+	if(_pVideoWriter->reseted) {
+		_pVideoWriter->reseted=false;
 		writeBounds();
 	}
 
-	_videoWriter.write(computeTime(time),packet,_unbuffered);
+	_pVideoWriter->write(computeTime(time),packet,_unbuffered);
 }
 
 
 void Listener::pushAudioPacket(UInt32 time,PacketReader& packet) {
-	if(_audioWriter.reseted) {
-		_audioWriter.reseted=false;
+	if(!_pAudioWriter) {
+		ERROR("Listener %u must be initialized before to be used",id);
+		return;
+	}
+	if(_pAudioWriter->reseted) {
+		_pAudioWriter->reseted=false;
 		writeBounds();
 	}
-	_audioWriter.write(computeTime(time),packet,_unbuffered);
+	_pAudioWriter->write(computeTime(time),packet,_unbuffered);
 }
 
 void Listener::flush() {
-	_audioWriter.flush();
-	_videoWriter.flush();
+	if(_pAudioWriter)
+		_pAudioWriter->flush();
+	if(_pVideoWriter)
+		_pVideoWriter->flush();
 	_writer.flush(true);
 }
 

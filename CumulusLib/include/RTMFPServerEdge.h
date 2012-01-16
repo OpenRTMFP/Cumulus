@@ -35,7 +35,7 @@ public:
 	Poco::Thread::Priority		threadPriority;
 };
 
-class CUMULUS_API RTMFPServerEdge : private RTMFPServer {
+class RTMFPServerEdge : private RTMFPServer {
 public:
 	RTMFPServerEdge();
 	virtual ~RTMFPServerEdge();
@@ -50,7 +50,7 @@ protected:
 
 private:
 	bool			serverHandler();
-	bool			manageRealTime(bool& terminate);
+	bool			realTime(bool& terminate);
 	void			manage();
 	EdgeSession*	findEdgeSession(Poco::UInt32 id);
 	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);

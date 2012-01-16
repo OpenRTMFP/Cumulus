@@ -24,15 +24,12 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Publications::Publications(Handler& handler) : _handler(handler) {
+Publications::Publications(map<string,Publication*>& publications) : _publications(publications) {
 	
 }
 
 Publications::~Publications() {
-	// delete publications
-	Iterator it;
-	for(it=_publications.begin();it!=_publications.end();++it)
-		delete it->second;
+
 }
 
 Publications::Iterator Publications::operator()(UInt32 id) {
@@ -42,20 +39,6 @@ Publications::Iterator Publications::operator()(UInt32 id) {
 			return it;
 	}
 	return end();
-}
-
-Publications::Iterator Publications::create(const string& name) {
-	Iterator it = _publications.lower_bound(name);
-	if(it!=end() && it->first==name)
-		return it;
-	if(it!=_publications.begin())
-		--it;
-	return _publications.insert(it,pair<string,Publication*>(name,new Publication(name,_handler)));
-}
-
-void Publications::destroy(const Iterator& it) {
-	delete it->second;
-	_publications.erase(it);
 }
 
 

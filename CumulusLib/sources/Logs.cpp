@@ -41,7 +41,7 @@ void Logs::Dump(const UInt8* data,UInt32 size,const char* header,bool middle) {
 		vector<UInt8> out;
 		Util::Dump(data,size,out,header);
 		if(out.size()>0)
-			GetLogger()->dumpHandler((const char*)&out[0],out.size());
+			GetLogger()->dumpHandler(&out[0],out.size());
 	}
 }
 

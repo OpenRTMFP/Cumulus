@@ -19,56 +19,79 @@
 
 #include "Cumulus.h"
 #include "BinaryWriter.h"
-#include "AMFObject.h"
+#include "AMFSimpleObject.h"
+#include <list>
 
 namespace Cumulus {
 
-
-class CUMULUS_API AMFWriter {
+class AMFWriter {
 public:
 	AMFWriter(BinaryWriter& writer);
 	~AMFWriter();
 
-	void writeResponseHeader(const std::string& key,double callbackHandle);
+	bool repeat(Poco::UInt32 reference);
 
 	// slow
-	void writeObject(const AMFObject& amfObject);
+	void writeSimpleObject(const AMFSimpleObject& object);
 
 	// fast
 	void beginObject();
-	void beginSubObject(const std::string& name);
+	void beginObject(const std::string& type);
+	void writeObjectProperty(const std::string& name);
+	void writeObjectProperty(const std::string& name,const Poco::Timestamp& date);
 	void writeObjectProperty(const std::string& name,double value);
+	void writeObjectProperty(const std::string& name,Poco::Int32 value);
 	void writeObjectProperty(const std::string& name,const std::string& value);
-	void writeObjectArrayProperty(const std::string& name,Poco::UInt32 count);
-	void writeObjectProperty(const std::string& name,const char* value,Poco::UInt16 size);
 	void writeObjectProperty(const std::string& name,const std::vector<Poco::UInt8>& data);
 	void endObject();
 
-	void writeArray(Poco::UInt32 count);
+	BinaryWriter&	beginExternalizableObject(const std::string& type);
+	void			endExternalizableObject();
 
+
+	void beginDictionary(Poco::UInt32 count,bool weakKeys=false);
+	void endDictionary();
+
+	void beginArray(Poco::UInt32 count);
+	void beginObjectArray(Poco::UInt32 count);
+	void endArray();
+
+	void writeDate(const Poco::Timestamp& date);
+	void writeInteger(Poco::Int32 value);
 	void writeNumber(double value);
 	void write(const std::string& value);
-	void write(const char* value,Poco::UInt16 size);
-	void writeBool(bool value);
+	void writeBoolean(bool value);
 	void writeNull();
 	BinaryWriter& writeByteArray(Poco::UInt32 size);
 	void writeByteArray(const std::vector<Poco::UInt8>& data);
 	void writeByteArray(const Poco::UInt8* data,Poco::UInt32 size);
+
+	void writePropertyName(const std::string& value);
 	
 	BinaryWriter& writer;
+
+	const Poco::UInt32	lastReference;
+	bool				amf0Preference;
+private:
+	void beginObject(const std::string& type,bool externalizable);
+	void writeString(const std::string& value);
+
+	std::map<std::string,Poco::UInt32>	_stringReferences;
+	std::vector<Poco::UInt8>			_references;
+	bool								_amf3;
+	std::list<Poco::UInt32>				_lastObjectReferences;
 };
-
-
-inline void AMFWriter::beginObject() {
-	writer.write8(AMF_BEGIN_OBJECT); // mark deb
-}
-
-inline void AMFWriter::writeNull() {
-	writer.write8(AMF_NULL); // marker
-}
 
 inline void AMFWriter::writeByteArray(const std::vector<Poco::UInt8>& data) {
 	writeByteArray(data.size()>0 ? &data[0] : NULL,data.size());
+}
+
+inline void AMFWriter::beginObject() {
+	beginObject("",false);
+}
+
+inline void AMFWriter::beginObject(const std::string& type) {
+	beginObject(type,false);
 }
 
 

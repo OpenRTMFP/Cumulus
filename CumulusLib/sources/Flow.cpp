@@ -20,12 +20,6 @@
 #include "Util.h"
 #include "string.h"
 
-#define EMPTY				0x00
-#define AUDIO				0x08
-#define VIDEO				0x09
-#define AMF_WITH_HANDLER	0x14
-#define AMF					0x0F
-
 using namespace std;
 using namespace Poco;
 
@@ -77,7 +71,7 @@ public:
 };
 
 
-Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,Handler& handler,BandWriter& band) : id(id),stage(0),peer(peer),handler(handler),_completed(false),_pPacket(NULL),_band(band),writer(*new FlowWriter(signature,band)) {
+Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,Invoker& invoker,BandWriter& band) : id(id),stage(0),peer(peer),invoker(invoker),_completed(false),_pPacket(NULL),_band(band),writer(*new FlowWriter(signature,band)) {
 	if(writer.flowId==0)
 		((UInt32&)writer.flowId)=id;
 	// create code prefix for a possible response
@@ -103,8 +97,10 @@ void Flow::complete() {
 	_fragments.clear();
 
 	// delete receive buffer
-	if(_pPacket)
+	if(_pPacket) {
 		delete _pPacket;
+		_pPacket=NULL;
+	}
 
 	_completed=true;
 }
@@ -118,21 +114,21 @@ void Flow::fail(const string& error) {
 	}
 }
 
-UInt8 Flow::unpack(PacketReader& reader) {
+Message::Type Flow::unpack(PacketReader& reader) {
 	if(reader.available()==0)
-		return EMPTY;
-	UInt8 type = reader.read8();
+		return Message::EMPTY;
+	Message::Type type = (Message::Type)reader.read8();
 	switch(type) {
 		// amf content
 		case 0x11:
 			reader.next(1);
-		case AMF_WITH_HANDLER:
+		case Message::AMF_WITH_HANDLER:
 			reader.next(4);
-			return AMF_WITH_HANDLER;
-		case AMF:
+			return Message::AMF_WITH_HANDLER;
+		case Message::AMF:
 			reader.next(5);
-		case AUDIO:
-		case VIDEO:
+		case Message::AUDIO:
+		case Message::VIDEO:
 			break;
 		// raw data
 		case 0x04:
@@ -200,21 +196,21 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 		return;
 	}
 
-	if(deltaNAck>stage || deltaNAck==0)
+	if(deltaNAck>stage) {
+		WARN("DeltaNAck %u superior to stage %u on flow %u",deltaNAck,stage,id);
 		deltaNAck=stage;
+	}
 	
-	if(flags&MESSAGE_ABANDONMENT || this->stage < (stage-deltaNAck)) {
-		DEBUG("Abandonment signal (flag:%2x), size %u",flags,fragment.available());
+	if(this->stage < (stage-deltaNAck)) {
 		map<UInt32,Fragment*>::iterator it=_fragments.begin();
 		while(it!=_fragments.end()) {
-			if( it->first > stage) // Abandon all stages <= stage
+			if( it->first > stage) 
 				break;
-			if( it->first <= (stage-1)) {
-				PacketReader reader(it->second->begin(),it->second->size());
-				fragmentSortedHandler(it->first,reader,it->second->flags);
-				if(_completed)
-					return;
-			}
+			// leave all stages <= stage
+			PacketReader reader(it->second->begin(),it->second->size());
+			fragmentSortedHandler(it->first,reader,it->second->flags);
+			if(_completed) // to prevent a crash bug!! (double fragments deletion)
+				return;
 			delete it->second;
 			_fragments.erase(it++);
 		}
@@ -230,7 +226,7 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 				--it;
 			_fragments.insert(it,pair<UInt32,Fragment*>(stage,new Fragment(fragment,flags)));
 			if(_fragments.size()>100)
-				DEBUG("_fragments.size()=%d",_fragments.size()); 
+				DEBUG("_fragments.size()=%lu",_fragments.size()); 
 		} else
 			DEBUG("Stage %u on flow %u has already been received",stage,id);
 	} else {
@@ -257,21 +253,34 @@ void Flow::fragmentSortedHandler(UInt32 stage,PacketReader& fragment,UInt8 flags
 	}
 	if(stage>(this->stage+1)) {
 		// not following stage!
-		lostFragmentsHandler(stage-this->stage-1);
+		UInt32 lostCount = stage-this->stage-1;
 		(UInt32&)this->stage = stage;
 		if(_pPacket) {
 			delete _pPacket;
 			_pPacket = NULL;
 		}
-		if(flags&MESSAGE_WITH_BEFOREPART)
+		if(flags&MESSAGE_WITH_BEFOREPART) {
+			lostFragmentsHandler(lostCount+1);
 			return;
+		}
+		lostFragmentsHandler(lostCount);
 	} else
 		(UInt32&)this->stage = stage;
-	
+
+	// If MESSAGE_ABANDONMENT, content is not the right normal content!
+	if(flags&MESSAGE_ABANDONMENT) {
+		if(_pPacket) {
+			delete _pPacket;
+			_pPacket = NULL;
+		}
+		return;
+	}
+
 	PacketReader* pMessage(&fragment);
 	if(flags&MESSAGE_WITH_BEFOREPART){
 		if(!_pPacket) {
 			WARN("A received message tells to have a 'beforepart' and nevertheless partbuffer is empty, certainly some packets were lost");
+			lostFragmentsHandler(1);
 			delete _pPacket;
 			_pPacket = NULL;
 			return;
@@ -286,36 +295,38 @@ void Flow::fragmentSortedHandler(UInt32 stage,PacketReader& fragment,UInt8 flags
 	} else if(flags&MESSAGE_WITH_AFTERPART) {
 		if(_pPacket) {
 			ERROR("A received message tells to have not 'beforepart' and nevertheless partbuffer exists");
+			lostFragmentsHandler(_pPacket->fragments);
 			delete _pPacket;
 		}
 		_pPacket = new Packet(fragment);
 		return;
 	}
 
-	UInt8 type = unpack(*pMessage);
+	Message::Type type = unpack(*pMessage);
 
-	if(type!=EMPTY) {
+	if(type!=Message::EMPTY) {
 		writer._callbackHandle = 0;
 		string name;
 		AMFReader amf(*pMessage);
-		if(type==AMF_WITH_HANDLER || type==AMF) {
+		if(type==Message::AMF_WITH_HANDLER || type==Message::AMF) {
 			amf.read(name);
-			if(type==AMF_WITH_HANDLER) {
+			if(type==Message::AMF_WITH_HANDLER) {
 				writer._callbackHandle = amf.readNumber();
-				amf.skipNull();
+				if(amf.followingType()==AMF::Null)
+					amf.readNull();
 			}
 		}
 
 		try {
 			switch(type) {
-				case AMF_WITH_HANDLER:
-				case AMF:
+				case Message::AMF_WITH_HANDLER:
+				case Message::AMF:
 					messageHandler(name,amf);
 					break;
-				case AUDIO:
+				case Message::AUDIO:
 					audioHandler(*pMessage);
 					break;
-				case VIDEO:
+				case Message::VIDEO:
 					videoHandler(*pMessage);
 					break;
 				default:

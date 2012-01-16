@@ -40,11 +40,11 @@ public:
 	void writeString8(const char* value,Poco::UInt8 size);
 	void writeString16(const std::string& value);
 	void writeString16(const char* value,Poco::UInt16 size);
-	void writeString(const std::string& value);
-	void writeString(const char* value,Poco::UInt32 size);
 	void write7BitValue(Poco::UInt32 value);
 	void writeAddress(const Address& address,bool publicFlag);
 	void writeAddress(const Poco::Net::SocketAddress& address,bool publicFlag);
+
+	static BinaryWriter BinaryWriterNull;
 };
 
 inline void BinaryWriter::writeRaw(const Poco::UInt8* value,Poco::UInt32 size) {

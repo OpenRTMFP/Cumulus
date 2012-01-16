@@ -35,11 +35,9 @@ void Sessions::clear() {
 	// delete sessions
 	if(!_sessions.empty())
 		WARN("sessions are deleting");
-	map<UInt32,Session*>::const_iterator it;
-	for(it=_sessions.begin();it!=_sessions.end();++it) {
-		(bool&)it->second->died = true;
+	Iterator it;
+	for(it=_sessions.begin();it!=_sessions.end();++it)
 		delete it->second;
-	}
 	_sessions.clear();
 }
 
@@ -60,31 +58,47 @@ Session* Sessions::add(Session* pSession) {
 	return pSession;
 }
 
-Session* Sessions::find(const Poco::UInt8* peerId) const {
-	Iterator it;
+void Sessions::remove(map<UInt32,Session*>::iterator it) {
+	DEBUG("Session %u died",it->second->id);
+	_gateway.destroySession(*it->second);
+	delete it->second;
+	_sessions.erase(it);
+}
+
+
+Session* Sessions::find(const Poco::UInt8* peerId) {
+	map<UInt32,Session*>::iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
-		if(it->second->peer == peerId)
+		if(it->second->peer == peerId) {
+			if(it->second->died) {
+				remove(it);
+				return NULL;
+			}
 			return it->second;
+		}
 	}
 	return NULL;
 }
 
-Session* Sessions::find(UInt32 id) const {
-	Iterator it = _sessions.find(id);
+Session* Sessions::find(UInt32 id) {
+	map<UInt32,Session*>::iterator it = _sessions.find(id);
 	if(it==_sessions.end())
 		return NULL;
+	if(it->second->died) {
+		remove(it);
+		return NULL;
+	}
 	return it->second;
 }
+
+
 
 bool Sessions::manage() {
 	map<UInt32,Session*>::iterator it= _sessions.begin();
 	while(it!=end()) {
 		it->second->manage();
 		if(it->second->died) {
-			DEBUG("Session %u died",it->second->id);
-			_gateway.destroySession(*it->second);
-			delete it->second;
-			_sessions.erase(it++);
+			remove(it++);
 			continue;
 		}
 		++it;

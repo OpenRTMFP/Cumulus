@@ -24,7 +24,7 @@ namespace Cumulus {
 
 class FlowNull : public Flow {
 public:
-	FlowNull(Peer& peer,Handler& handler,BandWriter& band);
+	FlowNull(Peer& peer,Invoker& invoker,BandWriter& band);
 	virtual ~FlowNull();
 	
 	void	fragmentHandler(Poco::UInt32 stage,Poco::UInt32 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);

@@ -17,168 +17,7 @@
 	</ToolFiles>
 	<Configurations>
 		<Configuration
-			Name="debug_shared|Win32"
-			OutputDirectory="$(ProjectDir)lib/"
-			IntermediateDirectory="tmp/$(ConfigurationName)"
-			ConfigurationType="2"
-			CharacterSet="2"
-			ManagedExtensions="0"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				AdditionalIncludeDirectories="include;../External/include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_USRDLL;CUMULUS_EXPORTS"
-				StringPooling="true"
-				MinimalRebuild="true"
-				ExceptionHandling="1"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="4"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="bin/$(ProjectName)d.dll"
-				LinkIncremental="2"
-				AdditionalLibraryDirectories="..\External\lib"
-				GenerateDebugInformation="true"
-				AssemblyDebug="0"
-				ImportLibrary="$(Outdir)$(TargetName).lib"
-				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="release_shared|Win32"
-			OutputDirectory="$(ProjectDir)lib/"
-			IntermediateDirectory="tmp/$(ConfigurationName)"
-			ConfigurationType="2"
-			CharacterSet="2"
-			ManagedExtensions="0"
-			WholeProgramOptimization="0"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				InlineFunctionExpansion="1"
-				EnableIntrinsicFunctions="true"
-				FavorSizeOrSpeed="1"
-				OmitFramePointers="true"
-				WholeProgramOptimization="false"
-				AdditionalIncludeDirectories="include;../External/include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_USERDLL;CUMULUS_EXPORTS"
-				StringPooling="true"
-				ExceptionHandling="1"
-				RuntimeLibrary="2"
-				BufferSecurityCheck="false"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="0"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="bin/$(ProjectName).dll"
-				LinkIncremental="1"
-				AdditionalLibraryDirectories="..\External\lib"
-				GenerateDebugInformation="false"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				ImportLibrary="$(OutDir)$(TargetName).lib"
-				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="debug_static|Win32"
+			Name="debug|Win32"
 			OutputDirectory="$(ProjectDir)lib/"
 			IntermediateDirectory="tmp/$(ConfigurationName)"
 			ConfigurationType="4"
@@ -204,7 +43,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="../External/include;include"
-				PreprocessorDefinitions="WIN32;_DEBUG;CUMULUS_EXPORTS;STATIC"
+				PreprocessorDefinitions="WIN32;_DEBUG;STATIC;CUMULUS_LOGS"
 				StringPooling="true"
 				MinimalRebuild="true"
 				ExceptionHandling="1"
@@ -225,7 +64,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)$(ProjectName)mtd.lib"
+				OutputFile="$(OutDir)$(ProjectName)d.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -244,7 +83,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="release_static|Win32"
+			Name="release|Win32"
 			OutputDirectory="$(ProjectDir)lib/"
 			IntermediateDirectory="tmp/$(ConfigurationName)"
 			ConfigurationType="4"
@@ -275,7 +114,7 @@
 				OmitFramePointers="true"
 				WholeProgramOptimization="false"
 				AdditionalIncludeDirectories="include;../External/include"
-				PreprocessorDefinitions="WIN32;NDEBUG;CUMULUS_EXPORTS;STATIC"
+				PreprocessorDefinitions="WIN32;NDEBUG;STATIC;CUMULUS_LOGS"
 				StringPooling="true"
 				ExceptionHandling="1"
 				RuntimeLibrary="0"
@@ -295,7 +134,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)$(ProjectName)mt.lib"
+				OutputFile="$(OutDir)$(ProjectName).lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -348,38 +187,6 @@
 			<Filter
 				Name="Streams"
 				>
-				<File
-					RelativePath=".\sources\AMFObject.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\AMFObject.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\AMFObjectWriter.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\AMFObjectWriter.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\AMFReader.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\AMFReader.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\AMFWriter.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\AMFWriter.h"
-					>
-				</File>
 				<File
 					RelativePath=".\include\BandWriter.h"
 					>
@@ -445,6 +252,18 @@
 					>
 				</File>
 				<File
+					RelativePath=".\include\Entities.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Entity.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Entity.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\Startable.cpp"
 					>
 				</File>
@@ -473,19 +292,11 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\Clients.cpp"
+					RelativePath=".\sources\Client.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\include\Clients.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\Entity.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Entity.h"
+					RelativePath=".\include\Client.h"
 					>
 				</File>
 				<File
@@ -497,11 +308,15 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\Handler.cpp"
+					RelativePath=".\include\Handler.h"
 					>
 				</File>
 				<File
-					RelativePath=".\include\Handler.h"
+					RelativePath=".\sources\Invoker.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Invoker.h"
 					>
 				</File>
 				<File
@@ -728,7 +543,7 @@
 					RelativePath=".\include\Middle.h"
 					>
 					<FileConfiguration
-						Name="debug_static|Win32"
+						Name="debug|Win32"
 						>
 						<Tool
 							Name="VCCustomBuildTool"
@@ -769,6 +584,46 @@
 				</File>
 				<File
 					RelativePath=".\include\RTMFPServerEdge.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="AMF"
+				>
+				<File
+					RelativePath=".\include\AMF.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\AMFObjectWriter.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\AMFObjectWriter.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\AMFReader.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\AMFReader.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\AMFSimpleObject.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\AMFSimpleObject.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\AMFWriter.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\AMFWriter.h"
 					>
 				</File>
 			</Filter>

@@ -22,7 +22,7 @@
 
 namespace Cumulus {
 
-class CUMULUS_API Startable : private Poco::Runnable {
+class Startable : private Poco::Runnable {
 
 public:
 	void				start();
@@ -43,11 +43,16 @@ protected:
 private:
 	void			run();
 
+	bool					_haveToJoin;
 	Poco::Thread			_thread;
 	Poco::FastMutex			_mutex;
 	volatile bool			_terminate;
 	std::string				_name;
 };
+
+inline void Startable::run() {
+	prerun();
+}
 
 inline void Startable::setPriority(Poco::Thread::Priority priority) {
 	_thread.setPriority(priority);

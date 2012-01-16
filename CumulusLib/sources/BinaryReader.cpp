@@ -16,11 +16,14 @@
 */
 
 #include "BinaryReader.h"
+#include "Util.h"
 
 using namespace std;
 using namespace Poco;
 
 namespace Cumulus {
+
+BinaryReader BinaryReader::BinaryReaderNull(Util::NullInputStream);
 
 BinaryReader::BinaryReader(istream& istr) : Poco::BinaryReader(istr,BinaryReader::NETWORK_BYTE_ORDER) {
 }
@@ -54,31 +57,18 @@ UInt32 BinaryReader::read32() {
 }
 
 UInt32 BinaryReader::read7BitValue() {
-	UInt8 a=0,b=0,c=0,d=0;
-	Int8 s = 0;
-	*this >> a;
-	if(a & 0x80) {
-		*this >> b;++s;
-		if(b & 0x80) {
-			*this >> c;++s;
-			if(c & 0x80) {
-				*this >> d;++s;
-			}
-		}
-	}
-	UInt32 value = ((a&0x7F)<<(s*7));
-	--s;
-	if(s<0)
-		return value;
-	value += ((b&0x7F)<<(s*7));
-	--s;
-	if(s<0)
-		return value;
-	value += ((c&0x7F)<<(s*7));
-	--s;
-	if(s<0)
-		return value;
-	return value + ((d&0x7F)<<(s*7));
+	UInt8 n = 0;
+    UInt8 b = read8();
+    UInt32 result = 0;
+    while ((b&0x80) && n < 3) {
+        result <<= 7;
+        result |= (b&0x7F);
+        b = read8();
+        ++n;
+    }
+    result <<= ((n<3) ? 7 : 8); // Use all 8 bits from the 4th byte
+    result |= b;
+	return result;
 }
 
 bool BinaryReader::readAddress(Address& address) {

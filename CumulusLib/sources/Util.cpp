@@ -27,11 +27,12 @@
 using namespace std;
 using namespace Poco;
 using namespace Poco::Net;
-using namespace Poco::Util;
 
 namespace Cumulus {
 
-string Util::NullString;
+string				Util::NullString;
+NullInputStream		Util::NullInputStream;
+NullOutputStream	Util::NullOutputStream;
 
 Util::Util() {
 }
@@ -60,17 +61,21 @@ UInt8 Util::Get7BitValueSize(UInt32 value) {
 	return 1;
 }
 
-void Util::UnpackUrl(const string& url,string& path,AbstractConfiguration& parameters) {
+void Util::UnpackUrl(const string& url,string& path,map<string,string>& properties) {
 	try {
 		URI uri(url);
+		uri.normalize();
 		path = uri.getPath();
-		UnpackQuery(uri.getRawQuery(),parameters);
+		size_t found = path.rfind('/');
+		if(found!= string::npos && found==(path.size()-1))
+			path.erase(found);
+		UnpackQuery(uri.getRawQuery(),properties);
 	} catch(Exception& ex) {
 		ERROR("Unpack url %s impossible : %s",url.c_str(),ex.displayText().c_str());
 	}
 }
 
-void Util::UnpackQuery(const string& query,AbstractConfiguration& parameters) {
+void Util::UnpackQuery(const string& query,map<string,string>& properties) {
 	istringstream istr(query);
 	static const int eof = std::char_traits<char>::eof();
 
@@ -99,7 +104,7 @@ void Util::UnpackQuery(const string& query,AbstractConfiguration& parameters) {
 		string decodedValue;
 		URI::decode(name, decodedName);
 		URI::decode(value, decodedValue);
-		parameters.setString(decodedName,decodedValue);
+		properties[decodedName] = decodedValue;
 		if (ch == '&') ch = istr.get();
 	}
 }

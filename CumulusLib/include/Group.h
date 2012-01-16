@@ -19,28 +19,54 @@
 
 #include "Cumulus.h"
 #include "Peer.h"
-#include <set>
+#include <map>
 
 namespace Cumulus {
 
+
+class GroupIterator {
+	friend class Group;
+public:
+	GroupIterator():_pPeers(NULL){}
+	bool		  operator !=(const GroupIterator& other) { return _it!=other._it; }
+	bool		  operator ==(GroupIterator& other) { return _it==other._it; }
+	GroupIterator operator ++(int count) { std::advance(_it,count); return *this; }
+    GroupIterator operator ++() { ++_it; return *this; }
+    const Client* operator *() { if(_pPeers && _it!=_pPeers->end()) return _it->second; return NULL; }
+private:
+	GroupIterator(std::map<Poco::UInt32,const Peer*>& peers,bool end=false) : _pPeers(&peers),_it(end ? peers.end() : peers.begin()) { }
+	std::map<Poco::UInt32,const Peer*>*  _pPeers; 
+	std::map<Poco::UInt32,const Peer*>::const_iterator _it;
+};
+
+
 class Group : public Entity {
+	friend class Peer;
 public:
 	Group(const Poco::UInt8* id);
 	virtual ~Group();
 
-	void										addPeer(Peer& peer);
-	void										removePeer(Peer& peer);
+	typedef GroupIterator Iterator;
 
-	const std::map<Poco::UInt32,const Peer*>&	peers();
+	Iterator begin();
+	Iterator end();
+	Poco::UInt32  size();
 
 private:
-	std::map<Poco::UInt32,const Peer*> 			_peers;
+	std::map<Poco::UInt32,const Peer*> 	_peers;
 };
 
-inline const std::map<Poco::UInt32,const Peer*>& Group::peers() {
-	return _peers;
+inline Group::Iterator Group::begin() {
+	return GroupIterator(_peers);
 }
 
+inline Group::Iterator Group::end() {
+	return GroupIterator(_peers,true);
+}
+
+inline Poco::UInt32 Group::size() {
+	return _peers.size();
+}
 
 
 } // namespace Cumulus

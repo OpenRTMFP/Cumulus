@@ -16,6 +16,7 @@
 */
 
 #include "BinaryWriter.h"
+#include "Util.h"
 
 using namespace std;
 using namespace Poco;
@@ -23,22 +24,14 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
+BinaryWriter BinaryWriter::BinaryWriterNull(Util::NullOutputStream);
+
 BinaryWriter::BinaryWriter(ostream& ostr) : Poco::BinaryWriter(ostr,BinaryWriter::NETWORK_BYTE_ORDER) {
 }
 
 
 BinaryWriter::~BinaryWriter() {
 	flush();
-}
-
-void BinaryWriter::writeString(const string& value) {
-	write7BitValue(value.size());
-	writeRaw(value);
-}
-
-void BinaryWriter::writeString(const char* value,UInt32 size) {
-	write7BitValue(size);
-	writeRaw(value,size);
 }
 
 void BinaryWriter::writeString8(const char* value,UInt8 size) {
@@ -85,24 +78,27 @@ void BinaryWriter::writeAddress(const SocketAddress& address,bool publicFlag) {
 
 
 void BinaryWriter::write7BitValue(UInt32 value) {
-	UInt8 d=value&0x7F;
-	value>>=7;
-	UInt8 c=value&0x7F;
-	value>>=7;
-	UInt8 b=value&0x7F;
-	value>>=7;
-	UInt8 a=value&0x7F;
-
-	if(a>0) {
-		write8(0x80 | a);
-		write8(0x80 | b);
-		write8(0x80 | c);
-	} else if(b>0) {
-		write8(0x80 | b);
-		write8(0x80 | c);
-	} else if(c>0)
-		write8(0x80 | c);
-	write8(d);
+	UInt8 n = Util::Get7BitValueSize(value);
+	switch(n) {
+		case 4:
+			write8(0x80 | ((value>>22)&0x7F));
+			write8(0x80 | ((value>>15)&0x7F));
+			write8(0x80 | ((value>>8)&0x7F));
+			write8(value&0xFF);
+			break;
+		case 3:
+			write8(0x80 | ((value>>14)&0x7F));
+			write8(0x80 | ((value>>7)&0x7F));
+			write8(value&0x7F);
+			break;
+		case 2:
+			write8(0x80 | ((value>>7)&0x7F));
+			write8(value&0x7F);
+			break;
+		default:
+			write8(value&0x7F);
+			break;
+	}
 }
 
 

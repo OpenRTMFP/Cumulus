@@ -27,21 +27,7 @@
 
 
 #if defined(POCO_OS_FAMILY_WINDOWS)
-
 	#define snprintf _snprintf
-
-	#if defined(POCO_DLL)
-		#if defined(CUMULUS_EXPORTS)
-			#define CUMULUS_API __declspec(dllexport)
-		#else
-			#define CUMULUS_API __declspec(dllimport)
-		#endif
-	#endif
-
-#endif
-
-#if !defined(CUMULUS_API)
-	#define CUMULUS_API
 #endif
 
 //
@@ -49,30 +35,14 @@
 //
 #if defined(_MSC_VER)
 	#if !defined(POCO_NO_AUTOMATIC_LIBS)
-		#if defined(POCO_DLL)
-			#if defined(_DEBUG)
-				#ifndef CUMULUS_EXPORTS
-					#pragma comment(lib, "CumulusLibd.lib")
-				#endif
-				#pragma comment(lib, "libeay32MDd.lib")
-				#pragma comment(lib, "ssleay32MDd.lib")
-			#else
-				#ifndef CUMULUS_EXPORTS
-					#pragma comment(lib, "CumulusLib.lib")
-				#endif
-				#pragma comment(lib, "libeay32MD.lib")
-				#pragma comment(lib, "ssleay32MD.lib")
-			#endif
-		#else if !defined(CUMULUS_EXPORTS)
-			#if defined(_DEBUG)
-				#pragma comment(lib, "CumulusLibmtd.lib")
-				#pragma comment(lib, "libeay32MTd.lib")
-				#pragma comment(lib, "ssleay32MTd.lib")
-			#else
-				#pragma comment(lib, "CumulusLibmt.lib")
-				#pragma comment(lib, "libeay32MT.lib")
-				#pragma comment(lib, "ssleay32MT.lib")
-			#endif
+		#if defined(_DEBUG)
+			#pragma comment(lib, "CumulusLibd.lib")
+			#pragma comment(lib, "libeay32MTd.lib")
+			#pragma comment(lib, "ssleay32MTd.lib")
+		#else
+			#pragma comment(lib, "CumulusLib.lib")
+			#pragma comment(lib, "libeay32MT.lib")
+			#pragma comment(lib, "ssleay32MT.lib")
 		#endif
 	#endif
 #endif
@@ -90,8 +60,4 @@
 	#define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
 #endif
 
-void CUMULUS_API DetectMemoryLeak();
-
-
-void CUMULUS_API SetThreadName(const char* szThreadName);
-std::string CUMULUS_API GetThreadName();
+void DetectMemoryLeak();

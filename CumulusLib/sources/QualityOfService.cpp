@@ -50,12 +50,10 @@ void QualityOfService::add(UInt32 time,UInt32 received,UInt32 lost) {
 			if(result<0)
 				result=0;
 			(UInt32&)latency = (UInt32)result;
-			_reception.update();
-		} else {
-			ERROR("QoS computing with a error time value (%u) inferiors than precedent time (%u)",time,_prevTime);
-			time = _prevTime;
-		}
+		} else
+			WARN("QoS computing with a error time value (%u) inferiors than precedent time (%u)",time,_prevTime);
 	}
+	_reception.update();
 
 	_prevTime=time;
 	_num += lost;

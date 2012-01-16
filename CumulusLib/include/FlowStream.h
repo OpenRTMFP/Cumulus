@@ -25,7 +25,7 @@ namespace Cumulus {
 
 class FlowStream : public Flow {
 public:
-	FlowStream(Poco::UInt32 id,const std::string& signature,Peer& peer,Handler& handler,BandWriter& band);
+	FlowStream(Poco::UInt32 id,const std::string& signature,Peer& peer,Invoker& invoker,BandWriter& band);
 	virtual ~FlowStream();
 
 	const std::string		name;

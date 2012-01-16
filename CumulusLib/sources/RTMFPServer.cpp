@@ -33,22 +33,24 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(*this,_edgesSocket,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
 #endif
+	DEBUG("Id of this RTMFP server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
-RTMFPServer::RTMFPServer(const string& name) : Startable(name),_pCirrus(NULL),_handshake(*this,_edgesSocket,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(const string& name) : Startable(name),_pCirrus(NULL),_handshake(*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
 #endif
+	DEBUG("Id of this RTMFP server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
 RTMFPServer::~RTMFPServer() {
-
+	stop();
 }
 
 Session* RTMFPServer::findSession(UInt32 id) {
@@ -99,12 +101,10 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 	(UInt32&)udpBufferSize = params.udpBufferSize==0 ? _socket.getReceiveBufferSize() : params.udpBufferSize;
 	_socket.setReceiveBufferSize(udpBufferSize);_socket.setSendBufferSize(udpBufferSize);
 	_edgesSocket.setReceiveBufferSize(udpBufferSize);_edgesSocket.setSendBufferSize(udpBufferSize);
-	DEBUG("Socket buffer receving/sending size = %d/%d",udpBufferSize,udpBufferSize);
+	DEBUG("Socket buffer receving/sending size = %u/%u",udpBufferSize,udpBufferSize);
 
 	(UInt32&)keepAliveServer = params.keepAliveServer<5 ? 5000 : params.keepAliveServer*1000;
 	(UInt32&)keepAlivePeer = params.keepAlivePeer<5 ? 5000 : params.keepAlivePeer*1000;
-	(UInt32&)audioSampleAccess = params.audioSampleAccess;
-	(UInt32&)videoSampleAccess = params.videoSampleAccess;
 	(UInt8&)edgesAttemptsBeforeFallback = params.edgesAttemptsBeforeFallback;
 	
 	setPriority(params.threadPriority);
@@ -137,13 +137,9 @@ void RTMFPServer::run(const volatile bool& terminate) {
 
 	try {
 
-#ifndef POCO_OS_FAMILY_WINDOWS
-		poco_throw_on_signal;
-#endif
-
 		while(!terminate) {
 			bool stop=false;
-			bool idle = manageRealTime(stop);
+			bool idle = realTime(stop);
 			if(stop)
 				break;
 
@@ -177,6 +173,11 @@ void RTMFPServer::run(const volatile bool& terminate) {
 				continue;
 			}
 
+			if(isBanned(sender.host())) {
+				INFO("Data rejected because client %s is banned",sender.host().toString().c_str());
+				continue;
+			}
+
 			if(size<RTMFP_MIN_PACKET_SIZE) {
 				ERROR("Invalid packet");
 				continue;
@@ -195,8 +196,6 @@ void RTMFPServer::run(const volatile bool& terminate) {
 			pSession->receive(packet);
 		}
 
-	} catch (SignalException& ex) {
-		FATAL("RTMFPServer : %s",ex.displayText().c_str());
 	} catch(Exception& ex) {
 		FATAL("RTMFPServer : %s",ex.displayText().c_str());
 	} catch (exception& ex) {
@@ -335,7 +334,7 @@ void RTMFPServer::destroySession(Session& session) {
 		pEdge->removeSession(session);
 }
 
-bool RTMFPServer::manageRealTime(bool& terminate) {
+bool RTMFPServer::realTime(bool& terminate) {
 	if(!_timeLastManage.isElapsed(_freqManage)) {
 		// Just middle session!
 		if(_middle) {
@@ -348,12 +347,12 @@ bool RTMFPServer::manageRealTime(bool& terminate) {
 		}
 		return true;
 	}
+	_timeLastManage.update();
 	manage();
 	return true;
 }
 
 void RTMFPServer::manage() {
-	_timeLastManage.update();
 	_handshake.manage();
 	if(_sessions.manage())
 		INFO("%u clients",clients.count());

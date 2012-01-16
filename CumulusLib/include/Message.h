@@ -31,6 +31,14 @@ namespace Cumulus {
 
 class Message {
 public:
+	enum Type {
+		EMPTY			=0x00,
+		AUDIO			=0x08,
+		VIDEO			=0x09,
+		AMF_WITH_HANDLER=0x14,
+		AMF				=0x0F
+	};
+
 	Message(std::istream& istr,bool repeatable);
 	virtual ~Message();
 

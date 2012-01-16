@@ -18,7 +18,7 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Clients.h"
+#include "Client.h"
 #include "Address.h"
 #include "Poco/Net/SocketAddress.h"
 #include "Poco/Net/DatagramSocket.h"
@@ -26,28 +26,49 @@
 namespace Cumulus {
 
 class Group;
+class Handler;
+class Publication;
+class Listener;
 class Peer : public Client {
-	friend class Group;
 public:
-
-	Peer();
+	Peer(Handler& handler);
 	virtual ~Peer();
 
 	Poco::Net::SocketAddress		address;
 	std::list<Address>				addresses;
 
-	bool							connected;
-	Poco::UInt16					ping;
+	const bool						connected;
 
 	void setFlowWriter(FlowWriter* pWriter);
-	void unsubscribeGroups();
 
-	bool isIn(Group& group);
+	void unsubscribeGroups();
+	void joinGroup(Group& group);
+	void joinGroup(const Poco::UInt8* id);
+	void unjoinGroup(Group& group);
+
+
+// events
+	bool onConnection(AMFReader& parameters,AMFObjectWriter& response);
+	void onFailed(const std::string& error);
+	void onDisconnection();
+	bool onMessage(const std::string& name,AMFReader& reader);
+
+	bool onPublish(const Publication& publication,std::string& error);
+	void onUnpublish(const Publication& publication);
+
+	void onDataPacket(const Publication& publication,const std::string& name,PacketReader& packet);
+	void onAudioPacket(const Publication& publication,Poco::UInt32 time,PacketReader& packet);
+	void onVideoPacket(const Publication& publication,Poco::UInt32 time,PacketReader& packet);
+
+	bool onSubscribe(const Listener& listener,std::string& error);
+	void onUnsubscribe(const Listener& listener);
 
 private:
-	bool isIn(Group& group,std::map<Group*,Poco::UInt32>::iterator& it);
+	void onJoinGroup(Group& group);
+	void onUnjoinGroup(Group& group);
 
-	std::map<Group*,Poco::UInt32>			_groups;
+	Handler&						_handler;
+	std::map<Group*,Poco::UInt32>	_groups;
 };
 
 inline void Peer::setFlowWriter(FlowWriter* pWriter){

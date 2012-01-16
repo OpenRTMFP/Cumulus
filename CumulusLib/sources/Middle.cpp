@@ -40,13 +40,13 @@ Middle::Middle(UInt32 id,
 				const UInt8* encryptKey,
 				Handler& handler,
 				const Sessions&	sessions,
-				Target& target) : ServerSession(id,farId,peer,decryptKey,encryptKey,handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
+				Target& target) : ServerSession(id,farId,peer,decryptKey,encryptKey,(Invoker&)handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
 					_middleId(0),_sessions(sessions),_firstResponse(false),_queryUrl("rtmfp://"+target.address.toString()+peer.path),_middlePeer(peer),_target(target) {
 
-	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,_middlePeer);
+	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.properties);
 
 	// connection to target
-	_socket.setReceiveBufferSize(handler.udpBufferSize);_socket.setSendBufferSize(handler.udpBufferSize);
+	_socket.setReceiveBufferSize(_invoker.udpBufferSize);_socket.setSendBufferSize(_invoker.udpBufferSize);
 	_socket.connect(target.address);
 
 	INFO("Handshake Target");
@@ -290,14 +290,14 @@ void Middle::packetHandler(PacketReader& packet) {
 					AMFReader reader(content);
 					writer.writeNumber(reader.readNumber()); // double
 					
-					AMFObject obj;
-					reader.readObject(obj);
+					AMFSimpleObject obj;
+					reader.readSimpleObject(obj);
 					
 					/// Replace tcUrl
 					if(obj.has("tcUrl"))
 						obj.setString("tcUrl",_queryUrl);
 					
-					writer.writeObject(obj);
+					writer.writeSimpleObject(obj);
 
 				} else {
 
@@ -306,14 +306,14 @@ void Middle::packetHandler(PacketReader& packet) {
 					if(netGroupHeader==0x4752) {
 						out.writeRaw(content.current(),71);content.next(71);
 						
-						list<Group*>::const_iterator it;
-						for(it = _handler._groups.begin();it!=_handler._groups.end();++it) {
+						Entities<Group>::Iterator it;
+						for(it = _invoker.groups.begin();it!=_invoker.groups.end();++it) {
 	
-							Group& group = **it;						
+							Group& group = *it->second;						
 			
-							map<UInt32,const Peer*>::const_iterator itP;
-							for(itP=group.peers().begin();itP!=group.peers().end();++itP) {
-								if((*itP->second)==_target.id) {
+							Group::Iterator itP;
+							for(itP=group.begin();itP!=group.end();++itP) {
+								if((**itP)==_target.id) {
 									UInt8 result1[AES_KEY_SIZE];
 									UInt8 result2[AES_KEY_SIZE];
 									HMAC(EVP_sha256(),_sharedSecret,KEY_SIZE,&_targetNonce[0],_targetNonce.size(),result1,NULL);
@@ -324,11 +324,11 @@ void Middle::packetHandler(PacketReader& packet) {
 									break;
 								}
 							}
-							if(itP!=group.peers().end())
+							if(itP!=group.end())
 								break;
 
 						}
-						if(it==_handler._groups.end())
+						if(it==_invoker.groups.end())
 							ERROR("Handshake NetGroup packet between peers without corresponding Group");
 						
 					}
@@ -460,14 +460,14 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 
 					packetOut.writeRaw(content.current(),68);content.next(68);
 					
-					list<Group*>::const_iterator it;
-					for(it = _handler._groups.begin();it!=_handler._groups.end();++it) {
+					Entities<Group>::Iterator it;
+					for(it = _invoker.groups.begin();it!=_invoker.groups.end();++it) {
 
-						Group& group = **it;						
+						Group& group = *it->second;						
 			
-						map<UInt32,const Peer*>::const_iterator itP;
-						for(itP=group.peers().begin();itP!=group.peers().end();++itP) {
-							if((*itP->second)==_target.id) {
+						Group::Iterator itP;
+						for(itP=group.begin();itP!=group.end();++itP) {
+							if((**itP)==_target.id) {
 								UInt8 result1[AES_KEY_SIZE];
 								UInt8 result2[AES_KEY_SIZE];
 								HMAC(EVP_sha256(),_target.sharedSecret,KEY_SIZE,&_target.initiatorNonce[0],_target.initiatorNonce.size(),result1,NULL);
@@ -478,12 +478,12 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 								break;
 							}
 						}
-						if(itP!=group.peers().end())
+						if(itP!=group.end())
 							break;
 
 					}
 				
-					if(it==_handler._groups.end())
+					if(it==_invoker.groups.end())
 						ERROR("Handshake NetGroup packet between peers without corresponding Group");
 
 				}

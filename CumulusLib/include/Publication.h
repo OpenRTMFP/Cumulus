@@ -19,15 +19,20 @@
 
 #include "Cumulus.h"
 #include "Listeners.h"
-#include "Clients.h"
+#include "Peer.h"
 
 namespace Cumulus {
 
-class Handler;
-class CUMULUS_API Publication {
+class Publication {
 	friend class Publications;
 public:
-	Publication(const std::string& name,Handler& handler);
+	enum StartCode {
+		OK						= 0,
+		BADNAME,
+		FAILED
+	};
+
+	Publication(const std::string& name);
 	virtual ~Publication();
 
 	Poco::UInt32			publisherId() const;
@@ -38,24 +43,23 @@ public:
 	const QualityOfService&	videoQOS() const;
 	const QualityOfService&	audioQOS() const;
 
-	bool					start(Client& client,Poco::UInt32	publisherId);
-	void					stop(Client& client,Poco::UInt32	publisherId);
+	StartCode				start(Peer& peer,Poco::UInt32	publisherId,std::string& error);
+	void					stop(Peer& peer,Poco::UInt32	publisherId);
 
-	void					pushAudioPacket(const Client& client,Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
-	void					pushVideoPacket(const Client& client,Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
-	void					pushDataPacket(const Client& client,const std::string& name,PacketReader& packet);
+	void					pushAudioPacket(Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
+	void					pushVideoPacket(Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
+	void					pushDataPacket(const std::string& name,PacketReader& packet);
 
-	void					addListener(Client& client,Poco::UInt32 id,FlowWriter& writer,bool unbuffered);
-	void					removeListener(Client& client,Poco::UInt32 id);
+	bool					addListener(Peer& peer,Poco::UInt32 id,FlowWriter& writer,bool unbuffered);
+	void					removeListener(Peer& peer,Poco::UInt32 id);
 
 	void					flush();
 private:
+	Peer*								_pPublisher;
 	bool								_firstKeyFrame;
-	Poco::UInt32						_time;
 	std::string							_name;
 	Poco::UInt32						_publisherId;
 	std::map<Poco::UInt32,Listener*>	_listeners;
-	Handler&							_handler;
 
 	QualityOfService					_videoQOS;
 	QualityOfService					_audioQOS;

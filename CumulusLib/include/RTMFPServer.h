@@ -18,11 +18,11 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketReader.h"
 #include "Handshake.h"
 #include "Gateway.h"
 #include "Sessions.h"
 #include "Startable.h"
+#include "Handler.h"
 #include "Poco/Net/DatagramSocket.h"
 #include "Poco/Net/SocketAddress.h"
 
@@ -31,7 +31,7 @@ namespace Cumulus {
 
 class RTMFPServerParams {
 public:
-	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),edgesAttemptsBeforeFallback(2),udpBufferSize(0),edgesPort(0),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15),audioSampleAccess(false),videoSampleAccess(false) {
+	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),edgesAttemptsBeforeFallback(2),udpBufferSize(0),edgesPort(0),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15) {
 	}
 	Poco::UInt16				port;
 	Poco::UInt32				udpBufferSize;
@@ -41,13 +41,11 @@ public:
 	Poco::Net::SocketAddress*	pCirrus;
 	Poco::Thread::Priority		threadPriority;
 
-	bool						audioSampleAccess;
-	bool						videoSampleAccess;
 	Poco::UInt16				keepAlivePeer;
 	Poco::UInt16				keepAliveServer;
 };
 
-class CUMULUS_API RTMFPServer : private Gateway,protected Handler,private Startable {
+class RTMFPServer : private Gateway,protected Handler,private Startable {
 	friend class RTMFPServerEdge;
 public:
 	RTMFPServer();
@@ -58,14 +56,14 @@ public:
 	void stop();
 	bool running();
 
-	virtual bool	manageRealTime(bool& terminate);
+protected:
+	virtual bool	realTime(bool& terminate);
 	virtual void    manage();
 
 private:
 	RTMFPServer(const std::string& name);
 	virtual void    onStart(){}
 	virtual void    onStop(){}
-
 
 	Session*		findSession(Poco::UInt32 id);
 	bool			prerun();
@@ -89,6 +87,7 @@ private:
 	Poco::Timestamp					_timeLastManage;
 	Poco::UInt32					_freqManage;
 };
+
 
 inline bool RTMFPServer::running() {
 	return Startable::running();

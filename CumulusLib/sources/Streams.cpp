@@ -23,7 +23,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Streams::Streams(Handler& handler) : _nextId(0),publications(handler) {
+Streams::Streams(map<string,Publication*>&	publications) : _nextId(0),_publications(publications) {
 	
 }
 
@@ -31,37 +31,51 @@ Streams::~Streams() {
 	
 }
 
-bool Streams::publish(Client& client,UInt32 id,const string& name) {
-	Publications::Iterator it = publications.create(name);
-	return it->second->start(client,id);
+
+Publication& Streams::publish(Peer& peer,UInt32 id,const string& name) {
+	Publications::Iterator it = createPublication(name);
+	Publication& publication(*it->second);
+	string error;
+	Publication::StartCode code = publication.start(peer,id,error);
+	if(code) {
+		if(publication.publisherId()==0 && publication.listeners.count()==0)
+			destroyPublication(it);
+		throw Exception(error,code);
+	}
+	return publication;
 }
 
-void Streams::unpublish(Client& client,UInt32 id,const string& name) {
-	Publications::Iterator it = publications(name);
-	if(it == publications.end()) {
+void Streams::unpublish(Peer& peer,UInt32 id,const string& name) {
+	Publications::Iterator it = _publications.find(name);
+	if(it == _publications.end()) {
 		DEBUG("The stream '%s' with a %u id doesn't exist, unpublish useless",name.c_str(),id);
 		return;
 	}
 	Publication& publication(*it->second);
-	publication.stop(client,id);
+	publication.stop(peer,id);
 	if(publication.publisherId()==0 && publication.listeners.count()==0)
-		publications.destroy(it);
+		destroyPublication(it);
 }
 
-void Streams::subscribe(Client& client,UInt32 id,const string& name,FlowWriter& writer,double start) {
-	publications.create(name)->second->addListener(client,id,writer,start==-3000 ? true : false);
+bool Streams::subscribe(Peer& peer,UInt32 id,const string& name,FlowWriter& writer,double start) {
+	Publications::Iterator it = createPublication(name);
+	Publication& publication(*it->second);
+	bool result = publication.addListener(peer,id,writer,start==-3000 ? true : false);
+	if(!result && publication.publisherId()==0 && publication.listeners.count()==0)
+		destroyPublication(it);
+	return result;
 }
 
-void Streams::unsubscribe(Client& client,UInt32 id,const string& name) {
-	Publications::Iterator it = publications(name);
-	if(it == publications.end()) {
+void Streams::unsubscribe(Peer& peer,UInt32 id,const string& name) {
+	Publications::Iterator it = _publications.find(name);
+	if(it == _publications.end()) {
 		DEBUG("The stream '%s' doesn't exists, unsubscribe useless",name.c_str());
 		return;
 	}
 	Publication& publication(*it->second);
-	publication.removeListener(client,id);
+	publication.removeListener(peer,id);
 	if(publication.publisherId()==0 && publication.listeners.count()==0)
-		publications.destroy(it);
+		destroyPublication(it);
 }
 
 
@@ -74,6 +88,20 @@ UInt32 Streams::create() {
 void Streams::destroy(UInt32 id) {
 	DEBUG("Stream %u deleted",id);
 	_streams.erase(id);
+}
+
+Publications::Iterator Streams::createPublication(const string& name) {
+	Publications::Iterator it = _publications.lower_bound(name);
+	if(it!=_publications.end() && it->first==name)
+		return it;
+	if(it!=_publications.begin())
+		--it;
+	return _publications.insert(it,pair<string,Publication*>(name,new Publication(name)));
+}
+
+void Streams::destroyPublication(const Publications::Iterator& it) {
+	delete it->second;
+	_publications.erase(it);
 }
 
 

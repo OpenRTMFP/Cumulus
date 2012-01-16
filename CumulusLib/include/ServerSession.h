@@ -19,11 +19,9 @@
 
 #include "Cumulus.h"
 #include "Session.h"
-#include "Flow.h"
 #include "FlowNull.h"
 #include "Target.h"
-#include "BandWriter.h"
-#include "FlowWriter.h"
+#include "Invoker.h"
 #include "Poco/Timestamp.h"
 
 namespace Cumulus {
@@ -51,7 +49,7 @@ public:
 			const Peer& peer,
 			const Poco::UInt8* decryptKey,
 			const Poco::UInt8* encryptKey,
-			Handler& handler);
+			Invoker& invoker);
 
 	virtual ~ServerSession();
 
@@ -87,7 +85,7 @@ protected:
 	void			flush(bool echoTime=true);
 	void			flush(Poco::UInt8 marker,bool echoTime);
 
-	Handler&					_handler; // Protected for Middle session
+	Invoker&					_invoker; // Protected for Middle session
 	Poco::Timestamp				_recvTimestamp; // Protected for Middle session
 	Poco::UInt16				_timeSent; // Protected for Middle session
 
@@ -134,7 +132,6 @@ inline void ServerSession::flush(bool echoTime) {
 inline bool ServerSession::canWriteFollowing(FlowWriter& flowWriter) {
 	return _pLastFlowWriter==&flowWriter;
 }
-
 
 inline bool ServerSession::failed() const {
 	return _failed;

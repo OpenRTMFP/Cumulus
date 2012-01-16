@@ -24,7 +24,7 @@ namespace Cumulus {
 
 class FlowGroup : public Flow {
 public:
-	FlowGroup(Poco::UInt32 id,Peer& peer,Handler& handler,BandWriter& band);
+	FlowGroup(Poco::UInt32 id,Peer& peer,Invoker& invoker,BandWriter& band);
 	virtual ~FlowGroup();
 
 	static std::string	Signature;

@@ -1,20 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="debug_shared|Win32">
-      <Configuration>debug_shared</Configuration>
+    <ProjectConfiguration Include="debug|Win32">
+      <Configuration>debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="debug_static|Win32">
-      <Configuration>debug_static</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="release_shared|Win32">
-      <Configuration>release_shared</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="release_static|Win32">
-      <Configuration>release_static</Configuration>
+    <ProjectConfiguration Include="release|Win32">
+      <Configuration>release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
@@ -24,119 +16,41 @@
     <Keyword>ManagedCProj</Keyword>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release_static|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <CLRSupport>false</CLRSupport>
     <WholeProgramOptimization>false</WholeProgramOptimization>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_static|Win32'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <CharacterSet>MultiByte</CharacterSet>
-    <CLRSupport>false</CLRSupport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='release_shared|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <CharacterSet>MultiByte</CharacterSet>
-    <CLRSupport>false</CLRSupport>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='debug_shared|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
     <CLRSupport>false</CLRSupport>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='release_static|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='debug_static|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='release_shared|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='debug_shared|Win32'" Label="PropertySheets">
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='debug_shared|Win32'">$(ProjectDir)lib/\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='debug_shared|Win32'">tmp/$(Configuration)\</IntDir>
-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='debug_shared|Win32'">true</LinkIncremental>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='release_shared|Win32'">$(ProjectDir)lib/\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='release_shared|Win32'">tmp/$(Configuration)\</IntDir>
-    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='release_shared|Win32'">false</LinkIncremental>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='debug_static|Win32'">$(ProjectDir)lib/\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='debug_static|Win32'">tmp/$(Configuration)\</IntDir>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='release_static|Win32'">$(ProjectDir)lib/\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='release_static|Win32'">tmp/$(Configuration)\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='debug_static|Win32'">$(ProjectName)mtd</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='debug_shared|Win32'">$(ProjectName)d</TargetName>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='release_static|Win32'">$(ProjectName)mt</TargetName>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">$(ProjectDir)lib/\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">tmp/$(Configuration)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='release|Win32'">$(ProjectDir)lib/\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='release|Win32'">tmp/$(Configuration)\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">$(ProjectName)d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='release|Win32'">$(ProjectName)</TargetName>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug_shared|Win32'">
-    <ClCompile>
-      <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>include;../External/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_USRDLL;CUMULUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <StringPooling>true</StringPooling>
-      <MinimalRebuild>true</MinimalRebuild>
-      <ExceptionHandling>Sync</ExceptionHandling>
-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-    </ClCompile>
-    <Link>
-      <OutputFile>bin/$(ProjectName)d.dll</OutputFile>
-      <AdditionalLibraryDirectories>..\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AssemblyDebug>
-      </AssemblyDebug>
-      <ImportLibrary>$(Outdir)$(TargetName).lib</ImportLibrary>
-      <TargetMachine>MachineX86</TargetMachine>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release_shared|Win32'">
-    <ClCompile>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <OmitFramePointers>true</OmitFramePointers>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>include;../External/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_USERDLL;CUMULUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <StringPooling>true</StringPooling>
-      <ExceptionHandling>Sync</ExceptionHandling>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>
-      </DebugInformationFormat>
-    </ClCompile>
-    <Link>
-      <OutputFile>bin/$(ProjectName).dll</OutputFile>
-      <AdditionalLibraryDirectories>..\External\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
-      <OptimizeReferences>true</OptimizeReferences>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <ImportLibrary>$(OutDir)$(TargetName).lib</ImportLibrary>
-      <TargetMachine>MachineX86</TargetMachine>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug_static|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>../External/include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;CUMULUS_EXPORTS;STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;CUMULUS_LOGS;STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <MinimalRebuild>true</MinimalRebuild>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -148,10 +62,10 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)$(ProjectName)mtd.lib</OutputFile>
+      <OutputFile>$(OutDir)$(ProjectName)d.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release_static|Win32'">
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <ClCompile>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -159,7 +73,7 @@
       <OmitFramePointers>true</OmitFramePointers>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalIncludeDirectories>include;../External/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;CUMULUS_EXPORTS;STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;CUMULUS_LOGS;STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -171,7 +85,7 @@
       </DebugInformationFormat>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)$(ProjectName)mt.lib</OutputFile>
+      <OutputFile>$(OutDir)$(ProjectName).lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -189,8 +103,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="sources\AMFSimpleObject.cpp" />
+    <ClCompile Include="sources\Client.cpp" />
     <ClCompile Include="sources\Cumulus.cpp" />
-    <ClCompile Include="sources\AMFObject.cpp" />
     <ClCompile Include="sources\AMFObjectWriter.cpp" />
     <ClCompile Include="sources\AMFReader.cpp" />
     <ClCompile Include="sources\AMFWriter.cpp" />
@@ -199,6 +114,7 @@
     <ClCompile Include="sources\BinaryWriter.cpp" />
     <ClCompile Include="sources\Edges.cpp" />
     <ClCompile Include="sources\EdgeSession.cpp" />
+    <ClCompile Include="sources\Invoker.cpp" />
     <ClCompile Include="sources\MemoryStream.cpp" />
     <ClCompile Include="sources\PacketReader.cpp" />
     <ClCompile Include="sources\PacketWriter.cpp" />
@@ -209,10 +125,8 @@
     <ClCompile Include="sources\Startable.cpp" />
     <ClCompile Include="sources\Util.cpp" />
     <ClCompile Include="sources\AESEngine.cpp" />
-    <ClCompile Include="sources\Clients.cpp" />
     <ClCompile Include="sources\Entity.cpp" />
     <ClCompile Include="sources\Group.cpp" />
-    <ClCompile Include="sources\Handler.cpp" />
     <ClCompile Include="sources\Peer.cpp" />
     <ClCompile Include="sources\RTMFP.cpp" />
     <ClCompile Include="sources\RTMFPServer.cpp" />
@@ -238,8 +152,10 @@
     <ClCompile Include="sources\Target.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\AMF.h" />
+    <ClInclude Include="include\AMFSimpleObject.h" />
+    <ClInclude Include="include\Client.h" />
     <ClInclude Include="include\Cumulus.h" />
-    <ClInclude Include="include\AMFObject.h" />
     <ClInclude Include="include\AMFObjectWriter.h" />
     <ClInclude Include="include\AMFReader.h" />
     <ClInclude Include="include\AMFWriter.h" />
@@ -249,6 +165,8 @@
     <ClInclude Include="include\BinaryWriter.h" />
     <ClInclude Include="include\Edges.h" />
     <ClInclude Include="include\EdgeSession.h" />
+    <ClInclude Include="include\Entities.h" />
+    <ClInclude Include="include\Invoker.h" />
     <ClInclude Include="include\MemoryStream.h" />
     <ClInclude Include="include\Middle.h" />
     <ClInclude Include="include\PacketReader.h" />
@@ -260,7 +178,6 @@
     <ClInclude Include="include\Startable.h" />
     <ClInclude Include="include\Util.h" />
     <ClInclude Include="include\AESEngine.h" />
-    <ClInclude Include="include\Clients.h" />
     <ClInclude Include="include\Entity.h" />
     <ClInclude Include="include\Group.h" />
     <ClInclude Include="include\Handler.h" />

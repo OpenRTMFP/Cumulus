@@ -35,8 +35,8 @@ public:
 
 	Poco::UInt32	count() const;
 	Poco::UInt32	nextId() const;
-	Session* find(Poco::UInt32 id) const;
-	Session* find(const Poco::UInt8* peerId) const;
+	Session* find(Poco::UInt32 id);
+	Session* find(const Poco::UInt8* peerId);
 	
 	Session* add(Session* pSession);
 
@@ -45,10 +45,8 @@ public:
 	
 	bool	manage();
 	void	clear();
-protected:
-	
-
 private:
+	void    remove(std::map<Poco::UInt32,Session*>::iterator it);
 	Poco::UInt32					_nextId;
 	std::map<Poco::UInt32,Session*>	_sessions;
 	Gateway&						_gateway;

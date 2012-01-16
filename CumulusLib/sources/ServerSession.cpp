@@ -36,8 +36,8 @@ ServerSession::ServerSession(UInt32 id,
 				 const Peer& peer,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey,
-				 Handler& handler) : Session(id,farId,peer,decryptKey,encryptKey),pTarget(NULL),_handler(handler),_failed(false),_timesFailed(0),_timeSent(0),_nextFlowWriterId(0),_timesKeepalive(0),_pLastFlowWriter(NULL),_writer(_buffer,sizeof(_buffer)) {
-	_pFlowNull = new FlowNull(this->peer,_handler,*this);
+				 Invoker& invoker) : Session(id,farId,peer,decryptKey,encryptKey),pTarget(NULL),_invoker(invoker),_failed(false),_timesFailed(0),_timeSent(0),_nextFlowWriterId(0),_timesKeepalive(0),_pLastFlowWriter(NULL),_writer(_buffer,sizeof(_buffer)) {
+	_pFlowNull = new FlowNull(this->peer,invoker,*this);
 	_writer.next(11);
 	_writer.limit(RTMFP_MAX_PACKET_LENGTH); // set normal limit
 	
@@ -45,55 +45,41 @@ ServerSession::ServerSession(UInt32 id,
 
 
 ServerSession::~ServerSession() {
-	if(!died) // to prevent client of session death
-		fail("Session deleted without being killed");
-
-	kill();
-
+	if(!died) {
+		failSignal();
+		kill();
+	}
 	// delete helloAttempts
 	map<string,Attempt*>::const_iterator it0;
 	for(it0=_helloAttempts.begin();it0!=_helloAttempts.end();++it0)
 		delete it0->second;
-
-	// delete flows
-	map<UInt32,Flow*>::const_iterator it1;
-	for(it1=_flows.begin();it1!=_flows.end();++it1)
-		delete it1->second;
-	delete _pFlowNull;
-
-	// delete flowWriters remaining
-	map<UInt32,FlowWriter*>::const_iterator it2;
-	for(it2=_flowWriters.begin();it2!=_flowWriters.end();++it2)
-		delete it2->second;
 	if(pTarget)
 		delete pTarget;
 }
 
-
 void ServerSession::fail(const string& error) {
 	if(_failed)
 		return;
-	if(peer.connected)
-		_handler.onFailed(peer,error);
+
 	// Here no new sending must happen except "failSignal"
+	ServerSession::writer().clear(11);
 	map<UInt32,FlowWriter*>::const_iterator it;
 	for(it=_flowWriters.begin();it!=_flowWriters.end();++it)
 		it->second->clear();
-	ServerSession::writer().clear(11);
-	// unsubscribe peer for its groups
-	peer.unsubscribeGroups();
+	peer.setFlowWriter(NULL);
+
 	WARN("Session failed %u : %s",id,error.c_str());
 	_failed=true;
+	peer.onFailed(error);
 	failSignal();
+
+	// unsubscribe peer for its groups
+	peer.unsubscribeGroups();
 }
 
 void ServerSession::failSignal() {
 	if(died)
-		WARN("Fail perhaps useless because session is already dead");
-	if(!_failed) {
-		WARN("Here flag failed should be put (with setFailed method), fail() method just allows the fail packet sending");
-		_failed=true;
-	}
+		return;
 	++_timesFailed;
 	PacketWriter& writer = ServerSession::writer(); 
 	writer.write8(0x0C);
@@ -105,21 +91,33 @@ void ServerSession::failSignal() {
 }
 
 void ServerSession::kill() {
-	if(peer.connected) {
-		peer.connected = false;
-		_handler.onDisconnection(peer);
-		if(_handler._clients.erase(peer.id)==0)
-			WARN("Client %s seems already disconnected!",Util::FormatHex(peer.id,ID_SIZE).c_str())
-		else {
-			Edge* pEdge = _handler.edges(peer.address);
-			if(pEdge)
-				--(UInt32&)pEdge->count;
-		}
-	}
-	peer.setFlowWriter(NULL);
-	(bool&)died=true;
 	_failed=true;
+	if(died)
+		return;
+
+	peer.setFlowWriter(NULL);
+
+	// unsubscribe peer for its groups
+	peer.unsubscribeGroups();
+
+	// delete flows
+	map<UInt32,Flow*>::const_iterator it1;
+	for(it1=_flows.begin();it1!=_flows.end();++it1)
+		delete it1->second;
+	_flows.clear();
+	delete _pFlowNull;
+	
+	peer.onDisconnection();
+
+	// delete flowWriters
+	map<UInt32,FlowWriter*>::const_iterator it2;
+	for(it2=_flowWriters.begin();it2!=_flowWriters.end();++it2)
+		delete it2->second;
+	_flowWriters.clear();
+
+	(bool&)died=true;
 }
+
 void ServerSession::manage() {
 	if(died)
 		return;
@@ -153,7 +151,7 @@ void ServerSession::manage() {
 	map<UInt32,FlowWriter*>::iterator it2=_flowWriters.begin();
 	while(it2!=_flowWriters.end()) {
 		try {
-			it2->second->manage(_handler);
+			it2->second->manage(_invoker);
 		} catch(const Exception& ex) {
 			if(it2->second->critical) {
 				fail(ex.message());
@@ -162,6 +160,8 @@ void ServerSession::manage() {
 			continue;
 		}
 		if(it2->second->consumed()) {
+			if(it2->second->critical)
+				fail("Critical flow writer closed, session must be closed");
 			delete it2->second;
 			_flowWriters.erase(it2++);
 			continue;
@@ -172,6 +172,10 @@ void ServerSession::manage() {
 }
 
 bool ServerSession::keepAlive() {
+	if(!peer.connected) {
+		fail("Timeout connection client");
+		return false;
+	}
 	DEBUG("Keepalive server");
 	if(_timesKeepalive==10) {
 		fail("Timeout keepalive attempts");
@@ -195,6 +199,8 @@ void ServerSession::eraseHelloAttempt(const string& tag) {
 
 
 void ServerSession::p2pHandshake(const SocketAddress& address,const std::string& tag,Session* pSession) {
+	if(_failed)
+		return;
 
 	bool good=true;
 
@@ -249,6 +255,8 @@ void ServerSession::p2pHandshake(const SocketAddress& address,const std::string&
 
 void ServerSession::flush(UInt8 marker,bool echoTime) {
 	_pLastFlowWriter=NULL;
+	if(died)
+		return;
 
 	PacketWriter& packet(ServerSession::writer());
 	if(packet.length()>=RTMFP_MIN_PACKET_SIZE) {
@@ -324,6 +332,8 @@ PacketWriter& ServerSession::writeMessage(UInt8 type,UInt16 length,FlowWriter* p
 }
 
 void ServerSession::packetHandler(PacketReader& packet) {
+	if(died)
+		return;
 
 	if(peer.addresses.size()==0) {
 		CRITIC("Session %u has no any addresses!",id);
@@ -343,7 +353,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 
 	// with time echo
 	if(marker == 0xFD)
-		peer.ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16();
+		(UInt16&)peer.ping = RTMFP::Time(_recvTimestamp.epochMicroseconds())-packet.read16();
 	else if(marker != 0xF9)
 		WARN("Packet marker unknown : %02x",marker);
 
@@ -385,11 +395,14 @@ void ServerSession::packetHandler(PacketReader& packet) {
 			case 0x4c :
 				/// Session death!
 				kill();
-				break;
+				return;
 
 			/// KeepAlive
 			case 0x01 :
-				writeMessage(0x41,0);
+				if(!peer.connected)
+					fail("Timeout connection client");
+				else
+					writeMessage(0x41,0);
 			case 0x41 :
 				_timesKeepalive=0;
 				break;
@@ -488,17 +501,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 					flags = message.read8();
 
 				// Process request
-				bool connected=peer.connected;
 				pFlow->fragmentHandler(stage,deltaNAck,message,flags);
-				if(!connected && peer.connected) {
-					if(!_handler._clients.insert(pair<const UInt8*,Client*>(peer.id,&peer)).second)
-						ERROR("Client %s seems already connected!",Util::FormatHex(peer.id,ID_SIZE).c_str())
-					else {
-						Edge* pEdge = _handler.edges(peer.address);
-						if(pEdge)
-							++(UInt32&)pEdge->count;
-					}
-				}
 				if(!pFlow->error().empty()) {
 					fail(pFlow->error()); // send fail message immediatly
 					pFlow = NULL;
@@ -515,7 +518,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 		type = packet.available()>0 ? packet.read8() : 0xFF;
 
 		// Commit Flow
-		if(pFlow && stage>0 && type!= 0x11) {
+		if(pFlow && type!= 0x11) {
 			pFlow->commit();
 			if(pFlow->consumed()) {
 				_flows.erase(pFlow->id);
@@ -546,6 +549,10 @@ Flow& ServerSession::flow(Poco::UInt32 id) {
 }
 
 Flow* ServerSession::createFlow(UInt32 id,const string& signature) {
+	if(died) {
+		ERROR("Session %u is died, no more Flow creation possible",id);
+		return NULL;
+	}
 	map<UInt32,Flow*>::const_iterator it = _flows.find(id);
 	if(it!=_flows.end()) {
 		WARN("Flow %u has already been created",id);
@@ -555,11 +562,11 @@ Flow* ServerSession::createFlow(UInt32 id,const string& signature) {
 	Flow* pFlow=NULL;
 
 	if(signature==FlowConnection::Signature)
-		pFlow = new FlowConnection(id,peer,_handler,*this);	
+		pFlow = new FlowConnection(id,peer,_invoker,*this);	
 	else if(signature==FlowGroup::Signature)
-		pFlow = new FlowGroup(id,peer,_handler,*this);
+		pFlow = new FlowGroup(id,peer,_invoker,*this);
 	else if(signature.compare(0,FlowStream::Signature.length(),FlowStream::Signature)==0)
-		pFlow = new FlowStream(id,signature,peer,_handler,*this);
+		pFlow = new FlowStream(id,signature,peer,_invoker,*this);
 	else
 		ERROR("New unknown flow '%s' on session %u",Util::FormatHex((const UInt8*)signature.c_str(),signature.size()).c_str(),this->id);
 	if(pFlow) {

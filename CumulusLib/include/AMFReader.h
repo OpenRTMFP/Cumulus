@@ -19,29 +19,75 @@
 
 #include "Cumulus.h"
 #include "PacketReader.h"
-#include "AMFObject.h"
+#include "AMFSimpleObject.h"
+#include <list>
 
 namespace Cumulus {
 
 
+class ObjectDef;
 class AMFReader {
 public:
 	AMFReader(PacketReader& reader);
 	~AMFReader();
 
-	bool	readBool();
-	void	readObject(AMFObject& amfObject);
-	void	read(std::string& value);
-	double	readNumber();
-	void	skipNull();
+	void			readSimpleObject(AMFSimpleObject& object);
 
-	bool	available();
+	void			read(std::string& value);
+	double			readNumber();
+	Poco::Int32		readInteger();
+	bool			readBoolean();
+	BinaryReader&	readByteArray(Poco::UInt32& size);
+	Poco::Timestamp	readDate();
+
+	bool			readObject(std::string& type);
+	bool			readArray();
+	bool			readDictionary(bool& weakKeys);
+	AMF::Type		readKey();
+	AMF::Type		readValue();
+	AMF::Type		readItem(std::string& name);
+	BinaryReader&	readRawObjectContent();
+
+	void			readNull();
+	AMF::Type		followingType();
+
+	bool			available();
+
+	void			startReferencing();
+	void			stopReferencing();
 	
-	PacketReader& reader;
+	PacketReader&	reader;
+private:
+	void							readString(std::string& value);
+	Poco::UInt8						current();
+	void							reset();
+	std::list<ObjectDef*>			_objectDefs;
+	std::vector<Poco::UInt32>		_stringReferences;
+	std::vector<Poco::UInt32>		_classDefReferences;
+	std::vector<Poco::UInt32>		_references;
+	std::vector<Poco::UInt32>		_amf0References;
+	Poco::UInt32					_amf0Reset;
+	Poco::UInt32					_reset;
+	Poco::UInt32					_amf3;
+	bool							_referencing;
 };
 
-inline bool AMFReader::available() {
-	return reader.available()>0;
+inline AMF::Type AMFReader::readValue() {
+	return readKey();
 }
+
+inline Poco::UInt8 AMFReader::current() {
+	return *reader.current();
+}
+
+inline void AMFReader::startReferencing() {
+	_referencing=true;
+}
+
+inline void	AMFReader::stopReferencing() {
+	_referencing=false;
+}
+
+
 
 } // namespace Cumulus

@@ -17,34 +17,35 @@
 
 
 #include "Startable.h"
+#include "Logs.h"
 
 using namespace std;
 using namespace Poco;
 
 namespace Cumulus {
 
-Startable::Startable(const string& name) : _name(name),_thread(name),_terminate(false) {
+Startable::Startable(const string& name) : _name(name),_thread(name),_terminate(false),_haveToJoin(false) {
 }
 
 Startable::~Startable() {
 	if(running())
-		stop();
+		WARN("Startable::stop should be called by the child class");
+	stop();
 }
 
 void Startable::start() {
-	ScopedLock<FastMutex> lock(_mutex);
-
 	if(running())
 		return;
 
+	ScopedLock<FastMutex> lock(_mutex);
+	if(_haveToJoin) {
+		_thread.join();
+		_haveToJoin=false;
+	}
+
 	_terminate = false;
 	_thread.start(*this);
-}
-
-
-void Startable::run() {
-	SetThreadName(_name.c_str());
-	prerun();
+	_haveToJoin = true;
 }
 
 bool Startable::prerun() {
@@ -52,14 +53,19 @@ bool Startable::prerun() {
 	return !_terminate;
 }
 
-
 void Startable::stop() {
 	ScopedLock<FastMutex> lock(_mutex);
-	if(!running())
+	if(!running()) {
+		if(_haveToJoin) {
+			_thread.join();
+			_haveToJoin=false;
+		}
 		return;
+	}
 	_terminate = true;
 	// Attendre la fin!
 	_thread.join();
+	_haveToJoin=false;
 }
 
 } // namespace Cumulus

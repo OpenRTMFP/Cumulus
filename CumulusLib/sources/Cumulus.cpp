@@ -18,7 +18,7 @@
 #include "Cumulus.h"
 #include "Poco/Thread.h"
 
-std::string MainThreadName;
+
 
 #if defined(POCO_OS_FAMILY_WINDOWS) && defined(_DEBUG)
 
@@ -82,64 +82,6 @@ void DetectMemoryLeak() {
   prevHook = _CrtSetReportHook(reportingHook);
 }
 
-	
-/// DOCME
-#define MS_VC_EXCEPTION 0x406d1388
-
-/// DOCME
-typedef struct tagTHREADNAME_INFO {
-
-	/// DOCME
-	DWORD dwType; // must be 0x1000
-
-	/// DOCME
-	LPCSTR szName; // pointer to name (in same addr space)
-
-	/// DOCME
-	DWORD dwThreadID; // thread ID (-1 caller thread)
-
-	/// DOCME
-	DWORD dwFlags; // reserved for future use, most be zero
-
-/// DOCME
-} THREADNAME_INFO;
-
-void raiseThreadName(LPCSTR szThreadName) {
-	THREADNAME_INFO info;
-		info.dwType = 0x1000;
-		info.szName = szThreadName;
-		info.dwThreadID = GetCurrentThreadId();
-		info.dwFlags = 0;
-	__try
-   {
-	  RaiseException( MS_VC_EXCEPTION, 0, sizeof(info)/sizeof(ULONG_PTR), (ULONG_PTR*)&info );
-   }
-   __except(EXCEPTION_EXECUTE_HANDLER)
-   {
-	}
-}
-
-void SetThreadName(const char* szThreadName) {
-	Poco::Thread* pThread = Poco::Thread::current();
-	if(pThread)
-		pThread->setName(szThreadName);
-	else
-		MainThreadName = szThreadName;
-	raiseThreadName(szThreadName);
-}
- 
 #else
-void SetThreadName(const char* szThreadName) {
-	Poco::Thread* pThread = Poco::Thread::current();
-	if(pThread)
-		pThread->setName(szThreadName);
-	else
-		MainThreadName = szThreadName;
-}
-void DetectMemoryLeak() {
-}
+void DetectMemoryLeak() {}
 #endif
-
-std::string GetThreadName() {
-	return Poco::Thread::current() ? Poco::Thread::current()->name() : MainThreadName;
-}

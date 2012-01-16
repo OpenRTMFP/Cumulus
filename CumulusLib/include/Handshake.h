@@ -36,7 +36,7 @@ public:
 
 class Handshake : public ServerSession {
 public:
-	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& edgesSocket,Handler& handler);
+	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& edgesSocket,Handler& handler,Entity& entity);
 	~Handshake();
 
 	void	createCookie(PacketWriter& writer,HelloAttempt& attempt,const std::string& tag,const std::string& queryUrl);
@@ -73,7 +73,7 @@ inline void Handshake::flush() {
 }
 
 inline std::map<std::string,Edge*>& Handshake::edges() {
-	return _handler._edges;
+	return _invoker._edges;
 }
 
 

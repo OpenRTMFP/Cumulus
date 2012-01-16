@@ -26,7 +26,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-FlowNull::FlowNull(Peer& peer,Handler& handler,BandWriter& band) : Flow(0,Util::NullString,Util::NullString,peer,handler,band) {
+FlowNull::FlowNull(Peer& peer,Invoker& invoker,BandWriter& band) : Flow(0,Util::NullString,Util::NullString,peer,invoker,band) {
 	
 }
 

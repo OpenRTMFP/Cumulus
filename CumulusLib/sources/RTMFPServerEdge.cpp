@@ -133,9 +133,9 @@ UInt8 RTMFPServerEdge::p2pHandshake(const string& tag,PacketWriter& response,con
 	return 0;
 }
 
-bool RTMFPServerEdge::manageRealTime(bool& terminate) {
+bool RTMFPServerEdge::realTime(bool& terminate) {
 	
-	RTMFPServer::manageRealTime(terminate);
+	RTMFPServer::realTime(terminate);
 	
 	if(_serverConnection.died) {
 		terminate = true;

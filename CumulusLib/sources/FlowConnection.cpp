@@ -19,6 +19,7 @@
 #include "Logs.h"
 #include "Util.h"
 
+
 using namespace std;
 using namespace Poco;
 using namespace Poco::Net;
@@ -28,7 +29,7 @@ namespace Cumulus {
 string FlowConnection::Signature("\x00\x54\x43\x04\x00",5);
 string FlowConnection::_Name("NetConnection");
 
-FlowConnection::FlowConnection(UInt32 id,Peer& peer,Handler& handler,BandWriter& band) : Flow(id,Signature,_Name,peer,handler,band) {
+FlowConnection::FlowConnection(UInt32 id,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,Signature,_Name,peer,invoker,band) {
 	(bool&)writer.critical = true;
 }
 
@@ -36,31 +37,43 @@ FlowConnection::~FlowConnection() {
 	// delete stream index remaining (which have not had time to send a 'destroyStream' message)
 	set<UInt32>::const_iterator it;
 	for(it=_streamIndex.begin();it!=_streamIndex.end();++it)
-		handler.streams.destroy(*it);
+		invoker._streams.destroy(*it);
 }
 
 void FlowConnection::messageHandler(const std::string& name,AMFReader& message) {
 	
 	if(name=="connect") {
-		AMFObject obj;
-		message.readObject(obj);
+		message.stopReferencing();
+		AMFSimpleObject obj;
+		message.readSimpleObject(obj);
+		message.startReferencing();
 		((URI&)peer.swfUrl) = obj.getString("swfUrl","");
 		((URI&)peer.pageUrl) = obj.getString("pageUrl","");
 
-		// Don't support AMF0 forced on NetConnection object because impossible to exchange custome data (ByteArray written impossible)
+		// Don't support AMF0 forced on NetConnection object because AMFWriter writes in AMF3 format
 		// But it's not a pb because NetConnection RTMFP works since flash player 10.0 only (which supports AMF3)
-		if(obj.getDouble("objectEncoding")==0)
-			throw Exception("ObjectEncoding client must be AMF3 and not AMF0");
+		writer.amf0Preference=true; // Only for first response!
+		if(obj.getNumber("objectEncoding",0)==0) {
+			writer.writeErrorResponse("Connect.Error","ObjectEncoding client must be in a AMF3 format (not AMF0)");
+			writer.amf0Preference=false;
+			return;
+		}
 
 		// Check if the client is authorized
 		peer.setFlowWriter(&writer);
-		if(!handler.onConnection(peer,message))
-			throw Exception("Client rejected");
-		
-		peer.connected = true;
-
-		AMFObjectWriter(writer.writeSuccessResponse("Connect.Success","Connection succeeded")).write("objectEncoding",3);
-
+		UInt32 queue = writer.queue();
+		bool accept=true;
+		{
+			AMFObjectWriter response(writer.writeSuccessResponse("Connect.Success","Connection succeeded"));
+			response.write("objectEncoding",3);
+			accept = peer.onConnection(message,response);
+			
+		}
+		if(!accept) {
+			writer.cancel(queue);
+			writer.writeAMFMessage("close");
+		}
+		writer.amf0Preference=false;
 	} else if(name == "setPeerInfo") {
 
 		peer.addresses.erase(++peer.addresses.begin(),peer.addresses.end());
@@ -72,22 +85,22 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		
 		BinaryWriter& response(writer.writeRawMessage());
 		response.write16(0x29); // Unknown!
-		response.write32(handler.keepAliveServer);
-		response.write32(handler.keepAlivePeer);
+		response.write32(invoker.keepAliveServer);
+		response.write32(invoker.keepAlivePeer);
 	
 	} else if(name == "initStream") {
 		// TODO?
 	} else if(name == "createStream") {
 
 		AMFWriter& response(writer.writeAMFResult());
-		response.writeNumber(*_streamIndex.insert(handler.streams.create()).first);
+		response.writeInteger(*_streamIndex.insert(invoker._streams.create()).first);
 
 	} else if(name == "deleteStream") {
 		UInt32 index = (UInt32)message.readNumber();
 		_streamIndex.erase(index);
-		handler.streams.destroy(index);
+		invoker._streams.destroy(index);
 	} else {
-		if(!handler.onMessage(peer,name,message))
+		if(!peer.onMessage(name,message))
 			writer.writeErrorResponse("Call.Failed","Method '" + name + "' not found");
 	}
 }

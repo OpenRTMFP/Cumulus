@@ -17,21 +17,22 @@
 
 #include "AMFObjectWriter.h"
 
+using namespace std;
 
 namespace Cumulus {
 
-AMFObjectWriter::AMFObjectWriter(AMFWriter& writer) : _writer(writer),_end(true) {
-	_writer.beginObject();
+AMFObjectWriter::AMFObjectWriter(AMFWriter& writer) : writer(writer),_end(true) {
+	writer.beginObject();
 }
 
-AMFObjectWriter::AMFObjectWriter(const AMFObjectWriter& other) : _writer(other._writer),_end(true) {
+AMFObjectWriter::AMFObjectWriter(const AMFObjectWriter& other) : writer(other.writer),_end(true) {
 	((AMFObjectWriter&)other)._end = false;
 }
 
 
 AMFObjectWriter::~AMFObjectWriter() {
 	if(_end)
-		_writer.endObject();
+		writer.endObject();
 }
 
 

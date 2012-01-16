@@ -28,12 +28,12 @@ namespace Cumulus {
 string FlowStream::Signature("\x00\x54\x43\x04",4);
 string FlowStream::_Name("NetStream");
 
-FlowStream::FlowStream(UInt32 id,const string& signature,Peer& peer,Handler& handler,BandWriter& band) : Flow(id,signature,_Name,peer,handler,band),_pPublication(NULL),_state(IDLE),_numberLostFragments(0) {
+FlowStream::FlowStream(UInt32 id,const string& signature,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,signature,_Name,peer,invoker,band),_pPublication(NULL),_state(IDLE),_numberLostFragments(0) {
 	PacketReader reader((const UInt8*)signature.c_str(),signature.length());
 	reader.next(4);
 	_index = reader.read7BitValue();
-	Publications::Iterator it = handler.streams.publications(_index);
-	if(it!=handler.streams.publications.end())
+	Publications::Iterator it = invoker.publications(_index);
+	if(it!=invoker.publications.end())
 		_pPublication = it->second;
 }
 
@@ -44,10 +44,10 @@ FlowStream::~FlowStream() {
 void FlowStream::disengage() {
 	// Stop the current  job
 	if(_state==PUBLISHING) {
-		handler.streams.unpublish(peer,_index,name);
+		invoker._streams.unpublish(peer,_index,name);
 		writer.writeStatusResponse("Unpublish.Success",name + " is now unpublished");
 	} else if(_state==PLAYING) {
-		handler.streams.unsubscribe(peer,_index,name);
+		invoker._streams.unsubscribe(peer,_index,name);
 		writer.writeStatusResponse("Play.Stop","Stopped playing " + name);
 	}
 	_state=IDLE;
@@ -55,7 +55,7 @@ void FlowStream::disengage() {
 
 void FlowStream::audioHandler(PacketReader& packet) {
 	if(_pPublication && _pPublication->publisherId() == _index) {
-		_pPublication->pushAudioPacket(peer,packet.read32(),packet,_numberLostFragments);
+		_pPublication->pushAudioPacket(packet.read32(),packet,_numberLostFragments);
 		_numberLostFragments=0;
 	} else
 		fail("an audio packet has been received on a no publisher FlowStream");
@@ -63,7 +63,7 @@ void FlowStream::audioHandler(PacketReader& packet) {
 
 void FlowStream::videoHandler(PacketReader& packet) {
 	if(_pPublication && _pPublication->publisherId() == _index) {
-		_pPublication->pushVideoPacket(peer,packet.read32(),packet,_numberLostFragments);
+		_pPublication->pushVideoPacket(packet.read32(),packet,_numberLostFragments);
 		_numberLostFragments=0;
 	} else
 		fail("a video packet has been received on a no publisher FlowStream");
@@ -94,7 +94,6 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 
 	if(action=="play") {
 		disengage();
-		_state = PLAYING;
 
 		message.read((string&)name);
 		// TODO implements completly NetStream.play method, with possible NetStream.play.failed too!
@@ -102,20 +101,8 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		if(message.available())
 			start = message.readNumber();
 
-		BinaryWriter& data = writer.writeRawMessage(true);
-		data.write8(0x0F);
-		data.write32(0x00);
-		data.write8(0x00);
-		AMFWriter amf(data);
-		amf.write("|RtmpSampleAccess");
-		amf.writeBool(handler.audioSampleAccess);
-		amf.writeBool(handler.videoSampleAccess);
-
-		writer.writeStatusResponse("Play.Reset","Playing and resetting " + name);
-
-		writer.writeStatusResponse("Play.Start","Started playing " + name);
-
-		handler.streams.subscribe(peer,_index,name,writer,start);
+		if(invoker._streams.subscribe(peer,_index,name,writer,start))
+			_state = PLAYING;
 
 	} else if(action == "closeStream") {
 		disengage();
@@ -128,22 +115,24 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		if(message.available())
 			message.read(type); // TODO recording publication feature!
 
-		if(handler.streams.publish(peer,_index,name)) {
-			writer.writeStatusResponse("Publish.Start",name +" is now published");
+		try {
+			invoker._streams.publish(peer,_index,name);
 			_state = PUBLISHING;
-		} else
-			writer.writeStatusResponse("Publish.BadName",name +" is already publishing");
+			writer.writeStatusResponse("Publish.Start",name +" is now published");
+		} catch(Exception& ex) {
+			writer.writeStatusResponse(ex.code() == Publication::BADNAME ? "Publish.BadName" : "Publish.Failed", ex.displayText());
+		}
 
 	} else if(_state==PUBLISHING) {
 		if(!_pPublication) {
-			Publications::Iterator it = handler.streams.publications(name);
-			if(it!=handler.streams.publications.end())
+			Publications::Iterator it = invoker.publications(name);
+			if(it!=invoker.publications.end())
 				_pPublication = it->second;
 			else
 				ERROR("Publication %s unfound, related for the %s message",name.c_str(),action.c_str());
 		}
 		if(_pPublication)
-			_pPublication->pushDataPacket(peer,action,message.reader);
+			_pPublication->pushDataPacket(action,message.reader);
 	} else
 		Flow::messageHandler(action,message);
 

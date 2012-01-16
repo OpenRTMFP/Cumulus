@@ -24,7 +24,7 @@ namespace Cumulus {
 
 class Publications {
 public:
-	Publications(Handler& handler);
+	Publications(std::map<std::string,Publication*>& publications);
 	virtual ~Publications();
 
 	typedef std::map<std::string,Publication*>::iterator Iterator;
@@ -33,15 +33,11 @@ public:
 	Iterator begin();
 	Iterator end();
 
-	Iterator create(const std::string& name);
-	void destroy(const Iterator& it);
-
 	Iterator operator()(Poco::UInt32 id);
 	Iterator operator()(const std::string& name);
 
 private:
-	std::map<std::string,Publication*>	_publications;
-	Handler&							_handler;
+	std::map<std::string,Publication*>&	_publications;
 };
 
 inline Poco::UInt32 Publications::count() {
