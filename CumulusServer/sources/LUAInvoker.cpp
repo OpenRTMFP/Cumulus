@@ -47,10 +47,8 @@ int	LUAInvoker::Publish(lua_State *pState) {
 
 int	LUAInvoker::AbsolutePath(lua_State *pState) {
 	SCRIPT_POP_CALLBACK(Invoker,LUAInvoker,invoker)
-		while(SCRIPT_CAN_READ) {
-			SCRIPT_READ_STRING(path,"")
-			SCRIPT_WRITE_STRING((Server::WWWPath+path+"/").c_str())
-		}
+		SCRIPT_READ_STRING(path,"")
+		SCRIPT_WRITE_STRING((Server::WWWPath+path+"/").c_str())
 	SCRIPT_CALLBACK_RETURN
 }
 
