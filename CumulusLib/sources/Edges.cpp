@@ -38,8 +38,8 @@ void Edge::update() {
 	_timeLastExchange.update();
 }
 
-Edge* Edges::operator()(const SocketAddress& address) {
-	Iterator it = _edges.find(address.toString());
+Edge* Edges::operator()(const string& address) {
+	Iterator it = _edges.find(address);
 	if(it==_edges.end())
 		return NULL;
 	return it->second;

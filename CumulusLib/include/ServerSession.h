@@ -26,6 +26,9 @@
 
 namespace Cumulus {
 
+#define SESSION_BY_EDGE 1
+
+
 class Attempt {
 public:
 	Attempt() : count(0) {

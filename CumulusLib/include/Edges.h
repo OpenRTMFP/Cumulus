@@ -71,11 +71,16 @@ public:
 	Iterator		end();
 	Poco::UInt32	count();
 
+	Edge* operator()(const std::string& address);
 	Edge* operator()(const Poco::Net::SocketAddress& address);
 private:
 
 	std::map<std::string,Edge*>&	_edges;
 };
+
+inline Edge* Edges::operator()(const Poco::Net::SocketAddress& address) {
+	return this->operator ()(address.toString());
+}
 
 inline Poco::UInt32 Edges::count() {
 	return _edges.size();

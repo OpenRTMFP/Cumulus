@@ -319,6 +319,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 
 					cookie.computeKeys(&publicKey[0],publicKey.size(),request.current(),size,decryptKey,encryptKey);
 				} else {
+					// edge
 					pDecryptKey=NULL;
 					pEncryptKey=NULL;
 					memcpy((UInt8*)peer.id,request.current(),ID_SIZE);
@@ -336,6 +337,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				string address;
 				if(id==0x39) {
 					// Session by edge 
+					session.flags |= SESSION_BY_EDGE;
 					Edge* pEdge = _invoker.edges(peer.address);
 					if(!pEdge)
 						ERROR("Edge session creation by an unknown server edge %s",peer.address.toString().c_str())

@@ -44,6 +44,8 @@ public:
 	const bool			checked;
 	const bool			died;
 
+	Poco::UInt8			flags;
+
 	bool				middleDump;
 
 	virtual void		manage(){}

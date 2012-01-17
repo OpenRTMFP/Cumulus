@@ -355,9 +355,13 @@ bool RTMFPServer::realTime(bool& terminate) {
 void RTMFPServer::manage() {
 	_handshake.manage();
 	if(_sessions.manage())
-		INFO("%u clients",clients.count());
+		displayCount(_sessions.count());
 	if(!_middle && !_pCirrus && _timeLastManage.isElapsed(20000))
 		WARN("Process management has lasted more than 20ms : %ums",UInt32(_timeLastManage.elapsed()/1000));
+}
+
+void RTMFPServer::displayCount(UInt32 sessions) {
+	INFO("%u clients",clients.count());
 }
 
 

@@ -58,6 +58,7 @@ private:
 	void			destroySession(Session& session);
 	void			repeatCookie(Poco::UInt32 farId,Cookie& cookie);
 	void			run(const volatile bool& terminate);
+	void			displayCount(Poco::UInt32 sessions);
 
 	ServerConnection					_serverConnection;
 

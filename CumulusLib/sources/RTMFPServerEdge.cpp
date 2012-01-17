@@ -24,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServerEdge::RTMFPServerEdge() : RTMFPServer("RTMFPServerBridge"),_serverConnection(*this,_handshake) {
+RTMFPServerEdge::RTMFPServerEdge() : RTMFPServer("RTMFPServerEdge"),_serverConnection(*this,_handshake) {
 
 }
 
@@ -36,7 +36,7 @@ EdgeSession* RTMFPServerEdge::findEdgeSession(UInt32 id) {
 	EdgeSession* pSession= dynamic_cast<EdgeSession*>(findSession(id));
 	if(pSession)
 		return pSession;
-	ERROR("Unknown edge session %u",id);
+	WARN("Unknown edge session %u",id);
 	return NULL;
 }
 
@@ -179,6 +179,10 @@ void RTMFPServerEdge::manage() {
 	_serverConnection.manage();
 	if(_timeLastServerReception.isElapsed(40000000)) // timeout of 40 sec, server is death!
 		(bool&)_serverConnection.died=true;
+}
+
+void RTMFPServerEdge::displayCount(UInt32 sessions) {
+	INFO("%u clients",sessions);
 }
 
 

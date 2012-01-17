@@ -31,10 +31,10 @@ int LUAEdges::Pairs(lua_State* pState) {
 		else {
 			lua_newtable(pState);
 			Edges::Iterator it;
-		/* TODO	for(it=edges.begin();it!=edges.end();++it) {
-				SCRIPT_WRITE_PERSISTENT_OBJECT(Edge,LUAEdge,*it->second)
-				lua_setfield(pState,-2,Util::FormatHex(it->second->id,ID_SIZE).c_str());
-			}*/
+			for(it=edges.begin();it!=edges.end();++it) {
+				SCRIPT_WRITE_NUMBER(it->second->count)
+				lua_setfield(pState,-2,it->first.c_str());
+			}
 		}
 	SCRIPT_CALLBACK_RETURN
 }
@@ -46,6 +46,12 @@ int LUAEdges::Get(lua_State *pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAEdges::Pairs)
 		else if(name=="count")
 			SCRIPT_WRITE_NUMBER(edges.count())
+		else if(name=="(") {
+			SCRIPT_READ_STRING(address,"")
+			Edge* pEdge = edges(address);
+			if(pEdge)
+				SCRIPT_WRITE_NUMBER(pEdge->count)
+		}
 	SCRIPT_CALLBACK_RETURN
 }
 

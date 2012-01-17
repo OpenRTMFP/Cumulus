@@ -30,7 +30,7 @@ Session::Session(UInt32 id,
 				 const Peer& peer,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey) : 
-		died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pSocket(NULL),middleDump(false) {
+		flags(0),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pSocket(NULL),middleDump(false) {
 
 }
 
