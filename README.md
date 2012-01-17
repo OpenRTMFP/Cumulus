@@ -1,23 +1,24 @@
-CumulusServer is a complet and cross-platform RTMFP server extensible by scripting way under open source [GPL license].
+CumulusServer is a complete open source and cross-platform RTMFP server extensible by way of scripting.
 
-CumulusServer has been developed in keeping in mind the 5 following notions: *speed*, *power*, *light weight*, *cross-platform*, and *elegant code*.
+CumulusServer has been developed under [GPL license] in keeping in mind the 5 following notions: *speed*, *power*, *light weight*, *cross-platform*, and *elegant code*.
 CumulusServer motto if exists could be:
 
 > For every complicated problem exists an elegant solution.
 
-Even if there is not yet versionning release, code pushed on github is done only when CumulusServer has been tested and approved.
+Even though there is no versioning released yet, code pushed on github is done only when CumulusServer has been tested and approved.
 
-Actually, main stable features are:
+Actually, the main stable features are:
 
 - P2P rendez-vous service
 - Live streaming
 - RPC, pull, push exchanges, indeed all AMF possible exchanges between client and server
 - Scripting engine to create your own application server or extends Cumulus features
 
-All the documentation to install and to use CumulusServer is available through **[Wiki]**.
+All the documentation to get, install and use CumulusServer is available through the **[Wiki]**.
 
-You can **help us** to enhance Cumulus in contacting me to cumulus.dev@gmail.com, else you can always make a **donation** ([us]|[eu]) for that we spent more time on it,
-indeed it's not technical skills which limit us but lack of time.
+The community can talk about Cumulus on [openrtmfp-cumulus](http://groups.google.com/group/openrtmfp-cumulus) forum or report a bug on [issues](https://github.com/OpenRTMFP/Cumulus/issues) page.
+
+You can **help us** enhance Cumulus by contacting me at cumulus.dev@gmail.com, or you can always make a **donation** ([us]|[eu]) so that we can spend more time on it. It's not technical skills which limit us but lack of time.
 
 
 [Wiki]: https://github.com/OpenRTMFP/Cumulus/wiki/_pages "Cumulus Wiki"

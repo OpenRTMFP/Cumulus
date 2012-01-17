@@ -18,6 +18,7 @@
 #include "LUAListener.h"
 #include "Listener.h"
 #include "LUAQualityOfService.h"
+#include "LUAPublication.h"
 
 using namespace Cumulus;
 
@@ -33,6 +34,12 @@ int LUAListener::Get(lua_State *pState) {
 			SCRIPT_WRITE_OBJECT(QualityOfService,LUAQualityOfService,listener.audioQOS())
 		} else if(name=="videoQOS") {
 			SCRIPT_WRITE_OBJECT(QualityOfService,LUAQualityOfService,listener.videoQOS())
+		} else if(name=="publication") {
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,listener.publication);
+		} else if(name=="audioSampleAccess") {
+			SCRIPT_WRITE_BOOL(listener.audioSampleAccess);
+		} else if(name=="videoSampleAccess") {
+			SCRIPT_WRITE_BOOL(listener.videoSampleAccess);
 		}
 	SCRIPT_CALLBACK_RETURN
 }
@@ -40,6 +47,15 @@ int LUAListener::Get(lua_State *pState) {
 int LUAListener::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Listener,LUAListener,listener)
 		SCRIPT_READ_STRING(name,"")
-		lua_rawset(pState,1); // consumes key and value
+		if(name=="audioSampleAccess") {
+			bool value = lua_toboolean(pState,-1)==0 ? false : true;
+			if(value!=listener.audioSampleAccess)
+				listener.sampleAccess(value,listener.videoSampleAccess);
+		} else if(name=="videoSampleAccess") {
+			bool value = lua_toboolean(pState,-1)==0 ? false : true;
+			if(value!=listener.videoSampleAccess)
+				listener.sampleAccess(listener.audioSampleAccess,value);
+		} else
+			lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }
