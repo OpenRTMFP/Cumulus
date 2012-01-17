@@ -329,9 +329,11 @@ Session& RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* d
 }
 
 void RTMFPServer::destroySession(Session& session) {
-	Edge* pEdge = edges(session.peer.address);
-	if(pEdge)
-		pEdge->removeSession(session);
+	if(session.flags&SESSION_BY_EDGE) {
+		Edge* pEdge = edges(session.peer.address);
+		if(pEdge)
+			pEdge->removeSession(session);
+	}
 }
 
 bool RTMFPServer::realTime(bool& terminate) {
