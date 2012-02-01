@@ -23,33 +23,32 @@
 using namespace Cumulus;
 
 const char*		LUAPublication::Name="Cumulus::Publication";
-Invoker*		LUAPublication::PInvoker(NULL);
 
 
 int	LUAPublication::Close(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(Publication,LUAPublication,publication)
-		if(PInvoker)
-			PInvoker->unpublish(publication);
-		else 
-			SCRIPT_ERROR("PInvoker is null on a Publication::close call")
-	SCRIPT_CALLBACK_RETURN
-}
-
-int	LUAPublication::CloseError(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(Publication,LUAPublication,publication)
-		SCRIPT_ERROR("Impossible to close publication %s, you have not the handle on",publication.name().c_str())
+	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
+		lua_getmetatable(pState,1);
+		lua_getfield(pState,-1,"__invoker");
+		lua_replace(pState,-2);
+		if(lua_islightuserdata(pState,-1))
+			((Invoker*)lua_touserdata(pState,-1))->unpublish(publication);
+		else {
+			SCRIPT_READ_STRING(code,"")
+			SCRIPT_READ_STRING(description,"")
+			publication.closePublisher(code,description);
+		}
+		lua_pop(pState,1);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAPublication::Flush(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(Publication,LUAPublication,publication)
+	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
 		publication.flush();
 	SCRIPT_CALLBACK_RETURN
 }
 
-
 int	LUAPublication::PushAudioPacket(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(Publication,LUAPublication,publication)
+	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
 		SCRIPT_READ_UINT(time,0)
 		SCRIPT_READ_BINARY(pData,size)
 		SCRIPT_READ_UINT(numberLost,0)
@@ -61,7 +60,7 @@ int	LUAPublication::PushAudioPacket(lua_State *pState) {
 }
 
 int	LUAPublication::PushVideoPacket(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(Publication,LUAPublication,publication)
+	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
 		SCRIPT_READ_UINT(time,0)
 		SCRIPT_READ_BINARY(pData,size)
 		SCRIPT_READ_UINT(numberLost,0)
@@ -73,7 +72,7 @@ int	LUAPublication::PushVideoPacket(lua_State *pState) {
 }
 
 int	LUAPublication::PushDataPacket(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(Publication,LUAPublication,publication)
+	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
 		SCRIPT_READ_STRING(name,"")
 		SCRIPT_READ_BINARY(pData,size)
 		if(pData) {
@@ -85,7 +84,7 @@ int	LUAPublication::PushDataPacket(lua_State *pState) {
 
 
 int LUAPublication::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(Publication,LUAPublication,publication)
+	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="publisherId") {
 			SCRIPT_WRITE_NUMBER(publication.publisherId())
@@ -98,15 +97,7 @@ int LUAPublication::Get(lua_State *pState) {
 		} else if(name=="videoQOS") {
 			SCRIPT_WRITE_OBJECT(QualityOfService,LUAQualityOfService,publication.videoQOS())
 		} else if(name=="close") {
-			lua_getmetatable(pState,1);
-			lua_getfield(pState,-1,"__invoker");
-			lua_replace(pState,-2);
-			if(lua_islightuserdata(pState,-1)) {
-				SCRIPT_WRITE_FUNCTION(&LUAPublication::Close)
-				PInvoker = (Invoker*)lua_touserdata(pState,-1);
-			} else
-				SCRIPT_WRITE_FUNCTION(&LUAPublication::CloseError)
-			lua_replace(pState,-2);
+			SCRIPT_WRITE_FUNCTION(&LUAPublication::Close)
 		} else if(name=="pushAudioPacket") {
 			SCRIPT_WRITE_FUNCTION(&LUAPublication::PushAudioPacket)
 		} else if(name=="flush") {

@@ -33,9 +33,10 @@ private:
 	static int	Flush(lua_State *pState);
 	static int	WriteAMFResult(lua_State *pState);
 	static int	WriteAMFMessage(lua_State *pState);
+	static int  WriteStatusResponse(lua_State* pState);
 	static int	NewFlowWriter(lua_State *pState);
 	static int	Close(lua_State *pState);
-
+	static int	Destroy(lua_State *pState);
 };
 
 

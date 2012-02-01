@@ -32,15 +32,15 @@ Streams::~Streams() {
 }
 
 
-Publication& Streams::publish(Peer& peer,UInt32 id,const string& name) {
+Publication& Streams::publish(Peer& peer,UInt32 id,const string& name,FlowWriter* pController) {
 	Publications::Iterator it = createPublication(name);
 	Publication& publication(*it->second);
-	string error;
-	Publication::StartCode code = publication.start(peer,id,error);
-	if(code) {
+	try {
+		publication.start(peer,id,pController);
+	} catch(...) {
 		if(publication.publisherId()==0 && publication.listeners.count()==0)
 			destroyPublication(it);
-		throw Exception(error,code);
+		throw;
 	}
 	return publication;
 }

@@ -21,6 +21,7 @@
 #include "ApplicationKiller.h"
 #include "Service.h"
 #include "Blacklist.h"
+#include "SocketManager.h"
 
 class Server : public Cumulus::RTMFPServer {
 public:
@@ -28,6 +29,7 @@ public:
 	virtual ~Server();
 
 	static const std::string WWWPath;
+	SocketManager			 socketManager;
 
 private:
 	void					manage();

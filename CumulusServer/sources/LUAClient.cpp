@@ -41,6 +41,10 @@ int LUAClient::Get(lua_State *pState) {
 			SCRIPT_WRITE_STRING(client.path.c_str())
 		} else if(name=="pageUrl") {
 			SCRIPT_WRITE_STRING(client.pageUrl.toString().c_str())
+		} else if(name=="close") {
+			SCRIPT_WRITE_FUNCTION(&LUAClient::Close)
+		} else if(name=="flashVersion") {
+			SCRIPT_WRITE_STRING(client.flashVersion.c_str())
 		} else if(name=="ping") {
 			SCRIPT_WRITE_NUMBER(client.ping)
 		} else if(name=="swfUrl") {
@@ -57,6 +61,12 @@ int LUAClient::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Client,LUAClient,client)
 		SCRIPT_READ_STRING(name,"")
 		lua_rawset(pState,1); // consumes key and value
+	SCRIPT_CALLBACK_RETURN
+}
+
+int	LUAClient::Close(lua_State *pState) {
+	SCRIPT_CALLBACK(Client,LUAClient,client)
+		client.close();
 	SCRIPT_CALLBACK_RETURN
 }
 

@@ -28,8 +28,7 @@ public:
 	NewWriter(const string& signature,BandWriter& band) : FlowWriter(signature,band),pState(NULL) {
 	}
 	virtual ~NewWriter(){
-		if(pState)
-			Script::ClearPersistentObject<NewWriter,LUAFlowWriter>(pState,*this);
+		Script::ClearPersistentObject<NewWriter,LUAFlowWriter>(pState,*this);
 	}
 	void manage(Invoker& invoker){
 		SCRIPT_BEGIN(pState)
@@ -45,16 +44,21 @@ public:
 const char*		LUAFlowWriter::Name="Cumulus::FlowWriter";
 
 
+int LUAFlowWriter::Destroy(lua_State* pState) {
+	SCRIPT_DESTRUCTOR_CALLBACK(NewWriter,LUAFlowWriter,writer)
+		writer.close();
+	SCRIPT_CALLBACK_RETURN
+}
+
 int LUAFlowWriter::Close(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(NewWriter,LUAFlowWriter,writer)
-		writer.pState = NULL;
+	SCRIPT_CALLBACK(NewWriter,LUAFlowWriter,writer)
 		writer.close();
 	SCRIPT_CALLBACK_RETURN
 }
 
 
 int LUAFlowWriter::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(FlowWriter,LUAFlowWriter,writer)
+	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="flush") {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::Flush)
@@ -62,6 +66,8 @@ int LUAFlowWriter::Get(lua_State *pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::WriteAMFResult)
 		} else if(name=="writeAMFMessage") {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::WriteAMFMessage)
+		} else if(name=="writeStatusResponse") {
+			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::WriteStatusResponse)
 		} else if(name=="newFlowWriter") {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::NewFlowWriter)
 		} else if(name=="close") {
@@ -82,32 +88,46 @@ int LUAFlowWriter::Set(lua_State *pState) {
 }
 
 int LUAFlowWriter::Flush(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(FlowWriter,LUAFlowWriter,writer)
+	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
 		SCRIPT_READ_BOOL(full,false)
 		writer.flush(full);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int LUAFlowWriter::WriteAMFResult(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(FlowWriter,LUAFlowWriter,writer)
+	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
 		AMFWriter& amf = writer.writeAMFResult();
 		SCRIPT_READ_AMF(amf)
 	SCRIPT_CALLBACK_RETURN
 }
 
 int LUAFlowWriter::WriteAMFMessage(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(FlowWriter,LUAFlowWriter,writer)
+	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
 		SCRIPT_READ_STRING(name,"")
 		AMFWriter& amf = writer.writeAMFMessage(name);
 		SCRIPT_READ_AMF(amf)
 	SCRIPT_CALLBACK_RETURN
 }
 
+int LUAFlowWriter::WriteStatusResponse(lua_State* pState) {
+	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
+		SCRIPT_READ_STRING(code,"")
+		SCRIPT_READ_STRING(description,"")
+		AMFObjectWriter response = writer.writeStatusResponse(code,description);
+		while(SCRIPT_CAN_READ) {
+			SCRIPT_READ_STRING(name,"")
+			response.writer.writePropertyName(name);
+			Script::ReadAMF(pState,response.writer,1);
+		}
+	SCRIPT_CALLBACK_RETURN
+}
+
 
 int LUAFlowWriter::NewFlowWriter(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(FlowWriter,LUAFlowWriter,writer)
+	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
 		NewWriter& newWriter = writer.newFlowWriter<NewWriter>();
 		newWriter.pState = pState;
 		SCRIPT_WRITE_PERSISTENT_OBJECT(NewWriter,LUAFlowWriter,newWriter)
+		SCRIPT_ADD_DESTRUCTOR(&LUAFlowWriter::Destroy)
 	SCRIPT_CALLBACK_RETURN
 }

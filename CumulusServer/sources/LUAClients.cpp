@@ -28,7 +28,7 @@ using namespace std;
 const char*		LUAClients::Name="Cumulus::Entities<Client>";
 
 int LUAClients::Pairs(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(Entities<Client>,LUAClients,clients)
+	SCRIPT_CALLBACK(Entities<Client>,LUAClients,clients)
 		lua_getglobal(pState,"next");
 		if(!lua_iscfunction(pState,-1))
 			SCRIPT_ERROR("'next' should be a LUA function, it should not be overloaded")
@@ -44,7 +44,7 @@ int LUAClients::Pairs(lua_State* pState) {
 }
 
 int LUAClients::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(Entities<Client>,LUAClients,clients)
+	SCRIPT_CALLBACK(Entities<Client>,LUAClients,clients)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="pairs")
 			SCRIPT_WRITE_FUNCTION(&LUAClients::Pairs)

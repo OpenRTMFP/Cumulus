@@ -32,7 +32,6 @@ using namespace std;
 using namespace Poco;
 using namespace Cumulus;
 
-void*		Script::_This=NULL;
 lua_Debug	Script::LuaDebug;
 
 const char* Script::LastError(lua_State *pState) {
@@ -46,7 +45,8 @@ int Script::Error(lua_State *pState) {
 #undef SCRIPT_LOG_NAME_DISABLED
 #define SCRIPT_LOG_NAME_DISABLED true
 	SCRIPT_BEGIN(pState)
-		SCRIPT_ERROR("%s",lua_tostring(pState,-1));
+		string msg;
+		SCRIPT_ERROR("%s",ToString(pState,msg));
 	SCRIPT_END
 	return 0;
 }
@@ -54,7 +54,8 @@ int Script::Warn(lua_State *pState) {
 #undef SCRIPT_LOG_NAME_DISABLED
 #define SCRIPT_LOG_NAME_DISABLED true
 	SCRIPT_BEGIN(pState)
-		SCRIPT_WARN("%s",lua_tostring(pState,-1));
+		string msg;
+		SCRIPT_WARN("%s",ToString(pState,msg));
 	SCRIPT_END
 	return 0;
 }
@@ -62,7 +63,8 @@ int Script::Note(lua_State *pState) {
 #undef SCRIPT_LOG_NAME_DISABLED
 #define SCRIPT_LOG_NAME_DISABLED true
 	SCRIPT_BEGIN(pState)
-		SCRIPT_NOTE("%s",lua_tostring(pState,-1));
+		string msg;
+		SCRIPT_NOTE("%s",ToString(pState,msg));
 	SCRIPT_END
 	return 0;
 }
@@ -70,7 +72,8 @@ int Script::Info(lua_State *pState) {
 #undef SCRIPT_LOG_NAME_DISABLED
 #define SCRIPT_LOG_NAME_DISABLED true
 	SCRIPT_BEGIN(pState)
-		SCRIPT_INFO("%s",lua_tostring(pState,-1));
+		string msg;
+		SCRIPT_INFO("%s",ToString(pState,msg));
 	SCRIPT_END
 	return 0;
 }
@@ -78,7 +81,8 @@ int Script::Debug(lua_State *pState) {
 #undef SCRIPT_LOG_NAME_DISABLED
 #define SCRIPT_LOG_NAME_DISABLED true
 	SCRIPT_BEGIN(pState)
-		SCRIPT_DEBUG("%s",lua_tostring(pState,-1));
+		string msg;
+		SCRIPT_DEBUG("%s",ToString(pState,msg));
 	SCRIPT_END
 	return 0;
 }
@@ -86,7 +90,8 @@ int Script::Trace(lua_State *pState) {
 #undef SCRIPT_LOG_NAME_DISABLED
 #define SCRIPT_LOG_NAME_DISABLED true
 	SCRIPT_BEGIN(pState)
-		SCRIPT_TRACE("%s",lua_tostring(pState,-1));
+		string msg;
+		SCRIPT_TRACE("%s",ToString(pState,msg));
 	SCRIPT_END
 	return 0;
 }
@@ -94,7 +99,8 @@ int Script::Trace(lua_State *pState) {
 
 int Script::Panic(lua_State *pState) {
 	SCRIPT_BEGIN(pState)
-		SCRIPT_FATAL("%s",lua_tostring(pState,-1));
+		string msg;
+		SCRIPT_FATAL("%s",ToString(pState,msg));
 	SCRIPT_END
 	return 1;
 }
@@ -526,4 +532,69 @@ void Script::ReadAMF(lua_State* pState,AMFWriter& writer,UInt32 count,map<UInt64
 		}
 	}
 	SCRIPT_END
+}
+
+const char* Script::ToString(lua_State* pState,string& out) {
+	int type = lua_type(pState, -1);
+	string pointer;
+	switch (lua_type(pState, -1)) {
+		case LUA_TLIGHTUSERDATA:
+			pointer = "userdata_";
+			break;
+		case LUA_TFUNCTION:
+			pointer = "function_";
+			break;
+		case LUA_TUSERDATA:
+			pointer = "userdata_";
+			break;
+		case LUA_TTHREAD:
+			pointer = "thread_";
+			break;
+		case LUA_TTABLE: {
+			pointer = "table_";
+			break;
+		}
+		case LUA_TBOOLEAN: {
+			out = lua_toboolean(pState,-1) ? "(true)" : "(false)";
+			return out.c_str();
+		}
+		case LUA_TNIL: {
+			out = "(null)";
+			return out.c_str();
+		}
+	}
+	if(pointer.empty())
+		out = lua_tostring(pState,-1);
+	else
+		out = pointer + NumberFormatter::format(lua_topointer(pState,-1));
+	return out.c_str();
+}
+
+void Script::AddObjectDestructor(lua_State *pState,lua_CFunction destructor) {
+	if(lua_istable(pState,-1)==0) {
+		SCRIPT_BEGIN(pState)
+			SCRIPT_ERROR("Add destructor impossible, bad object (not table)");
+		SCRIPT_END
+		return;
+	}
+
+	if(lua_getmetatable(pState,-1)==0) {
+		SCRIPT_BEGIN(pState)
+			SCRIPT_ERROR("Add destructor impossible, bad object (without metatable)");
+		SCRIPT_END
+		return;
+	}
+
+	// user data
+	lua_newuserdata(pState,sizeof(void*));
+
+	lua_pushvalue(pState,-2); // metatable
+	lua_setmetatable(pState,-2);
+
+	lua_pushcfunction(pState,destructor);
+	lua_setfield(pState,-3,"__gc"); // function in metatable
+
+	lua_setfield(pState, -2, "__gcThis"); // userdata in object
+
+	lua_pop(pState,1);
 }

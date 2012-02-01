@@ -52,6 +52,7 @@ public:
 	const std::map<std::string,std::string>		properties;
 	const Poco::URI								swfUrl;
 	const Poco::URI								pageUrl;
+	const std::string							flashVersion;
 	const Poco::UInt16							ping;
 
 	template<class ObjectType>
@@ -62,13 +63,15 @@ public:
 	ObjectType* object() const {
 		return (ObjectType*)_pObject;
 	}
+
+	void										close();	
 	
 	FlowWriter&									writer();			
 protected:
 	FlowWriter*									_pFlowWriter;
+	bool										_closed;
 private:
 	void*										_pObject;
-
 	static FlowWriter							_FlowWriterNull;
 	static BandWriterNull						_BandWriterNull;
 };

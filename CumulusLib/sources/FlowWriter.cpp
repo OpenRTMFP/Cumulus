@@ -28,12 +28,12 @@ namespace Cumulus {
 MessageNull FlowWriter::_MessageNull;
 
 
-FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),id(0),_stage(0),_stageAck(0),_closed(false),_callbackHandle(0),_resetCount(0),flowId(0),_band(band),signature(signature),_repeatable(0),_lostCount(0),_ackCount(0),amf0Preference(false) {
+FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),id(0),_stage(0),_stageAck(0),_closed(false),_callbackHandle(0),_resetCount(0),flowId(0),_band(band),signature(signature),_repeatable(0),_lostCount(0),_ackCount(0) {
 	band.initFlowWriter(*this);
 }
 
 FlowWriter::FlowWriter(FlowWriter& flowWriter) :
-		id(flowWriter.id),critical(flowWriter.critical),amf0Preference(false),
+		id(flowWriter.id),critical(flowWriter.critical),
 		_stage(flowWriter._stage),_stageAck(flowWriter._stageAck),
 		_ackCount(flowWriter._ackCount),_lostCount(flowWriter._lostCount),
 		_closed(false),_callbackHandle(0),_resetCount(0),
@@ -521,8 +521,6 @@ MessageBuffered& FlowWriter::createBufferedMessage() {
 	if(_closed || signature.empty() || _band.failed()) // signature.empty() means that we are on the flowWriter of FlowNull
 		return _MessageNull;
 	MessageBuffered* pMessage = new MessageBuffered();
-	if(amf0Preference)
-		pMessage->amfWriter.amf0Preference = true;
 	_messages.push_back(pMessage);
 	return *pMessage;
 }
@@ -573,8 +571,9 @@ AMFObjectWriter FlowWriter::writeAMFResponse(const string& name,const string& co
 		entireCode.append(".");
 		entireCode.append(code);
 	}
-
-
+	
+	bool precValue = message.amfWriter.amf0Preference;
+	message.amfWriter.amf0Preference=true;
 	AMFObjectWriter object(message.amfWriter);
 	if(name=="_error")
 		object.write("level","error");
@@ -583,6 +582,7 @@ AMFObjectWriter FlowWriter::writeAMFResponse(const string& name,const string& co
 	object.write("code",entireCode);
 	if(!description.empty())
 		object.write("description",description);
+	message.amfWriter.amf0Preference = precValue;
 	return object;
 }
 

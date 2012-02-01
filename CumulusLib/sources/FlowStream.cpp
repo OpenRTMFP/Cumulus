@@ -58,7 +58,7 @@ void FlowStream::audioHandler(PacketReader& packet) {
 		_pPublication->pushAudioPacket(packet.read32(),packet,_numberLostFragments);
 		_numberLostFragments=0;
 	} else
-		fail("an audio packet has been received on a no publisher FlowStream");
+		WARN("an audio packet has been received on a no publisher FlowStream, certainly a publication currently closing");
 }
 
 void FlowStream::videoHandler(PacketReader& packet) {
@@ -66,7 +66,7 @@ void FlowStream::videoHandler(PacketReader& packet) {
 		_pPublication->pushVideoPacket(packet.read32(),packet,_numberLostFragments);
 		_numberLostFragments=0;
 	} else
-		fail("a video packet has been received on a no publisher FlowStream");
+		WARN("a video packet has been received on a no publisher FlowStream, certainly a publication currently closing");
 }
 
 void FlowStream::commitHandler() {
@@ -91,7 +91,6 @@ void FlowStream::lostFragmentsHandler(UInt32 count) {
 }
 
 void FlowStream::messageHandler(const string& action,AMFReader& message) {
-
 	if(action=="play") {
 		disengage();
 
@@ -116,12 +115,9 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 			message.read(type); // TODO recording publication feature!
 
 		try {
-			invoker._streams.publish(peer,_index,name);
+			invoker._streams.publish(peer,_index,name,&writer);
 			_state = PUBLISHING;
-			writer.writeStatusResponse("Publish.Start",name +" is now published");
-		} catch(Exception& ex) {
-			writer.writeStatusResponse(ex.code() == Publication::BADNAME ? "Publish.BadName" : "Publish.Failed", ex.displayText());
-		}
+		} catch(...) {}
 
 	} else if(_state==PUBLISHING) {
 		if(!_pPublication) {

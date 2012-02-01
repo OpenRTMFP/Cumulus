@@ -35,8 +35,5 @@ private:
 	static int	PushVideoPacket(lua_State *pState);
 	static int	PushDataPacket(lua_State *pState);
 	static int	Close(lua_State *pState);
-	static int	CloseError(lua_State *pState);
-
-	static Cumulus::Invoker*	PInvoker;
 };
 

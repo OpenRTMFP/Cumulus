@@ -23,7 +23,7 @@ using namespace Cumulus;
 const char*		LUAAMFObjectWriter::Name="Cumulus::AMFObjectWriter";
 
 int LUAAMFObjectWriter::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
+	SCRIPT_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="write")
 			SCRIPT_WRITE_FUNCTION(&LUAAMFObjectWriter::Write)
@@ -38,7 +38,7 @@ int LUAAMFObjectWriter::Set(lua_State *pState) {
 }
 
 int LUAAMFObjectWriter::Write(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
+	SCRIPT_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
 		SCRIPT_READ_STRING(name,"")
 		if(SCRIPT_CAN_READ) {
 			writer.writer.writePropertyName(name);

@@ -25,7 +25,7 @@ using namespace Cumulus;
 const char*		LUAPublications::Name="Cumulus::Publications";
 
 int LUAPublications::Pairs(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(Publications,LUAPublications,publications)
+	SCRIPT_CALLBACK(Publications,LUAPublications,publications)
 		lua_getglobal(pState,"next");
 		if(!lua_iscfunction(pState,-1))
 			SCRIPT_ERROR("'next' should be a LUA function, it should not be overloaded")
@@ -41,7 +41,7 @@ int LUAPublications::Pairs(lua_State* pState) {
 }
 
 int LUAPublications::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(Publications,LUAPublications,publications)
+	SCRIPT_CALLBACK(Publications,LUAPublications,publications)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="pairs")
 			SCRIPT_WRITE_FUNCTION(&LUAPublications::Pairs)

@@ -26,7 +26,7 @@ using namespace Poco;
 const char*		LUAByteReader::Name="LUAByteReader";
 
 int LUAByteReader::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(AMFReader,LUAByteReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="readBoolean")
 			SCRIPT_WRITE_FUNCTION(&LUAByteReader::ReadBoolean)
@@ -67,19 +67,19 @@ int LUAByteReader::Set(lua_State *pState) {
 }
 
 int	LUAByteReader::ReadBoolean(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAByteReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_WRITE_BOOL(reader.reader.read8()==0 ? false : true);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteReader::ReadByte(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAByteReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_WRITE_INT(reader.reader.read8())
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteReader::ReadBytes(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAByteReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_READ_UINT(size,0)
 		string result;
 		reader.reader.readRaw(size,result);
@@ -88,7 +88,7 @@ int	LUAByteReader::ReadBytes(lua_State *pState) {
 }
 
 int	LUAByteReader::ReadDouble(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAByteReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		double result;
 		reader.reader >> result;
 		SCRIPT_WRITE_NUMBER(result)
@@ -96,7 +96,7 @@ int	LUAByteReader::ReadDouble(lua_State *pState) {
 }
 
 int	LUAByteReader::ReadFloat(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAByteReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		float result;
 		reader.reader >> result;
 		SCRIPT_WRITE_NUMBER(result)
@@ -104,13 +104,13 @@ int	LUAByteReader::ReadFloat(lua_State *pState) {
 }
 
 int	LUAByteReader::ReadInt(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAByteReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_WRITE_INT(reader.reader.read32())
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteReader::ReadMultiByte(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAByteReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_READ_UINT(size,0)
 		SCRIPT_READ_STRING(format,"")
 		vector<UInt8> result(size);
@@ -122,38 +122,38 @@ int	LUAByteReader::ReadMultiByte(lua_State *pState) {
 }
 
 int	LUAByteReader::ReadAMF(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAAMFReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_READ_UINT(count,0)
 		SCRIPT_WRITE_AMF(reader,count)
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteReader::ReadShort(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAAMFReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_WRITE_INT(reader.reader.read16())
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteReader::ReadUnsignedByte(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAAMFReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_WRITE_NUMBER(reader.reader.read8())
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteReader::ReadUnsignedInt(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAAMFReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_WRITE_NUMBER(reader.reader.read32())
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteReader::ReadUnsignedShort(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAAMFReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_WRITE_NUMBER(reader.reader.read16())
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteReader::ReadUTF(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAAMFReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		string value;
 		reader.reader.readString16(value);
 		SCRIPT_WRITE_STRING(value.c_str())
@@ -161,7 +161,7 @@ int	LUAByteReader::ReadUTF(lua_State *pState) {
 }
 
 int	LUAByteReader::ReadUTFBytes(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFReader,LUAAMFReader,reader)
+	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		SCRIPT_READ_UINT(size,0)
 		string value;
 		reader.reader.readRaw(size,value);

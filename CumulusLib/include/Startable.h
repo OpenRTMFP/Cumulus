@@ -37,10 +37,11 @@ protected:
 	Startable(const std::string& name);
 	virtual ~Startable();
 
-	virtual void	run(const volatile bool& terminate) = 0;
 	virtual bool	prerun(); // Retourne true si le process s'est terminé de lui meme (sans un appel à stop())
 
 private:
+	virtual void	run(const volatile bool& terminate) = 0;
+
 	void			run();
 
 	bool					_haveToJoin;

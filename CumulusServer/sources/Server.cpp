@@ -16,7 +16,6 @@
 */
 
 #include "Server.h"
-
 #include "LUAClient.h"
 #include "LUAPublication.h"
 #include "LUAPublications.h"
@@ -35,7 +34,7 @@ using namespace Cumulus;
 
 const string Server::WWWPath;
 
-Server::Server(const std::string& root,ApplicationKiller& applicationKiller) : _blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_hasOnRealTime(true) {
+Server::Server(const std::string& root,ApplicationKiller& applicationKiller) : _blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_hasOnRealTime(true),_pService(NULL) {
 	File((string&)WWWPath = root+"www").createDirectory();
 	_pState = Script::CreateState();
 	Service::InitGlobalTable(_pState);
@@ -55,7 +54,10 @@ void Server::onStart() {
 }
 void Server::onStop() {
 	// delete service
-	delete _pService;
+	if(_pService) {
+		delete _pService;
+		_pService=NULL;
+	}
 	_applicationKiller.kill();
 }
 
@@ -74,6 +76,8 @@ bool Server::realTime(bool& terminate) {
 			SCRIPT_FUNCTION_END
 		SCRIPT_END
 	}
+	if(!socketManager.realTime())
+		return false;
 	return idle;
 }
 

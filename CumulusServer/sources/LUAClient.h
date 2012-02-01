@@ -23,10 +23,13 @@ class LUAClient {
 public:
 	static const char* Name;
 
-	static int Get(lua_State *pState);
-	static int Set(lua_State *pState);
+	static int Get(lua_State* pState);
+	static int Set(lua_State* pState);
 
 	static void ID(std::string& id){}
+
+private:
+	static int Close(lua_State* pState);
 
 };
 

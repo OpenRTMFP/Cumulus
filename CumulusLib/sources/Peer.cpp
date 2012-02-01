@@ -25,7 +25,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Peer::Peer(Handler& handler):_handler(handler),connected(false){
+Peer::Peer(Handler& handler):_handler(handler),connected(false) {
 }
 
 Peer::~Peer() {

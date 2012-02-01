@@ -29,7 +29,7 @@ const char*		LUAGroups::Name="Cumulus::Entities<Group>";
 
 
 int LUAGroups::Pairs(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(Entities<Group>,LUAGroups,groups)
+	SCRIPT_CALLBACK(Entities<Group>,LUAGroups,groups)
 		lua_getglobal(pState,"next");
 		if(!lua_iscfunction(pState,-1))
 			SCRIPT_ERROR("'next' should be a LUA function, it should not be overloaded")
@@ -46,7 +46,7 @@ int LUAGroups::Pairs(lua_State* pState) {
 
 
 int LUAGroups::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(Entities<Group>,LUAGroups,groups)
+	SCRIPT_CALLBACK(Entities<Group>,LUAGroups,groups)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="pairs")
 			SCRIPT_WRITE_FUNCTION(&LUAGroups::Pairs)

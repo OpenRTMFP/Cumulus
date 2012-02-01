@@ -287,6 +287,7 @@ void Middle::packetHandler(PacketReader& packet) {
 					content.readString16(tmp);out.writeString16(tmp);
 
 					AMFWriter writer(out);
+					writer.amf0Preference=true;
 					AMFReader reader(content);
 					writer.writeNumber(reader.readNumber()); // double
 					
@@ -346,7 +347,8 @@ void Middle::packetHandler(PacketReader& packet) {
 
 		if(out.length()>=3) {
 			request<<type;
-			request.write16(out.length()-3);request.next(size);
+			size = out.length()-3;
+			request.write16(size);request.next(size);
 		}
 
 

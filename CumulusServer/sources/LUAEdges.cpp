@@ -24,7 +24,7 @@ using namespace Cumulus;
 const char*		LUAEdges::Name="Cumulus::Edges";
 
 int LUAEdges::Pairs(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(Edges,LUAEdges,edges)
+	SCRIPT_CALLBACK(Edges,LUAEdges,edges)
 		lua_getglobal(pState,"next");
 		if(!lua_iscfunction(pState,-1))
 			SCRIPT_ERROR("'next' should be a LUA function, it should not be overloaded")
@@ -40,7 +40,7 @@ int LUAEdges::Pairs(lua_State* pState) {
 }
 
 int LUAEdges::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(Edges,LUAEdges,edges)
+	SCRIPT_CALLBACK(Edges,LUAEdges,edges)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="pairs")
 			SCRIPT_WRITE_FUNCTION(&LUAEdges::Pairs)

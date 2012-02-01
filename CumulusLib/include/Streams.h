@@ -32,7 +32,7 @@ public:
 	Poco::UInt32	create();
 	void			destroy(Poco::UInt32 id);
 
-	Publication&			publish(Peer& peer,Poco::UInt32 id,const std::string& name);
+	Publication&			publish(Peer& peer,Poco::UInt32 id,const std::string& name,FlowWriter* pController=NULL);
 	void					unpublish(Peer& peer,Poco::UInt32 id,const std::string& name);
 	bool					subscribe(Peer& peer,Poco::UInt32 id,const std::string& name,FlowWriter& writer,double start=-2000);
 	void					unsubscribe(Peer& peer,Poco::UInt32 id,const std::string& name);

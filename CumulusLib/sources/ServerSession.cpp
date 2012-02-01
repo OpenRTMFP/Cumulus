@@ -68,13 +68,16 @@ void ServerSession::fail(const string& error) {
 		it->second->clear();
 	peer.setFlowWriter(NULL);
 
-	WARN("Session failed %u : %s",id,error.c_str());
-	_failed=true;
-	peer.onFailed(error);
-	failSignal();
-
 	// unsubscribe peer for its groups
 	peer.unsubscribeGroups();
+
+	_failed=true;
+	if(!error.empty()) {
+		WARN("Session failed %u : %s",id,error.c_str());
+		peer.onFailed(error);
+		failSignal();
+	}
+	
 }
 
 void ServerSession::failSignal() {
@@ -135,7 +138,8 @@ void ServerSession::manage() {
 	if(_failed) {
 		failSignal();
 		return;
-	}
+	} else if(peer.closed())
+		fail("");
 
 	// After 6 mn we considerate than the session has failed
 	if(_recvTimestamp.isElapsed(360000000)) {
@@ -199,8 +203,11 @@ void ServerSession::eraseHelloAttempt(const string& tag) {
 
 
 void ServerSession::p2pHandshake(const SocketAddress& address,const std::string& tag,Session* pSession) {
-	if(_failed)
+	if(_failed || peer.closed()) {
+		if(!_failed)
+			fail("");
 		return;
+	}
 
 	bool good=true;
 
@@ -335,6 +342,9 @@ void ServerSession::packetHandler(PacketReader& packet) {
 	if(died)
 		return;
 
+	if(!_failed && peer.closed())
+		fail("");
+
 	if(peer.addresses.size()==0) {
 		CRITIC("Session %u has no any addresses!",id);
 		peer.addresses.push_front(peer.address.toString());
@@ -452,6 +462,9 @@ void ServerSession::packetHandler(PacketReader& packet) {
 				UInt32 idFlow = message.read7BitValue();
 				stage = message.read7BitValue()-1;
 				deltaNAck = message.read7BitValue()-1;
+				
+				if(_failed)
+					break;
 
 				map<UInt32,Flow*>::const_iterator it = _flows.find(idFlow);
 				pFlow = it==_flows.end() ? NULL : it->second;
@@ -501,10 +514,12 @@ void ServerSession::packetHandler(PacketReader& packet) {
 					flags = message.read8();
 
 				// Process request
-				pFlow->fragmentHandler(stage,deltaNAck,message,flags);
-				if(!pFlow->error().empty()) {
-					fail(pFlow->error()); // send fail message immediatly
-					pFlow = NULL;
+				if(pFlow) {
+					pFlow->fragmentHandler(stage,deltaNAck,message,flags);
+					if(!pFlow->error().empty() || peer.closed()) {
+						fail(pFlow->error()); // send fail message immediatly
+						pFlow = NULL;
+					}
 				}
 
 				break;

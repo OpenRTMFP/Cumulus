@@ -28,7 +28,7 @@ const char*		LUAGroup::Name="Cumulus::Group";
 
 
 int LUAGroup::IPairs(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(Group,LUAGroup,group)
+	SCRIPT_CALLBACK(Group,LUAGroup,group)
 		lua_getglobal(pState,"next");
 		if(!lua_iscfunction(pState,-1))
 			SCRIPT_ERROR("'next' should be a LUA function, it should not be overloaded")
@@ -45,7 +45,7 @@ int LUAGroup::IPairs(lua_State* pState) {
 }
 
 int LUAGroup::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(Group,LUAGroup,group)
+	SCRIPT_CALLBACK(Group,LUAGroup,group)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="id") {
 			SCRIPT_WRITE_STRING(Cumulus::Util::FormatHex(group.id,ID_SIZE).c_str());

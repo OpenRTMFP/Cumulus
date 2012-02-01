@@ -99,7 +99,7 @@ int Service::Index(lua_State *pState) {
 		if(!lua_isnil(pState,-1)) {
 			lua_replace(pState,-2);
 
-			// not take a environment which i not running
+			// not take a environment which is not running
 			lua_getmetatable(pState,-1);
 			lua_getfield(pState,-1,"//running");
 			if(lua_isnil(pState,-1)) {
@@ -132,34 +132,37 @@ int Service::NewIndex(lua_State *pState) {
 			// Is Cumulus object?
 			lua_getfield(pState,-1,"__this"); // stay
 			if(!lua_isnil(pState,-1)) {
-				lua_pop(pState,1);
 
 				lua_getfield(pState,-1,"//running"); // stay
-
 				if(lua_isnil(pState,-1)) {
-					// volatile object 
-					lua_getmetatable(pState,LUA_GLOBALSINDEX); // stay
-					lua_getfield(pState,-1,"//volatileObjects"); // stay
 
-					lua_pushvalue(pState,1); // environment
-					lua_rawget(pState,-2); // search environment key in "volatileObjects"
+					lua_getfield(pState,-1,"__gcThis"); // has destructor?
 					if(lua_isnil(pState,-1)) {
-						lua_pop(pState,1);
-						lua_newtable(pState); // stay
-						lua_pushvalue(pState,1);
-						lua_pushvalue(pState,-2);
-						lua_rawset(pState,-4); // add environment key in "volatileObjects"
+
+						// volatile object 
+						lua_getmetatable(pState,LUA_GLOBALSINDEX); // stay
+						lua_getfield(pState,-1,"//volatileObjects"); // stay
+
+						lua_pushvalue(pState,1); // environment
+						lua_rawget(pState,-2); // search environment key in "volatileObjects"
+						if(lua_isnil(pState,-1)) {
+							lua_pop(pState,1);
+							lua_newtable(pState); // stay
+							lua_pushvalue(pState,1);
+							lua_pushvalue(pState,-2);
+							lua_rawset(pState,-4); // add environment key in "volatileObjects"
+						}
+						lua_pushvalue(pState,2); // key
+						lua_pushnumber(pState,1); // value, useless
+						lua_rawset(pState,-3);
+						lua_pop(pState,3);
 					}
-					lua_pushvalue(pState,2); // key
-					lua_pushnumber(pState,1); // value, useless
-					lua_rawset(pState,-3);
-					lua_pop(pState,3);
+					lua_pop(pState,1);
 				}
 				lua_pop(pState,1);
 
-			} else
-				lua_pop(pState,1);
-			lua_pop(pState,1);
+			}
+			lua_pop(pState,2);
 		}
 	}
 	lua_rawset(pState,1); // consumes key and value

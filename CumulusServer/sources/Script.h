@@ -43,7 +43,10 @@ extern "C" {
 													} else { \
 														LOG(PRIO,SCRIPT_FILE(FILE),SCRIPT_LINE(LINE),"LUAScript ('%s'): "FMT,Script::LuaDebug.name,## __VA_ARGS__)} \
 												} else \
-													LOG(PRIO,SCRIPT_FILE(FILE),SCRIPT_LINE(LINE),"LUAScript: "FMT,## __VA_ARGS__)}
+													LOG(PRIO,SCRIPT_FILE(FILE),SCRIPT_LINE(LINE),"LUAScript: "FMT,## __VA_ARGS__) \
+												Script::LuaDebug.name = Script::LuaDebug.namewhat = NULL; \
+												if(Script::LuaDebug.short_src) Script::LuaDebug.short_src[0]='\0'; \
+												Script::LuaDebug.currentline=0;}
 
 #define SCRIPT_LOG_NAME_DISABLED	false
 #define SCRIPT_FATAL(FMT, ...)		SCRIPT_LOG(Cumulus::Logger::PRIO_FATAL,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
@@ -55,10 +58,7 @@ extern "C" {
 #define SCRIPT_DEBUG(FMT, ...)		SCRIPT_LOG(Cumulus::Logger::PRIO_DEBUG,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
 #define SCRIPT_TRACE(FMT, ...)		SCRIPT_LOG(Cumulus::Logger::PRIO_TRACE,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
 
-
-#define SCRIPT_PUSH_CALLBACK(TYPE,LUATYPE,OBJ)					{int __args=1;lua_State* __pState = pState; bool __destructor=false; bool __thisIsConst=false; TYPE* pObj = Script::PushCallback<TYPE,LUATYPE>(__pState,__thisIsConst);if(!pObj) return 0; TYPE& OBJ = *pObj;int __results=lua_gettop(__pState);
-#define SCRIPT_CALLBACK(TYPE,LUATYPE,OBJ)						{int __args=1;lua_State* __pState = pState; bool __destructor=false; bool __thisIsConst=false; TYPE* pObj = Script::Callback<TYPE,LUATYPE>(__pState,__thisIsConst);if(!pObj) return 0; TYPE& OBJ = *pObj;int __results=lua_gettop(__pState);
-#define SCRIPT_POP_CALLBACK(TYPE,LUATYPE,OBJ)					{int __args=0;lua_State* __pState = pState; bool __destructor=false; TYPE* pObj = Script::PopCallback<TYPE>(__pState);if(!pObj) return 0; TYPE& OBJ = *pObj;int __results=lua_gettop(__pState);
+#define SCRIPT_CALLBACK(TYPE,LUATYPE,OBJ)						{int __args=1;lua_State* __pState = pState; bool __destructor=false; bool __thisIsConst=false; TYPE* pObj = Script::Callback<TYPE,LUATYPE>(__pState,__thisIsConst,false);if(!pObj) return 0; TYPE& OBJ = *pObj;int __results=lua_gettop(__pState);
 #define SCRIPT_DESTRUCTOR_CALLBACK(TYPE,LUATYPE,OBJ)			{int __args=1;lua_State* __pState = pState; bool __destructor=true; TYPE* pObj = Script::DestructorCallback<TYPE,LUATYPE>(__pState);if(!pObj) return 0;TYPE& OBJ = *pObj;int __results=lua_gettop(__pState);
 
 #define SCRIPT_CALLBACK_NOTCONST_CHECK							if(__thisIsConst) {SCRIPT_ERROR("const object can't call this method") return 0;}
@@ -70,6 +70,7 @@ extern "C" {
 #define SCRIPT_BEGIN(STATE)										if(lua_State* __pState = STATE) { const char* __error=NULL;
 
 #define SCRIPT_CREATE_PERSISTENT_OBJECT(TYPE,LUATYPE,OBJ)		Script::WritePersistentObject<TYPE,LUATYPE>(__pState,OBJ);lua_pop(__pState,1);
+#define SCRIPT_ADD_DESTRUCTOR(DESTRUCTOR)						Script::AddObjectDestructor(__pState,DESTRUCTOR);
 
 #define SCRIPT_WRITE_PERSISTENT_OBJECT(TYPE,LUATYPE,OBJ)		Script::WritePersistentObject<TYPE,LUATYPE>(__pState,OBJ);
 #define SCRIPT_WRITE_OBJECT(TYPE,LUATYPE,OBJ)					Script::WriteObject<TYPE,LUATYPE>(__pState,OBJ);
@@ -84,7 +85,7 @@ extern "C" {
 
 #define SCRIPT_LAST_ERROR										__error
 
-#define SCRIPT_MEMBER_FUNCTION_BEGIN(TYPE,LUATYPE,OBJ,MEMBER)	{ std::string __id; Script::GetObjectID<TYPE,LUATYPE>(OBJ,__id);lua_getglobal(__pState,__id.c_str()); if(!lua_isnil(__pState,-1)) { lua_getfield(__pState,-1,MEMBER); lua_replace(__pState,-2); } if(!lua_isfunction(__pState,-1)) lua_pop(__pState,1); else { int __top=lua_gettop(__pState);string __name = #TYPE;__name += ".";__name += MEMBER;SCRIPT_WRITE_PERSISTENT_OBJECT(TYPE,LUATYPE,OBJ)
+#define SCRIPT_MEMBER_FUNCTION_BEGIN(TYPE,LUATYPE,OBJ,MEMBER)	{ if(lua_getmetatable(__pState,LUA_GLOBALSINDEX)!=0) { lua_getfield(__pState,-1,"__pointers");if(!lua_isnil(__pState,-1)) {lua_replace(__pState,-2);std::string __id;Script::GetObjectID<TYPE,LUATYPE>(OBJ,__id);lua_getfield(__pState,-1,__id.c_str());if(!lua_isnil(__pState,-1)) {lua_getfield(__pState,-1,MEMBER);lua_replace(__pState,-3);}}} else {lua_pushnil(__pState);lua_pushnil(__pState);}if(!lua_isfunction(__pState,-2))lua_pop(__pState,2);else {int __top=lua_gettop(__pState)-1;std::string __name = #TYPE;__name += ".";__name += MEMBER;
 #define SCRIPT_FUNCTION_BEGIN(NAME)								{ bool __env=false; if(lua_getmetatable(__pState,LUA_GLOBALSINDEX)!=0) { lua_getfield(__pState,-1,"//env"); lua_replace(__pState,-2); if(!lua_isnil(__pState,-1)) { lua_getfield(__pState,-1,NAME); __env=true;} } else lua_getglobal(__pState,NAME); if(!lua_isfunction(__pState,-1)) lua_pop(__pState,__env ? 2 : 1); else { if(__env) { lua_pushvalue(__pState,-2); lua_setfenv(__pState,-2); lua_replace(__pState,-2); }	int __top=lua_gettop(__pState); string __name = NAME;
 #define SCRIPT_FUNCTION_CALL									Service::StartVolatileObjectsRecording(__pState);if(lua_pcall(__pState,lua_gettop(__pState)-__top,LUA_MULTRET,0)!=0) { __error = lua_tostring(__pState,-1);SCRIPT_ERROR("%s",Script::LastError(__pState))} else {--__top;int __results=lua_gettop(__pState);int __args=__top;
 #define SCRIPT_FUNCTION_NULL_CALL								{ lua_pop(__pState,lua_gettop(__pState)-__top+1);--__top;int __results=lua_gettop(__pState);int __args=__top;
@@ -114,7 +115,7 @@ public:
 
 	static void			CloseState(lua_State* pState);
 	static lua_State*	CreateState();
-	static void			AddObjectDestructor(lua_State *pState,lua_CFunction function);
+	static void			AddObjectDestructor(lua_State* pState,lua_CFunction destructor);
 	
 	template<class Type,class LUAType>
 	static void GetObjectID(const Type& object,std::string& id) {
@@ -126,15 +127,14 @@ public:
 	}
 
 	template<class Type,class LUAType>
-	static bool ClearPersistentObject(lua_State *pState,const Type& object) {
+	static void ClearPersistentObject(lua_State *pState,const Type& object) {
 		if(lua_getmetatable(pState,LUA_GLOBALSINDEX)==0) {
 			SCRIPT_BEGIN(pState)
 				SCRIPT_WARN("Persistent object clearing impossible without a global table with metatable")
 			SCRIPT_END
-			return false;
+			return;
 		}
 
-		bool deleted=false;
 		std::string id;
 		GetObjectID<Type,LUAType>(object,id);
 		const char* idc = id.c_str();
@@ -143,11 +143,9 @@ public:
 			lua_pop(pState,1);
 			lua_pushnil(pState);
 			lua_setfield(pState,-2,idc);
-			deleted = true;
 		} else
 			lua_pop(pState,1);
 		lua_pop(pState,1);
-		return deleted;
 	}
 	
 
@@ -163,6 +161,152 @@ public:
 
 	template<class Type,class LUAType>
 	static void WriteObject(lua_State *pState,const Type& object) {
+		if(lua_getmetatable(pState,LUA_GLOBALSINDEX)==0) {
+			SCRIPT_BEGIN(pState)
+				SCRIPT_ERROR("Object writing impossible without a global table with metatable")
+			SCRIPT_END
+			return;
+		}
+		CreateObject<Type,LUAType>(pState,object);
+		lua_replace(pState,-2);
+	}
+
+	template<class Type,class LUAType>
+	static void WritePersistentObject(lua_State *pState,Type& object) {
+		WritePersistentObject<Type,LUAType>(pState,(const Type&)object);
+		// add __var
+		lua_getmetatable(pState,-1);
+		lua_pushnumber(pState,1);
+		lua_setfield(pState,-2,"__var");
+		lua_pop(pState,1);
+	}
+
+	template<class Type,class LUAType>
+	static void WritePersistentObject(lua_State *pState,const Type& object) {
+		if(lua_getmetatable(pState,LUA_GLOBALSINDEX)==0) {
+			SCRIPT_BEGIN(pState)
+				SCRIPT_ERROR("Persistent object writing impossible without a global table with metatable")
+			SCRIPT_END
+			return;
+		}
+		std::string id;
+		GetObjectID<Type,LUAType>(object,id);
+		const char* idc = id.c_str();
+		lua_getfield(pState,-1,idc);
+		if(lua_isnil(pState,-1)) {
+			lua_pop(pState,1);
+			CreateObject<Type,LUAType>(pState,object);
+			lua_pushvalue(pState,-1);
+			lua_setfield(pState,-3,idc);
+		}
+		lua_replace(pState,-2);
+
+		lua_getmetatable(pState,-1);
+		// remove __var
+		lua_pushnil(pState);
+		lua_setfield(pState,-2,"__var");
+		// set running
+		lua_pushnumber(pState,1);
+		lua_setfield(pState,-2,"//running");
+		lua_pop(pState,1);
+	}
+
+	template<class Type,class LUAType>
+	static Type* DestructorCallback(lua_State *pState) {
+		if(lua_gettop(pState)==0 || !lua_isuserdata(pState,1)) {
+			SCRIPT_BEGIN(pState)
+				SCRIPT_ERROR("Bad 'this' argument, bad destructor declaration")
+			SCRIPT_END
+			return NULL;
+		}
+
+		bool isConst;
+		return Callback<Type,LUAType>(pState,isConst,true);
+	}
+
+	template<class Type,class LUAType>
+	static Type* Callback(lua_State *pState,bool& isConst,bool desctructorCallback) {
+		if(lua_gettop(pState)==0) {
+			SCRIPT_BEGIN(pState)
+				SCRIPT_ERROR("'this' argument not present, call method with ':' colon operator")
+			SCRIPT_END
+			return NULL;
+		}
+
+		if(lua_getmetatable(pState,1)==0) {
+			SCRIPT_BEGIN(pState)
+				SCRIPT_ERROR("'this' argument has no metatable, call method with ':' colon operator")
+			SCRIPT_END
+			return NULL;
+		}
+
+		// __type is correct type?
+		lua_getfield(pState,-1,"__type");
+		if(!lua_isstring(pState,-1) || strcmp(lua_tostring(pState,-1),LUAType::Name)!=0) {
+			lua_pop(pState,2);
+			SCRIPT_BEGIN(pState)
+				SCRIPT_ERROR("bad cast of 'this' argument, call method with ':' colon operator")
+			SCRIPT_END
+			return NULL;
+		}
+		lua_pop(pState,1);
+
+		// __this is user data?
+		lua_getfield(pState,-1,"__this");
+		if(!lua_islightuserdata(pState,-1)) {
+			lua_pop(pState,2);
+			SCRIPT_BEGIN(pState)
+				SCRIPT_ERROR("bad 'this' argument (bad type)")
+			SCRIPT_END
+			return NULL;
+		}
+
+		Type* pThis = (Type*) lua_touserdata(pState, -1);
+		lua_pop(pState,1);
+
+		// persistent checking!
+		lua_getfield(pState,-1,"//running");
+		if(!lua_isnil(pState,-1) && lua_getmetatable(pState,LUA_GLOBALSINDEX)!=0) {
+			std::string id;
+			GetObjectID<Type,LUAType>(*pThis,id);
+			const char* idc = id.c_str();
+			lua_getfield(pState,-1,idc);
+			if(lua_isnil(pState,-1)) {
+				if(!desctructorCallback) {
+					SCRIPT_BEGIN(pState)
+						SCRIPT_ERROR("this persistent object has been deleted, it can not be used anymore")
+					SCRIPT_END
+				}
+				lua_pop(pState,4);
+				return NULL;
+			}
+			lua_pop(pState,2);
+		}
+		lua_pop(pState,1);
+
+
+		// isConst?
+		lua_getfield(pState,-1,"__var");
+		if(lua_isnil(pState,-1))
+			isConst=true;
+
+		lua_pop(pState,2);
+
+		return pThis;
+	}
+
+	static lua_Debug	LuaDebug;
+
+private:
+	static const char* ToString(lua_State* pState,std::string& out);
+	static void	ReadAMF(lua_State *pState,Cumulus::AMFWriter& writer,Poco::UInt32 count,std::map<Poco::UInt64,Poco::UInt32>& references);
+	static void WriteAMF(lua_State *pState,Cumulus::AMF::Type type,Cumulus::AMFReader& reader);
+
+
+	template<class Type,class LUAType>
+	static void CreateObject(lua_State *pState,const Type& object) {
+		// here glabal metatable is on the top
+
 		// Create table to represent our object
 		lua_newtable(pState); 
 
@@ -194,156 +338,27 @@ public:
 		lua_setfield(pState,-2,"__metatable");
 
 		lua_setmetatable(pState,-2);
-	}
 
-	template<class Type,class LUAType>
-	static void WritePersistentObject(lua_State *pState,Type& object) {
-		WritePersistentObject<Type,LUAType>(pState,(const Type&)object);
-		// add __var
-		lua_getmetatable(pState,-1);
-		lua_pushnumber(pState,1);
-		lua_setfield(pState,-2,"__var");
-		lua_pop(pState,1);
-	}
-
-	template<class Type,class LUAType>
-	static void WritePersistentObject(lua_State *pState,const Type& object) {
-		if(lua_getmetatable(pState,LUA_GLOBALSINDEX)==0) {
-			SCRIPT_BEGIN(pState)
-				SCRIPT_ERROR("Persistent object writing impossible without a global table with metatable")
-			SCRIPT_END
-			return;
-		}
-		std::string id;
-		GetObjectID<Type,LUAType>(object,id);
-		const char* idc = id.c_str();
-		lua_getfield(pState,-1,idc);
+		// set in __pointers of global metatable
+		lua_getfield(pState,-2,"__pointers");
 		if(lua_isnil(pState,-1)) {
 			lua_pop(pState,1);
-			WriteObject<Type,LUAType>(pState,object);
+			lua_newtable(pState);
 			lua_pushvalue(pState,-1);
-			lua_setfield(pState,-3,idc);
+			lua_newtable(pState);
+			lua_pushstring(pState,"v");
+			lua_setfield(pState,-2,"__mode");
+			lua_setmetatable(pState,-2);
+			lua_setfield(pState,-4,"__pointers");
 		}
-		lua_replace(pState,-2);
-
-		lua_getmetatable(pState,-1);
-		// remove __var
-		lua_pushnil(pState);
-		lua_setfield(pState,-2,"__var");
-		// set running
-		lua_pushnumber(pState,1);
-		lua_setfield(pState,-2,"//running");
+		
+		// record the pointer
+		std::string id;
+		GetObjectID<Type,LUAType>(object,id);
+		lua_pushvalue(pState,-2);
+		lua_setfield(pState,-2,id.c_str());
 		lua_pop(pState,1);
 	}
-
-	template<class Type,class LUAType>
-	static Type* DestructorCallback(lua_State *pState) {
-
-		if(lua_gettop(pState)==0 || !lua_isuserdata(pState,1)) {
-			SCRIPT_BEGIN(pState)
-				SCRIPT_ERROR("Bad 'this' argument, bad destructor declaration")
-			SCRIPT_END
-			return NULL;
-		}
-
-		bool isConst;
-		return Callback<Type,LUAType>(pState,isConst);
-	}
-
-	template<class Type>
-	static Type* PopCallback(lua_State *pState) {
-		if(!_This) {
-			lua_pop(pState,1);
-			SCRIPT_BEGIN(pState)
-				SCRIPT_ERROR("'this' pointer null")
-			SCRIPT_END
-			return NULL;
-		}
-		Type* pThis = (Type*)_This;
-		_This = NULL;
-		return pThis;
-	}
-
-	template<class Type,class LUAType>
-	static Type* PushCallback(lua_State* pState,bool& isConst) {
-		_This = Callback<Type,LUAType>(pState,isConst);
-		return (Type*)_This;
-	}
-
-	template<class Type,class LUAType>
-	static Type* Callback(lua_State *pState,bool& isConst) {
-		if(lua_gettop(pState)==0) {
-			SCRIPT_BEGIN(pState)
-				SCRIPT_ERROR("'this' argument not present")
-			SCRIPT_END
-			return NULL;
-		}
-
-		if(lua_getmetatable(pState,1)==0) {
-			SCRIPT_BEGIN(pState)
-				SCRIPT_ERROR("'this' argument has no metatable")
-			SCRIPT_END
-			return NULL;
-		}
-
-		// __type is correct type?
-		lua_getfield(pState,-1,"__type");
-		if(!lua_isstring(pState,-1) || strcmp(lua_tostring(pState,-1),LUAType::Name)!=0) {
-			lua_pop(pState,2);
-			SCRIPT_BEGIN(pState)
-				SCRIPT_ERROR("bad cast of 'this' argument")
-			SCRIPT_END
-			return NULL;
-		}
-		lua_pop(pState,1);
-
-		// __this is user data?
-		lua_getfield(pState,-1,"__this");
-		if(!lua_islightuserdata(pState,-1)) {
-			lua_pop(pState,2);
-			SCRIPT_BEGIN(pState)
-				SCRIPT_ERROR("bad 'this' argument (bad type)")
-			SCRIPT_END
-			return NULL;
-		}
-
-		Type* pThis = (Type*) lua_touserdata(pState, -1);
-		lua_pop(pState,1);
-
-		// persistent checking!
-		lua_getfield(pState,-1,"//running");
-		if(!lua_isnil(pState,-1) && lua_getmetatable(pState,LUA_GLOBALSINDEX)!=0) {
-			std::string id;
-			GetObjectID<Type,LUAType>(*pThis,id);
-			const char* idc = id.c_str();
-			lua_getfield(pState,-1,idc);
-			if(lua_isnil(pState,-1)) {
-				SCRIPT_BEGIN(pState)
-					SCRIPT_ERROR("this persistent object has been deleted, it can not be used anymore")
-				SCRIPT_END
-				lua_pop(pState,4);
-				return NULL;
-			}
-			lua_pop(pState,2);
-		}
-		lua_pop(pState,1);
-
-
-		// isConst?
-		lua_getfield(pState,-1,"__var");
-		if(lua_isnil(pState,-1))
-			isConst=true;
-
-		lua_pop(pState,2);
-
-		return pThis;
-	}
-
-	static lua_Debug	LuaDebug;
-
-private:
-	static void	ReadAMF(lua_State *pState,Cumulus::AMFWriter& writer,Poco::UInt32 count,std::map<Poco::UInt64,Poco::UInt32>& references);
-	static void WriteAMF(lua_State *pState,Cumulus::AMF::Type type,Cumulus::AMFReader& reader);
 
 	template<class LUAType>
 	static int Call(lua_State* pState) {
@@ -363,6 +378,4 @@ private:
 
 	static int			Panic(lua_State *pState);
 	static int			EnvironmentIndex(lua_State *pState);
-
-	static void*		_This;
 };

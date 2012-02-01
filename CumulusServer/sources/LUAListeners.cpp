@@ -24,7 +24,7 @@ using namespace Cumulus;
 const char*		LUAListeners::Name="Cumulus::Listeners";
 
 int LUAListeners::IPairs(lua_State* pState) {
-	SCRIPT_POP_CALLBACK(Listeners,LUAListeners,listeners)
+	SCRIPT_CALLBACK(Listeners,LUAListeners,listeners)
 		lua_getglobal(pState,"next");
 		if(!lua_iscfunction(pState,-1))
 			SCRIPT_ERROR("'next' should be a LUA function, it should not be overloaded")
@@ -40,7 +40,7 @@ int LUAListeners::IPairs(lua_State* pState) {
 }
 
 int LUAListeners::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(Listeners,LUAListeners,listeners)
+	SCRIPT_CALLBACK(Listeners,LUAListeners,listeners)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="ipairs")
 			SCRIPT_WRITE_FUNCTION(&LUAListeners::IPairs)

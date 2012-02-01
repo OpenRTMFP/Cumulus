@@ -26,7 +26,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Publication::Publication(const string& name):_publisherId(0),_name(name),_firstKeyFrame(false),listeners(_listeners),_pPublisher(NULL) {
+Publication::Publication(const string& name):_publisherId(0),_name(name),_firstKeyFrame(false),listeners(_listeners),_pPublisher(NULL),_pController(NULL) {
 	DEBUG("New publication %s",_name.c_str());
 }
 
@@ -69,30 +69,51 @@ void Publication::removeListener(Peer& peer,UInt32 id) {
 		return;
 	}
 	Listener* pListener = it->second;
-	_listeners.erase(it);
 	peer.onUnsubscribe(*pListener);
+	_listeners.erase(it);
 	delete pListener;
 }
 
-Publication::StartCode Publication::start(Peer& peer,UInt32 publisherId,string& error) {
+void Publication::closePublisher(const std::string& code,const std::string& description) {
+	if(_publisherId==0) {
+		ERROR("Publication %s is not published",_name.c_str());
+		return;
+	}
+	if(_pController) {
+		if(!code.empty())
+			_pController->writeStatusResponse(code,description);
+		_pController->writeAMFMessage("close");
+	} else
+		WARN("Publisher %u has no controller to close it",_publisherId);
+
+}
+
+void Publication::start(Peer& peer,UInt32 publisherId,FlowWriter* pController) {
 	if(_publisherId!=0) {
-		error = name() +" is already published";
-		return BADNAME; // has already a publisher
+		// has already a publisher
+		if(pController)
+			pController->writeStatusResponse("Publish.BadName",_name + " is already published");
+		throw Exception(_name + " is already published");
 	}
 	_publisherId = publisherId;
+	string error;
 	if(!peer.onPublish(*this,error)) {
 		if(error.empty())
-			error = "Not allowed to publish " + name();
+			error = "Not allowed to publish " + _name;
 		_publisherId=0;
-		return FAILED;
+		if(pController)
+			pController->writeStatusResponse("Publish.BadName",error);
+		throw Exception(error);
 	}
 	_pPublisher=&peer;
+	_pController=pController;
 	_firstKeyFrame=false;
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->startPublishing(_name);
 	flush();
-	return OK;
+	if(pController)
+		pController->writeStatusResponse("Publish.Start",_name +" is now published");
 }
 
 void Publication::stop(Peer& peer,UInt32 publisherId) {
@@ -111,6 +132,7 @@ void Publication::stop(Peer& peer,UInt32 publisherId) {
 	_audioQOS.reset();
 	_publisherId = 0;
 	_pPublisher=NULL;
+	_pController=NULL;
 	return;
 }
 

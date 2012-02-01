@@ -21,7 +21,9 @@
 #include "LUAPublication.h"
 #include "LUAPublications.h"
 #include "LUAGroups.h"
+#include "LUATCPClient.h"
 #include "Server.h"
+#include "Poco/Net/StreamSocket.h"
 
 using namespace Cumulus;
 using namespace Poco;
@@ -30,7 +32,7 @@ using namespace std;
 const char*		LUAInvoker::Name="Cumulus::Invoker";
 
 int	LUAInvoker::Publish(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(Invoker,LUAInvoker,invoker)
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
 		SCRIPT_READ_STRING(name,"")
 		try {
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,invoker.publish(name))
@@ -46,15 +48,59 @@ int	LUAInvoker::Publish(lua_State *pState) {
 }
 
 int	LUAInvoker::AbsolutePath(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(Invoker,LUAInvoker,invoker)
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
 		SCRIPT_READ_STRING(path,"")
 		SCRIPT_WRITE_STRING((Server::WWWPath+path+"/").c_str())
 	SCRIPT_CALLBACK_RETURN
 }
 
+int	LUAInvoker::CreateTCPClient(lua_State *pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		LUATCPClient::Create(((Server&)invoker).socketManager,pState);
+	SCRIPT_CALLBACK_RETURN
+}
+
+int	LUAInvoker::ToAMF(lua_State *pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		BinaryStream stream;
+		Cumulus::BinaryWriter rawWriter(stream);
+		AMFWriter writer(rawWriter);
+		SCRIPT_READ_AMF(writer)
+		UInt32 size = stream.size();
+		char* temp = new char[size]();
+		stream.read(temp,size);
+		SCRIPT_WRITE_BINARY(temp,size)
+		delete [] temp;
+	SCRIPT_CALLBACK_RETURN
+}
+
+int	LUAInvoker::ToAMF0(lua_State *pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		BinaryStream stream;
+		Cumulus::BinaryWriter rawWriter(stream);
+		AMFWriter writer(rawWriter);
+		writer.amf0Preference=true;
+		SCRIPT_READ_AMF(writer)
+		UInt32 size = stream.size();
+		char* temp = new char[size]();
+		stream.read(temp,size);
+		SCRIPT_WRITE_BINARY(temp,size)
+		delete [] temp;
+	SCRIPT_CALLBACK_RETURN
+}
+
+int	LUAInvoker::FromAMF(lua_State *pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		SCRIPT_READ_BINARY(data,size)
+		PacketReader packet(data,size);
+		AMFReader reader(packet);
+		SCRIPT_WRITE_AMF(reader,0)
+	SCRIPT_CALLBACK_RETURN
+}
+
 
 int LUAInvoker::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(Invoker,LUAInvoker,invoker)
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="clients") {
 			SCRIPT_WRITE_OBJECT(Entities<Client>,LUAClients,invoker.clients)
@@ -64,10 +110,18 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_OBJECT(Publications,LUAPublications,invoker.publications)
 		} else if(name=="publish") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::Publish)
+		} else if(name=="toAMF") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::ToAMF)
+		} else if(name=="toAMF0") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::ToAMF0)
+		} else if(name=="fromAMF") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::FromAMF)
 		} else if(name=="absolutePath") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::AbsolutePath)
 		} else if(name=="edges") {
 			SCRIPT_WRITE_OBJECT(Edges,LUAEdges,invoker.edges)
+		} else if(name=="createTCPClient") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPClient)
 		}
 	SCRIPT_CALLBACK_RETURN
 }

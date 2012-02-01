@@ -26,7 +26,7 @@ using namespace Poco;
 const char*		LUAByteWriter::Name="LUAByteWriter";
 
 int LUAByteWriter::Get(lua_State *pState) {
-	SCRIPT_PUSH_CALLBACK(AMFWriter,LUAByteWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="writeBoolean")
 			SCRIPT_WRITE_FUNCTION(&LUAByteWriter::WriteBoolean)
@@ -67,49 +67,49 @@ int LUAByteWriter::Set(lua_State *pState) {
 }
 
 int	LUAByteWriter::WriteBoolean(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAByteWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_BOOL(value,false)
 		writer.writer.write8(value ? 1 : 0);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteByte(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAByteWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_INT(value,0)
 		writer.writer.write8((UInt8)value);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteBytes(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAByteWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_BINARY(value,size)
 		writer.writer.writeRaw(value,size);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteDouble(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAByteWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_DOUBLE(value,0)
 		writer.writer << value;
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteFloat(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAByteWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_DOUBLE(value,0)
 		writer.writer << (float)value;
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteInt(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAByteWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_INT(value,0)
 		writer.writer.write32(value);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteMultiByte(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAByteWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_STRING(data,"")
 		SCRIPT_READ_STRING(format,"")
 		TextEncoding& encodingFrom = TextEncoding::byName("UTF8");
@@ -119,48 +119,48 @@ int	LUAByteWriter::WriteMultiByte(lua_State *pState) {
 }
 
 int	LUAByteWriter::WriteAMF(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAAMFWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_AMF(writer)
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteShort(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAAMFWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_INT(value,0)
 		writer.writer.write16(value);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUnsignedByte(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAAMFWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_UINT(value,0)
 		writer.writer.write8(value);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUnsignedInt(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAAMFWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_UINT(value,0)
 		writer.writer.write32(value);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUnsignedShort(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAAMFWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_UINT(value,0)
 		writer.writer.write16(value);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUTF(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAAMFWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_STRING(value,"")
 		writer.writer.writeString16(value);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUTFBytes(lua_State *pState) {
-	SCRIPT_POP_CALLBACK(AMFWriter,LUAAMFWriter,writer)
+	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
 		SCRIPT_READ_STRING(value,"")
 		writer.writer.writeRaw(value);
 	SCRIPT_CALLBACK_RETURN

@@ -4,19 +4,20 @@ OBJECTS = Address AESEngine AMFSimpleObject AMFObjectWriter AMFReader AMFWriter 
 CC=g++
 ifeq ($(shell uname -s),Darwin)
     LIB=libCumulus.dylib
-	SHARED=-dynamiclib
+	SHARED=-fPIC -dynamiclib -install_name ./../CumulusLib/$(LIB)
 else
 	LIB=libCumulus.so
-	SHARED=-shared
+	SHARED=-fPIC -shared
 endif
 SOURCES=./sources/
 CFLAGS+=-D CUMULUS_LOGS
+LIBS ?= -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lcrypto -lssl
 INCLUDES = -I./include/
 OBJECT = $(OBJECTS:%=%.o)
 
 main: $(OBJECT)
 	@echo creating dynamic lib $(LIB)
-	@$(CC) $(SHARED) $(OBJECT) -o $(LIB)
+	@$(CC) $(SHARED) $(OBJECT) -o $(LIB) $(LIBS)
 
 $(OBJECT): 
 	@echo compiling $(@:%.o=%.cpp)

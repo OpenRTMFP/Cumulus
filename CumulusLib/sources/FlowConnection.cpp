@@ -41,7 +41,6 @@ FlowConnection::~FlowConnection() {
 }
 
 void FlowConnection::messageHandler(const std::string& name,AMFReader& message) {
-	
 	if(name=="connect") {
 		message.stopReferencing();
 		AMFSimpleObject obj;
@@ -49,13 +48,12 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		message.startReferencing();
 		((URI&)peer.swfUrl) = obj.getString("swfUrl","");
 		((URI&)peer.pageUrl) = obj.getString("pageUrl","");
+		((string&)peer.flashVersion) = obj.getString("flashVer","");
 
 		// Don't support AMF0 forced on NetConnection object because AMFWriter writes in AMF3 format
 		// But it's not a pb because NetConnection RTMFP works since flash player 10.0 only (which supports AMF3)
-		writer.amf0Preference=true; // Only for first response!
 		if(obj.getNumber("objectEncoding",0)==0) {
 			writer.writeErrorResponse("Connect.Error","ObjectEncoding client must be in a AMF3 format (not AMF0)");
-			writer.amf0Preference=false;
 			return;
 		}
 
@@ -65,15 +63,14 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		bool accept=true;
 		{
 			AMFObjectWriter response(writer.writeSuccessResponse("Connect.Success","Connection succeeded"));
-			response.write("objectEncoding",3);
+			response.write("objectEncoding",3.0);
 			accept = peer.onConnection(message,response);
-			
 		}
 		if(!accept) {
 			writer.cancel(queue);
-			writer.writeAMFMessage("close");
+			peer.close();
 		}
-		writer.amf0Preference=false;
+
 	} else if(name == "setPeerInfo") {
 
 		peer.addresses.erase(++peer.addresses.begin(),peer.addresses.end());
@@ -87,7 +84,7 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		response.write16(0x29); // Unknown!
 		response.write32(invoker.keepAliveServer);
 		response.write32(invoker.keepAlivePeer);
-	
+
 	} else if(name == "initStream") {
 		// TODO?
 	} else if(name == "createStream") {

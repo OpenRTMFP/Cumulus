@@ -30,6 +30,11 @@ public:
 	static int Set(lua_State *pState);
 
 private:
+	static int	ToAMF(lua_State *pState);
+	static int	ToAMF0(lua_State *pState);
+	static int	FromAMF(lua_State *pState);
+
+	static int	CreateTCPClient(lua_State *pState);
 	static int	Publish(lua_State *pState);
 	static int	AbsolutePath(lua_State *pState);
 };

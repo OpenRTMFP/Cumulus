@@ -29,9 +29,13 @@
     <ClInclude Include="sources\LUAPublication.h" />
     <ClInclude Include="sources\LUAPublications.h" />
     <ClInclude Include="sources\LUAQualityOfService.h" />
+    <ClInclude Include="sources\LUATCPClient.h" />
     <ClInclude Include="sources\Script.h" />
     <ClInclude Include="sources\Server.h" />
     <ClInclude Include="sources\Service.h" />
+    <ClInclude Include="sources\SocketManaged.h" />
+    <ClInclude Include="sources\SocketManager.h" />
+    <ClInclude Include="sources\TCPClient.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sources\Blacklist.cpp" />
@@ -51,10 +55,13 @@
     <ClCompile Include="sources\LUAPublication.cpp" />
     <ClCompile Include="sources\LUAPublications.cpp" />
     <ClCompile Include="sources\LUAQualityOfService.cpp" />
+    <ClCompile Include="sources\LUATCPClient.cpp" />
     <ClCompile Include="sources\main.cpp" />
     <ClCompile Include="sources\Script.cpp" />
     <ClCompile Include="sources\Server.cpp" />
     <ClCompile Include="sources\Service.cpp" />
+    <ClCompile Include="sources\SocketManager.cpp" />
+    <ClCompile Include="sources\TCPClient.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{21C16553-20EB-4346-B2A5-2018BA8A8C52}</ProjectGuid>
@@ -109,7 +116,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>lua5.1d.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>lua5.1.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">

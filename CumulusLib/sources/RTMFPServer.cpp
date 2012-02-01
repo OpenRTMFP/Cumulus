@@ -115,9 +115,20 @@ bool RTMFPServer::prerun() {
 	NOTE("RTMFP server starts on %u port",_port);
 	if(_edgesPort>0)
 		NOTE("RTMFP edges server starts on %u port",_edgesPort);
-	onStart();
-	bool result=Startable::prerun();
+
+	bool result=true;
+	try {
+		onStart();
+		result=Startable::prerun();
+	} catch(Exception& ex) {
+		FATAL("RTMFPServer : %s",ex.displayText().c_str());
+	} catch (exception& ex) {
+		FATAL("RTMFPServer : %s",ex.what());
+	} catch (...) {
+		FATAL("RTMFPServer unknown error");
+	}
 	onStop();
+	
 	NOTE("RTMFP server stops");
 	return result;
 }
@@ -135,73 +146,63 @@ void RTMFPServer::run(const volatile bool& terminate) {
 	UInt8 buff[PACKETRECV_SIZE];
 	int size = 0;
 
-	try {
+	while(!terminate) {
+		bool stop=false;
+		bool idle = realTime(stop);
+		if(stop)
+			break;
 
-		while(!terminate) {
-			bool stop=false;
-			bool idle = realTime(stop);
-			if(stop)
-				break;
-
-			_handshake.isEdges=false;
-			if(_socket.available()>0) {
-				try {
-					size = _socket.receiveFrom(buff,sizeof(buff),sender);
-				} catch(Exception& ex) {
-					WARN("Main socket reception : %s",ex.displayText().c_str());
-					_socket.close();
-					_socket.bind(address,true);
-					continue;
-				}
-				
-			} else if(_edgesPort>0 && _edgesSocket.available()>0) {
-				try {
-					size = _edgesSocket.receiveFrom(buff,sizeof(buff),sender);
-					_handshake.isEdges=true;
-				} catch(Exception& ex) {
-					WARN("Main socket reception : %s",ex.displayText().c_str());
-					_edgesSocket.close();
-					_edgesSocket.bind(edgesAddress,true);
-					continue;
-				}
-				Edge* pEdge = edges(sender);
-				if(pEdge)
-					pEdge->update();
-			} else {
-				if(idle)
-					Thread::sleep(1);
-				continue;
-			}
-
-			if(isBanned(sender.host())) {
-				INFO("Data rejected because client %s is banned",sender.host().toString().c_str());
-				continue;
-			}
-
-			if(size<RTMFP_MIN_PACKET_SIZE) {
-				ERROR("Invalid packet");
+		_handshake.isEdges=false;
+		if(_socket.available()>0) {
+			try {
+				size = _socket.receiveFrom(buff,sizeof(buff),sender);
+			} catch(Exception& ex) {
+				WARN("Main socket reception : %s",ex.displayText().c_str());
+				_socket.close();
+				_socket.bind(address,true);
 				continue;
 			}
 			
-			PacketReader packet(buff,size);
-			Session* pSession=findSession(RTMFP::Unpack(packet));
-			
-			if(!pSession)
+		} else if(_edgesPort>0 && _edgesSocket.available()>0) {
+			try {
+				size = _edgesSocket.receiveFrom(buff,sizeof(buff),sender);
+				_handshake.isEdges=true;
+			} catch(Exception& ex) {
+				WARN("Main socket reception : %s",ex.displayText().c_str());
+				_edgesSocket.close();
+				_edgesSocket.bind(edgesAddress,true);
 				continue;
-
-			if(!pSession->checked)
-				_handshake.commitCookie(*pSession);
-
-			pSession->setEndPoint(_handshake.isEdges ? _edgesSocket : _socket,sender);
-			pSession->receive(packet);
+			}
+			Edge* pEdge = edges(sender);
+			if(pEdge)
+				pEdge->update();
+		} else {
+			if(idle)
+				Thread::sleep(1);
+			continue;
 		}
 
-	} catch(Exception& ex) {
-		FATAL("RTMFPServer : %s",ex.displayText().c_str());
-	} catch (exception& ex) {
-		FATAL("RTMFPServer : %s",ex.what());
-	} catch (...) {
-		FATAL("RTMFPServer unknown error");
+		if(isBanned(sender.host())) {
+			INFO("Data rejected because client %s is banned",sender.host().toString().c_str());
+			continue;
+		}
+
+		if(size<RTMFP_MIN_PACKET_SIZE) {
+			ERROR("Invalid packet");
+			continue;
+		}
+		
+		PacketReader packet(buff,size);
+		Session* pSession=findSession(RTMFP::Unpack(packet));
+		
+		if(!pSession)
+			continue;
+
+		if(!pSession->checked)
+			_handshake.commitCookie(*pSession);
+
+		pSession->setEndPoint(_handshake.isEdges ? _edgesSocket : _socket,sender);
+		pSession->receive(packet);
 	}
 
 	_handshake.clear();

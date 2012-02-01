@@ -414,6 +414,38 @@
 						/>
 					</FileConfiguration>
 				</File>
+				<File
+					RelativePath=".\sources\LUATCPClient.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\LUATCPClient.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Sockets"
+				>
+				<File
+					RelativePath=".\sources\SocketManaged.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\SocketManager.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\SocketManager.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\TCPClient.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\TCPClient.h"
+					>
+				</File>
 			</Filter>
 		</Filter>
 	</Files>

@@ -24,14 +24,7 @@
 namespace Cumulus {
 
 class Publication {
-	friend class Publications;
 public:
-	enum StartCode {
-		OK						= 0,
-		BADNAME,
-		FAILED
-	};
-
 	Publication(const std::string& name);
 	virtual ~Publication();
 
@@ -43,7 +36,9 @@ public:
 	const QualityOfService&	videoQOS() const;
 	const QualityOfService&	audioQOS() const;
 
-	StartCode				start(Peer& peer,Poco::UInt32	publisherId,std::string& error);
+	void					closePublisher(const std::string& code="",const std::string& description="");
+
+	void					start(Peer& peer,Poco::UInt32	publisherId,FlowWriter* pWriter);
 	void					stop(Peer& peer,Poco::UInt32	publisherId);
 
 	void					pushAudioPacket(Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
@@ -56,6 +51,7 @@ public:
 	void					flush();
 private:
 	Peer*								_pPublisher;
+	FlowWriter*							_pController;
 	bool								_firstKeyFrame;
 	std::string							_name;
 	Poco::UInt32						_publisherId;

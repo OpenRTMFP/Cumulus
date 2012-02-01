@@ -40,8 +40,6 @@ public:
 	FlowWriter(const std::string& signature,BandWriter& band);
 	virtual ~FlowWriter();
 
-	bool					amf0Preference;
-
 	const Poco::UInt32		id;
 	const bool				critical;
 	const Poco::UInt32		flowId;
