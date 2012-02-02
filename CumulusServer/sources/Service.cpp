@@ -311,10 +311,13 @@ bool Service::open(bool create) {
 
 void Service::load() {
 	open(true);
+	(string&)lastError = "";
 
 	if(luaL_loadfile(_pState,path.c_str())!=0) {
 		SCRIPT_BEGIN(_pState)
-			SCRIPT_ERROR("%s",Script::LastError(_pState))
+			const char* error = Script::LastError(_pState);
+			SCRIPT_ERROR("%s",error)
+			(string&)lastError = error;
 		SCRIPT_END
 		lua_pop(_pState,1);
 		return;
@@ -337,7 +340,9 @@ void Service::load() {
 				SCRIPT_FUNCTION_CALL
 			SCRIPT_FUNCTION_END
 		} else {
-			SCRIPT_ERROR("%s",Script::LastError(_pState))
+			const char* error = Script::LastError(_pState);
+			SCRIPT_ERROR("%s",error)
+			(string&)lastError = error;
 			// Clear environment
 			lua_pushnil(_pState);  // first key 
 			while (lua_next(_pState, -2) != 0) {
@@ -357,6 +362,7 @@ void Service::load() {
 void Service::clear() {
 	
 	_running=false;
+	(string&)lastError = "";
 
 	if(open(false)) {
 

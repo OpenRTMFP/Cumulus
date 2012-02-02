@@ -36,7 +36,8 @@ public:
 	void		refresh();
 	lua_State*	open();
 
-	Poco::UInt32 count;
+	Poco::UInt32		count;
+	const std::string	lastError;
 private:
 	
 	bool		open(bool create);

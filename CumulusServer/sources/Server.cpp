@@ -128,6 +128,10 @@ bool Server::onConnection(Client& client,AMFReader& parameters,AMFObjectWriter& 
 	SCRIPT_END
 
 	if(pService) {
+		if(!pService->lastError.empty()) {
+			client.writer().writeErrorResponse("Connect.Error",pService->lastError);
+			return false;
+		}
 		client.pinObject<Service>(*pService);
 		++pService->count;
 		return true;
