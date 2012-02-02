@@ -133,10 +133,11 @@ int Service::NewIndex(lua_State *pState) {
 			lua_getfield(pState,-1,"__this"); // stay
 			if(!lua_isnil(pState,-1)) {
 
-				lua_getfield(pState,-1,"//running"); // stay
+				// persistent?
+				lua_getfield(pState,-2,"//running"); // stay
 				if(lua_isnil(pState,-1)) {
 
-					lua_getfield(pState,-1,"__gcThis"); // has destructor?
+					lua_getfield(pState,-3,"__gcThis"); // has destructor?
 					if(lua_isnil(pState,-1)) {
 
 						// volatile object 
