@@ -177,8 +177,23 @@ void RTMFPServer::run(const volatile bool& terminate) {
 			if(pEdge)
 				pEdge->update();
 		} else {
-			if(idle)
+			if(idle) {
 				Thread::sleep(1);
+				if(!_timeLastManage.isElapsed(_freqManage)) {
+					// Just middle session!
+					if(_middle) {
+						Sessions::Iterator it;
+						for(it=_sessions.begin();it!=_sessions.end();++it) {
+							Middle* pMiddle = dynamic_cast<Middle*>(it->second);
+							if(pMiddle)
+								pMiddle->manage();
+						}
+					}
+				} else {
+					_timeLastManage.update();
+					manage();
+				}
+			}
 			continue;
 		}
 
@@ -335,24 +350,6 @@ void RTMFPServer::destroySession(Session& session) {
 		if(pEdge)
 			pEdge->removeSession(session);
 	}
-}
-
-bool RTMFPServer::realTime(bool& terminate) {
-	if(!_timeLastManage.isElapsed(_freqManage)) {
-		// Just middle session!
-		if(_middle) {
-			Sessions::Iterator it;
-			for(it=_sessions.begin();it!=_sessions.end();++it) {
-				Middle* pMiddle = dynamic_cast<Middle*>(it->second);
-				if(pMiddle)
-					pMiddle->manage();
-			}
-		}
-		return true;
-	}
-	_timeLastManage.update();
-	manage();
-	return true;
 }
 
 void RTMFPServer::manage() {

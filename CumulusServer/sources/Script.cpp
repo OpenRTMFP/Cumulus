@@ -276,20 +276,18 @@ void Script::WriteAMF(lua_State *pState,AMF::Type type,AMFReader& reader) {
 					WriteAMF(pState,type,reader);
 					lua_setfield(pState,-2,name.c_str());
 				}
-				if(!objectType.empty() && lua_getmetatable(pState,LUA_GLOBALSINDEX)!=0) {
+				if(!objectType.empty()) {
+					int top = lua_gettop(pState);
 					// function
-					lua_getfield(pState,-1,"//typeFactory");
-					lua_replace(pState,-2);
-					if(lua_isfunction(pState,-1)) {
+					SCRIPT_FUNCTION_BEGIN("onTypedObject")
 						// type argument
 						lua_pushstring(pState,objectType.c_str());
 						// table argument
-						lua_pushvalue(pState,-3);
-						if(lua_pcall(pState,2,0,0)!=0)
-							SCRIPT_ERROR("%s",Script::LastError(pState))
-					} else
-						lua_pop(pState,1);
+						lua_pushvalue(pState,top);
+						SCRIPT_FUNCTION_CALL
+					SCRIPT_FUNCTION_END
 				}
+				// After the "onTypedObject" to get before the "__readExternal" required to unserialize
 				if(type==AMF::RawObjectContent) {
 					WriteAMF(pState,type,reader);
 					if(reader.readItem(name)!=AMF::End)
@@ -323,7 +321,7 @@ void Script::WriteAMF(lua_State *pState,AMF::Type type,AMFReader& reader) {
 			}
 			
 			lua_getfield(pState,-2,"__type");
-			SCRIPT_ERROR("Impossible to deserialize the type '%s' which implements IExternalized without an __readExternal method",lua_tostring(pState,-1))
+			SCRIPT_ERROR("Impossible to deserialize the type '%s' which implements IExternalized without a __readExternal method",lua_tostring(pState,-1))
 			lua_pop(pState,2);
 			break;
 		}

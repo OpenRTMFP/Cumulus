@@ -129,19 +129,7 @@ int LUAInvoker::Get(lua_State *pState) {
 int LUAInvoker::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
 		SCRIPT_READ_STRING(name,"")
-
-		if(name=="typeFactoryFunction") {
-			if(lua_isfunction(pState,-1)) {
-				if(lua_getmetatable(pState,LUA_GLOBALSINDEX)!=0) {
-					lua_pushvalue(pState,-2);
-					lua_setfield(pState,-2,"//typeFactory");
-					lua_pop(pState,-2);
-				} else
-					SCRIPT_ERROR("No metatable on global table to store 'typeFactoryFunction' setting");
-			} else
-				SCRIPT_ERROR("'typeFactoryFunction' must be a function");
-		} else
-			lua_rawset(pState,1); // consumes key and value
+		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }
 

@@ -57,7 +57,7 @@ public:
 	bool running();
 
 protected:
-	virtual bool	realTime(bool& terminate);
+	virtual bool	realTime(bool& terminate){return true;}
 	virtual void    manage();
 
 private:
@@ -87,7 +87,6 @@ private:
 	Poco::Timestamp					_timeLastManage;
 	Poco::UInt32					_freqManage;
 };
-
 
 inline bool RTMFPServer::running() {
 	return Startable::running();
