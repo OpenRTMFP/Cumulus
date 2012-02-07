@@ -34,12 +34,6 @@ Client::Client() : _pFlowWriter(NULL),_pObject(NULL),ping(0),_closed(false) {
 Client::~Client() {
 }
 
-FlowWriter&	Client::writer() {
-	if(!_pFlowWriter)
-		WARN("Client::writer() called on %s is null",Util::FormatHex(id,ID_SIZE).c_str());
-	return _pFlowWriter ? *_pFlowWriter : _FlowWriterNull;
-}
-
 void Client::close() {
 	if(_pFlowWriter) {
 		_pFlowWriter->writeAMFMessage("close");

@@ -157,7 +157,7 @@ void RTMFPServer::run(const volatile bool& terminate) {
 			try {
 				size = _socket.receiveFrom(buff,sizeof(buff),sender);
 			} catch(Exception& ex) {
-				WARN("Main socket reception : %s",ex.displayText().c_str());
+				DEBUG("Main socket reception : %s",ex.displayText().c_str());
 				_socket.close();
 				_socket.bind(address,true);
 				continue;
@@ -168,7 +168,7 @@ void RTMFPServer::run(const volatile bool& terminate) {
 				size = _edgesSocket.receiveFrom(buff,sizeof(buff),sender);
 				_handshake.isEdges=true;
 			} catch(Exception& ex) {
-				WARN("Main socket reception : %s",ex.displayText().c_str());
+				DEBUG("Main socket reception : %s",ex.displayText().c_str());
 				_edgesSocket.close();
 				_edgesSocket.bind(edgesAddress,true);
 				continue;

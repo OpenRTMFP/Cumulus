@@ -76,5 +76,9 @@ private:
 	static BandWriterNull						_BandWriterNull;
 };
 
+inline FlowWriter&	Client::writer() {
+	return _pFlowWriter ? *_pFlowWriter : _FlowWriterNull;
+}
+
 
 } // namespace Cumulus
