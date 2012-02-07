@@ -11,8 +11,8 @@ else
 endif
 SOURCES=./sources/
 CFLAGS+=-D CUMULUS_LOGS
-LIBS ?= -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lcrypto -lssl
-INCLUDES = -I./include/
+LIBS ?= -L/usr/local/lib/ -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lcrypto -lssl
+INCLUDES = -I/usr/local/include/ -I./include/
 OBJECT = $(OBJECTS:%=%.o)
 
 main: $(OBJECT)

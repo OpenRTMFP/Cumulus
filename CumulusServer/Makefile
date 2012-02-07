@@ -2,8 +2,8 @@ OBJECTS = main Blacklist FileWatcher LUAAMFObjectWriter LUAByteReader LUAByteWri
 
 CC=g++
 EXEC=CumulusServer
-INCLUDES=-I./../CumulusLib/include/
-LIBDIR=-L./../CumulusLib/
+INCLUDES=-I/usr/local/include/ -I./../CumulusLib/include/
+LIBDIR=-L/usr/local/lib/ -L./../CumulusLib/
 SOURCES=./sources/
 CFLAGS+=-D CUMULUS_LOGS
 LDFLAGS+="-Wl,-rpath,./../CumulusLib/"
