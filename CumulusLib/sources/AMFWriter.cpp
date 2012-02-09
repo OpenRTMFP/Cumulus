@@ -191,7 +191,7 @@ void AMFWriter::endDictionary() {
 	}
 	(UInt32&)lastReference=_lastObjectReferences.back();
 	_lastObjectReferences.pop_back();
-	if(_lastObjectReferences.size()==0)
+	if(_lastObjectReferences.size()==0 || _lastObjectReferences.back()==0)
 		_amf3=false;
 }
 
@@ -221,7 +221,7 @@ void AMFWriter::endArray() {
 	}
 	(UInt32&)lastReference=_lastObjectReferences.back();
 	_lastObjectReferences.pop_back();
-	if(_lastObjectReferences.size()==0)
+	if(_lastObjectReferences.size()==0 || _lastObjectReferences.back()==0)
 		_amf3=false;
 }
 
@@ -237,7 +237,7 @@ void AMFWriter::endExternalizableObject() {
 	}
 	(UInt32&)lastReference=_lastObjectReferences.back();
 	_lastObjectReferences.pop_back();
-	if(_lastObjectReferences.size()==0)
+	if(_lastObjectReferences.size()==0 || _lastObjectReferences.back()==0)
 		_amf3=false;
 }
 
@@ -301,7 +301,7 @@ void AMFWriter::endObject() {
 		return;
 	}
 	writer.write8(01); // end marker
-	if(_lastObjectReferences.size()==0)
+	if(_lastObjectReferences.size()==0 || _lastObjectReferences.back()==0)
 		_amf3=false;
 }
 
