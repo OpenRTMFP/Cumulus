@@ -297,10 +297,8 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 		list<Address>::const_iterator it2;
 		for(it2=pSessionWanted->peer.addresses.begin();it2!=pSessionWanted->peer.addresses.end();++it2) {
 			const Address& addr = *it2;
-			if(addr == address) {
-				CRITIC("Two peers with the same %s address?",address.toString().c_str());
-				continue;
-			}
+			if(addr == address)
+				WARN("A client tries to connect to himself (same %s address)",address.toString().c_str());
 			response.writeAddress(addr,first);
 			first=false;
 		}
