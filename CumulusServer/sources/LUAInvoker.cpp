@@ -122,6 +122,8 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_OBJECT(Edges,LUAEdges,invoker.edges)
 		} else if(name=="createTCPClient") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPClient)
+		} else if(name=="configs") {
+			lua_getglobal(pState,"cumulus.configs");
 		}
 	SCRIPT_CALLBACK_RETURN
 }

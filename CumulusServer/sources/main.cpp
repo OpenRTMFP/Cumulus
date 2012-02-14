@@ -210,7 +210,7 @@ private:
 				params.keepAliveServer = config().getInt("keepAliveServer",params.keepAliveServer);
 				params.keepAlivePeer = config().getInt("keepAlivePeer",params.keepAlivePeer);
 				params.edgesAttemptsBeforeFallback = config().getInt("edges.attemptsBeforeFallback",params.edgesAttemptsBeforeFallback);
-				Server server(config().getString("application.dir","./"),*this);
+				Server server(config().getString("application.dir","./"),*this,config());
 				server.start(params);
 
 				// wait for CTRL-C or kill

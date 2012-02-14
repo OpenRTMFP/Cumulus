@@ -34,13 +34,40 @@ using namespace Cumulus;
 
 const string Server::WWWPath;
 
-Server::Server(const std::string& root,ApplicationKiller& applicationKiller) : _blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_hasOnRealTime(true),_pService(NULL) {
+Server::Server(const std::string& root,ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : _blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_hasOnRealTime(true),_pService(NULL) {
 	File((string&)WWWPath = root+"www").createDirectory();
 	_pState = Script::CreateState();
 	Service::InitGlobalTable(_pState);
 	SCRIPT_BEGIN(_pState)
 		SCRIPT_CREATE_PERSISTENT_OBJECT(Invoker,LUAInvoker,*this)
+		readNextConfig(_pState,configurations,"");
+		lua_setglobal(_pState,"cumulus.configs");
 	SCRIPT_END
+}
+
+
+bool Server::readNextConfig(lua_State* pState,const Util::AbstractConfiguration& configurations,const string& root) {
+	Util::AbstractConfiguration::Keys keys;
+	configurations.keys(root,keys);
+	if(keys.size()==0)
+		return false;
+	Util::AbstractConfiguration::Keys::const_iterator it;
+	lua_newtable(pState);
+	for(it=keys.begin();it!=keys.end();++it) {
+		string key = root.empty() ? (*it) : (root+"."+*it);
+		if(!readNextConfig(pState,configurations,key)) {
+			if(configurations.hasOption(key)) {
+				string value = configurations.getString(key);
+				if(value=="false")
+					lua_pushboolean(_pState,0);
+				else
+					lua_pushstring(_pState,value.c_str());
+			} else
+				lua_pushnil(_pState);
+		}
+		lua_setfield(_pState,-2,(*it).c_str());
+	}
+	return true;
 }
 
 

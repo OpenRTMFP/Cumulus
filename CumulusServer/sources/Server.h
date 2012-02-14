@@ -25,15 +25,16 @@
 
 class Server : public Cumulus::RTMFPServer {
 public:
-	Server(const std::string& root,ApplicationKiller& applicationKiller);
+	Server(const std::string& root,ApplicationKiller& applicationKiller,const Poco::Util::AbstractConfiguration& configurations);
 	virtual ~Server();
 
-	static const std::string WWWPath;
-	SocketManager			 socketManager;
+	static const std::string				WWWPath;
+	SocketManager							socketManager;
 
 private:
 	void					manage();
 	bool					realTime(bool& terminate);
+	bool					readNextConfig(lua_State* pState,const Poco::Util::AbstractConfiguration& configurations,const std::string& root);
 
 	//events
 	void					onStart();
