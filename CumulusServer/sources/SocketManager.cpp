@@ -58,20 +58,21 @@ bool SocketManager::realTime() {
 			} catch(Exception& ex) {
 				socket.onError(ex.displayText());
 			}
-			continue;
+		} else {
+			if(socket.writable) {
+				socket.onWritable();
+				(bool&)socket.writable = false;
+			}
+			if(socket.readable) {
+				UInt32 available = socket.socket.available();
+				socket.onReadable(available);
+				(bool&)socket.readable = false;
+				if(available>0) // ==0 means graceful disconnection
+					idle=false;
+			}
 		}
-		if(socket.writable) {
-			socket.onWritable();
-			(bool&)socket.writable = false;
-		}
-		if(socket.readable) {
-			UInt32 available = socket.socket.available();
-			socket.onReadable(available);
-			(bool&)socket.readable = false;
-			if(available==0) // means graceful disconnection
-				continue;
-			idle=false;
-		}
+		if(it._Mycont==0)
+			it=_sockets.begin();		
 	}
 	return idle;
 }

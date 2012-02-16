@@ -51,9 +51,11 @@ int	LUAPublication::PushAudioPacket(lua_State *pState) {
 	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
 		SCRIPT_READ_UINT(time,0)
 		SCRIPT_READ_BINARY(pData,size)
+		SCRIPT_READ_UINT(offset,0)
 		SCRIPT_READ_UINT(numberLost,0)
 		if(pData) {
 			PacketReader reader(pData,size);
+			reader.next(offset);
 			publication.pushAudioPacket(time,reader,numberLost);
 		}
 	SCRIPT_CALLBACK_RETURN
@@ -63,9 +65,11 @@ int	LUAPublication::PushVideoPacket(lua_State *pState) {
 	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
 		SCRIPT_READ_UINT(time,0)
 		SCRIPT_READ_BINARY(pData,size)
+		SCRIPT_READ_UINT(offset,0)
 		SCRIPT_READ_UINT(numberLost,0)
 		if(pData) {
 			PacketReader reader(pData,size);
+			reader.next(offset);
 			publication.pushVideoPacket(time,reader,numberLost);
 		}
 	SCRIPT_CALLBACK_RETURN
