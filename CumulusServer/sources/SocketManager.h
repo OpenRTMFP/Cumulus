@@ -34,7 +34,8 @@ public:
 private:
 	void run(const volatile bool& terminate);
 
-	Poco::Mutex												_mutex;
-	std::map<const Poco::Net::Socket,SocketManaged*>		_sockets;
-	Poco::Timespan											_timeout;
+	Poco::Mutex															_mutex;
+	std::map<const Poco::Net::Socket,SocketManaged*>::const_iterator	_it;
+	std::map<const Poco::Net::Socket,SocketManaged*>					_sockets;
+	Poco::Timespan														_timeout;
 };

@@ -39,18 +39,21 @@ void SocketManager::add(SocketManaged& socket) {
 
 void SocketManager::remove(SocketManaged& socket) {
 	ScopedLock<Mutex> lock(_mutex);
-	_sockets.erase(socket.socket);
+	map<const Socket,SocketManaged*>::const_iterator it = _sockets.find(socket.socket);
+	if(it==_it)
+		++_it;
+	_sockets.erase(it);
 }
 
 bool SocketManager::realTime() {
 	if(!running())
 		return true;
 	ScopedLock<Mutex> lock(_mutex);
-	map<const Socket,SocketManaged*>::const_iterator it=_sockets.begin();
+	_it=_sockets.begin();
 	bool idle=true;
-	while(it != _sockets.end()) {
-		SocketManaged& socket = *it->second;
-		++it;
+	while(_it != _sockets.end()) {
+		SocketManaged& socket = *_it->second;
+		++_it;
 		if(socket.error) {
 			// convert error code in error string
 			try {
@@ -58,21 +61,19 @@ bool SocketManager::realTime() {
 			} catch(Exception& ex) {
 				socket.onError(ex.displayText());
 			}
-		} else {
-			if(socket.writable) {
-				socket.onWritable();
-				(bool&)socket.writable = false;
-			}
-			if(socket.readable) {
-				UInt32 available = socket.socket.available();
-				socket.onReadable(available);
-				(bool&)socket.readable = false;
-				if(available>0) // ==0 means graceful disconnection
-					idle=false;
-			}
+			continue;
 		}
-		if(it._Mycont==0)
-			it=_sockets.begin();		
+		if(socket.writable) {
+			socket.onWritable();
+			(bool&)socket.writable = false;
+		}
+		if(socket.readable) {
+			UInt32 available = socket.socket.available();
+			socket.onReadable(available);
+			(bool&)socket.readable = false;
+			if(available>0) // ==0 means graceful disconnection
+				idle=false;
+		}
 	}
 	return idle;
 }
