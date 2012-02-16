@@ -31,16 +31,16 @@ LUATCPClient::~LUATCPClient() {
 }
 
 UInt32 LUATCPClient::onReception(const UInt8* data,UInt32 size){
-	UInt32 gotten=0;
+	UInt32 rest=0;
 	SCRIPT_BEGIN(_pState)
 		SCRIPT_MEMBER_FUNCTION_BEGIN(LUATCPClient,LUATCPClient,*this,"onReception")
 			SCRIPT_WRITE_BINARY(data,size)
 			SCRIPT_FUNCTION_CALL
 			SCRIPT_READ_UINT(readen,0)
-			gotten = readen;
+			rest = readen;
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
-	return gotten;
+	return rest;
 }
 
 void LUATCPClient::onDisconnection(){

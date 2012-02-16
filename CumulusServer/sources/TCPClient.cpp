@@ -17,6 +17,7 @@
 
 #include "TCPClient.h"
 #include "SocketManager.h"
+#include "Logs.h"
 #include "Poco/Format.h"
 #include "string.h"
 
@@ -55,7 +56,11 @@ void TCPClient::onReadable(UInt32 available) {
 		}
 		_available += received;
 
-		UInt32 gotten = onReception(&_recvBuffer[0],_available);
+		UInt32 gotten = _available-onReception(&_recvBuffer[0],_available);
+		if(gotten>_available) {
+			WARN("TCPClient : onReception has returned a 'rest' value more important than the avaiable value (%u>%u)",gotten,_available);
+			gotten=_available;
+		}
 		_available -= gotten;
 		_recvBuffer.erase(_recvBuffer.begin(),_recvBuffer.begin()+gotten);
 	} catch (...) {
