@@ -39,7 +39,7 @@ void SocketManager::add(SocketManaged& socket) {
 
 void SocketManager::remove(SocketManaged& socket) {
 	ScopedLock<Mutex> lock(_mutex);
-	map<const Socket,SocketManaged*>::const_iterator it = _sockets.find(socket.socket);
+	map<const Socket,SocketManaged*>::iterator it = _sockets.find(socket.socket);
 	if(it==_it)
 		++_it;
 	_sockets.erase(it);
