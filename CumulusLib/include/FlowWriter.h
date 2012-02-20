@@ -91,7 +91,7 @@ private:
 	Poco::UInt32			headerSize(Poco::UInt32 stage);
 	void					flush(PacketWriter& writer,Poco::UInt32 stage,Poco::UInt8 flags,bool header,BinaryReader& reader,Poco::UInt16 size);
 
-	virtual void			ackMessageHandler(Poco::UInt32 ackCount,Poco::UInt32 lostCount,BinaryReader& content,Poco::UInt32 size);
+	virtual void			ackMessageHandler(Poco::UInt32 ackCount,Poco::UInt32 lostCount,BinaryReader& content,Poco::UInt32 available,Poco::UInt32 size);
 	virtual void			reset(Poco::UInt32 count){}
 	void					raiseMessage();
 	MessageBuffered&		createBufferedMessage();
@@ -130,7 +130,7 @@ inline bool FlowWriter::closed() {
 	return _closed;
 }
 
-inline void FlowWriter::ackMessageHandler(Poco::UInt32 ackCount,Poco::UInt32 lostCount,BinaryReader& content,Poco::UInt32 size) {}
+inline void FlowWriter::ackMessageHandler(Poco::UInt32 ackCount,Poco::UInt32 lostCount,BinaryReader& content,Poco::UInt32 available,Poco::UInt32 size) {}
 
 inline AMFObjectWriter FlowWriter::writeSuccessResponse(const std::string& code,const  std::string& description) {
 	return writeAMFResponse("_result",code,description);

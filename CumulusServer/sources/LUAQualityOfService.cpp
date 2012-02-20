@@ -28,6 +28,10 @@ int LUAQualityOfService::Get(lua_State *pState) {
 		SCRIPT_READ_STRING(name,"")
 		if(name=="lostRate") {
 			SCRIPT_WRITE_NUMBER(qos.lostRate)
+		} else if(name=="byteRate") {
+			SCRIPT_WRITE_NUMBER(qos.byteRate)
+		} else if(name=="congestionRate") {
+			SCRIPT_WRITE_NUMBER(qos.congestionRate)
 		} else if(name=="latency") {
 			SCRIPT_WRITE_NUMBER(qos.latency)
 		} else if(name=="droppedFrames") {

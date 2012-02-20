@@ -44,6 +44,12 @@ BinaryReader& Message::reader(UInt32 fragment,UInt32& size) {
 	return _reader;
 }
 
+BinaryReader& Message::memAck(Poco::UInt32& available,Poco::UInt32& size) {
+	BinaryReader& result = reader(available);
+	size=available;
+	return result;
+}
+
 MessageBuffered::MessageBuffered() : rawWriter(_stream),amfWriter(rawWriter),Message(_stream,true) {
 	
 }
@@ -59,7 +65,7 @@ UInt32 MessageBuffered::init(UInt32 position) {
 	return _stream.size();
 }
 
-MessageUnbuffered::MessageUnbuffered(const UInt8* data,UInt32 size,const UInt8* memAckData,UInt32 memAckSize) : _stream((const char*)data,size),Message(_stream,false),_bufferAck(memAckSize) {
+MessageUnbuffered::MessageUnbuffered(const UInt8* data,UInt32 size,const UInt8* memAckData,UInt32 memAckSize) : _stream((const char*)data,size),Message(_stream,false),_bufferAck(memAckSize),_size(size) {
 	memcpy(_bufferAck.begin(),memAckData,memAckSize);
 	_pMemAck = new MemoryInputStream(_bufferAck.begin(),memAckSize);
 	_pReaderAck = new BinaryReader(*_pMemAck);
@@ -76,8 +82,9 @@ UInt32 MessageUnbuffered::init(UInt32 position) {
 	return _stream.available();
 }
 
-BinaryReader& MessageUnbuffered::memAck(UInt32& size) {
-	size = _pMemAck->available();
+BinaryReader& MessageUnbuffered::memAck(UInt32& available,UInt32& size) {
+	available = _pMemAck->available();
+	size = _size;
 	return *_pReaderAck;
 }
 

@@ -44,8 +44,8 @@ public:
 
 	BinaryReader&			reader(Poco::UInt32& size);
 	BinaryReader&			reader(Poco::UInt32 fragment,Poco::UInt32& size);
-	virtual BinaryReader&	memAck(Poco::UInt32& size);
-	
+	virtual BinaryReader&	memAck(Poco::UInt32& available,Poco::UInt32& size);
+
 	std::map<Poco::UInt32,Poco::UInt32>		fragments;
 	const bool								repeatable;
 
@@ -54,25 +54,23 @@ private:
 	BinaryReader			_reader;
 };
 
-inline BinaryReader& Message::memAck(Poco::UInt32& size) {
-	return reader(size);
-}
-
 class MessageUnbuffered : public Message {
 public:
 	MessageUnbuffered(const Poco::UInt8* data,Poco::UInt32 size,const Poco::UInt8* memAckData=NULL,Poco::UInt32 memAckSize=0);
 	virtual ~MessageUnbuffered();
 
-	BinaryReader&		memAck(Poco::UInt32& size);
-	
 private:
+	BinaryReader&				memAck(Poco::UInt32& available,Poco::UInt32& size);
+
 	Poco::UInt32				init(Poco::UInt32 position);
 
 	MemoryInputStream			_stream;
 	BinaryReader*				_pReaderAck;
 	MemoryInputStream*			_pMemAck;
 	Poco::Buffer<char>			_bufferAck;
+	Poco::UInt32				_size;
 };
+
 
 class MessageBuffered : public Message {
 public:

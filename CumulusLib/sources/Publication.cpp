@@ -165,7 +165,7 @@ void Publication::pushAudioPacket(UInt32 time,PacketReader& packet,UInt32 number
 	int pos = packet.position();
 	if(numberLostFragments>0)
 		INFO("%u audio fragments lost on publication %u",numberLostFragments,_publisherId);
-	_audioQOS.add(time,packet.fragments,numberLostFragments);
+	_audioQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5);
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
 		it->second->pushAudioPacket(time,packet);
@@ -188,7 +188,7 @@ void Publication::pushVideoPacket(UInt32 time,PacketReader& packet,UInt32 number
 	if(((*packet.current())&0xF0) == 0x10)
 		_firstKeyFrame = true;
 
-	_videoQOS.add(time,packet.fragments,numberLostFragments);
+	_videoQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5);
 	if(numberLostFragments>0)
 		INFO("%u video fragments lost on publication %u",numberLostFragments,_publisherId);
 

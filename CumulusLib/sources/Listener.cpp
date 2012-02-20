@@ -58,10 +58,10 @@ public:
 	bool				reseted;
 
 private:
-	void ackMessageHandler(UInt32 ackCount,UInt32 lostCount,BinaryReader& content,UInt32 size) {
-		if(content.read8()!=_type)
+	void ackMessageHandler(UInt32 ackCount,UInt32 lostCount,BinaryReader& content,UInt32 available,UInt32 size) {
+		if(available==0 || content.read8()!=_type)
 			return;
-		qos.add(content.read32(),ackCount,lostCount);
+		qos.add(content.read32(),ackCount,lostCount,size);
 	}
 
 	// call on FlowWriter failed, we must rewritting bound infos

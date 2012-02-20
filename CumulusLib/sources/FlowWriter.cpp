@@ -266,8 +266,9 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 			if(message.repeatable)
 				--_repeatable;
 			if(_ackCount>0) {
-				UInt32 size(0);
-				ackMessageHandler(_ackCount,_lostCount,message.memAck(size),size);
+				UInt32 available(0),size(0);
+				BinaryReader& reader = message.memAck(available,size);
+				ackMessageHandler(_ackCount,_lostCount,reader,available,size);
 				_ackCount=_lostCount=0;
 			}
 			delete *it;
