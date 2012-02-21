@@ -31,11 +31,13 @@ public:
 		Script::ClearPersistentObject<NewWriter,LUAFlowWriter>(pState,*this);
 	}
 	void manage(Invoker& invoker){
-		SCRIPT_BEGIN(pState)
-			SCRIPT_MEMBER_FUNCTION_BEGIN(NewWriter,LUAFlowWriter,*this,"onManage")
-				SCRIPT_FUNCTION_CALL
-			SCRIPT_FUNCTION_END
-		SCRIPT_END
+		if(!closed()) {
+			SCRIPT_BEGIN(pState)
+				SCRIPT_MEMBER_FUNCTION_BEGIN(NewWriter,LUAFlowWriter,*this,"onManage")
+					SCRIPT_FUNCTION_CALL
+				SCRIPT_FUNCTION_END
+			SCRIPT_END
+		}
 		FlowWriter::manage(invoker);
 	}
 	lua_State*			pState;

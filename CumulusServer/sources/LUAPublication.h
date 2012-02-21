@@ -19,11 +19,13 @@
 
 #include "Script.h"
 #include "Invoker.h"
+#include "Publication.h"
 
 class LUAPublication {
 public:
 	static const char* Name;
 
+	static void Clear(lua_State* pState,const Cumulus::Publication& publication);
 	static int Get(lua_State *pState);
 	static int Set(lua_State *pState);
 

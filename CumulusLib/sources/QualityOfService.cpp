@@ -98,9 +98,7 @@ void QualityOfService::add(UInt32 time,UInt32 received,UInt32 lost,UInt32 size) 
 		congestion += lostRate;
 	}
 
-	
-	(double&)congestionRate = congestion>congestionRate ? (congestion+congestionRate)/2 : congestion; // average with prec value
-
+	(double&)congestionRate = congestion>congestionRate ? (congestion+congestionRate)/2.0 : congestion; // average with prec value
 }
 
 void QualityOfService::reset() {

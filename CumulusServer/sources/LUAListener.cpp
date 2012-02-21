@@ -16,7 +16,6 @@
 */
 
 #include "LUAListener.h"
-#include "Listener.h"
 #include "LUAQualityOfService.h"
 #include "LUAPublication.h"
 
@@ -24,6 +23,11 @@ using namespace Cumulus;
 
 const char*		LUAListener::Name="Cumulus::Listener";
 
+void LUAListener::Clear(lua_State* pState,const Listener& listener){
+	Script::ClearPersistentObject<QualityOfService,LUAQualityOfService>(pState,listener.audioQOS());
+	Script::ClearPersistentObject<QualityOfService,LUAQualityOfService>(pState,listener.videoQOS());
+	Script::ClearPersistentObject<Listener,LUAListener>(pState,listener);
+}
 
 int LUAListener::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Listener,LUAListener,listener)
@@ -31,9 +35,9 @@ int LUAListener::Get(lua_State *pState) {
 		if(name=="id") {
 			SCRIPT_WRITE_NUMBER(listener.id)
 		} else if(name=="audioQOS") {
-			SCRIPT_WRITE_OBJECT(QualityOfService,LUAQualityOfService,listener.audioQOS())
+			SCRIPT_WRITE_PERSISTENT_OBJECT(QualityOfService,LUAQualityOfService,listener.audioQOS())
 		} else if(name=="videoQOS") {
-			SCRIPT_WRITE_OBJECT(QualityOfService,LUAQualityOfService,listener.videoQOS())
+			SCRIPT_WRITE_PERSISTENT_OBJECT(QualityOfService,LUAQualityOfService,listener.videoQOS())
 		} else if(name=="publication") {
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,listener.publication);
 		} else if(name=="audioSampleAccess") {

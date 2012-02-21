@@ -18,11 +18,13 @@
 #pragma once
 
 #include "Script.h"
+#include "Listener.h"
 
 class LUAListener {
 public:
 	static const char* Name;
 
+	static void Clear(lua_State* pState,const Cumulus::Listener& listener);
 	static int Get(lua_State *pState);
 	static int Set(lua_State *pState);
 

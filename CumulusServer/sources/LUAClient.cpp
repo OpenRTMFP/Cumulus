@@ -16,7 +16,6 @@
 */
 
 #include "LUAClient.h"
-#include "Client.h"
 #include "Util.h"
 #include "LUAFlowWriter.h"
 
@@ -26,13 +25,17 @@ using namespace Cumulus;
 
 const char*		LUAClient::Name="Cumulus::Client";
 
+void LUAClient::Clear(lua_State* pState,const Client& client){
+	Script::ClearPersistentObject<FlowWriter,LUAFlowWriter>(pState,((Client&)client).writer());
+	Script::ClearPersistentObject<Client,LUAClient>(pState,client);
+}
 
 int LUAClient::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Client,LUAClient,client)
 		SCRIPT_READ_STRING(name,"")
 		if(name=="writer") {
 			SCRIPT_CALLBACK_NOTCONST_CHECK
-			SCRIPT_WRITE_OBJECT(FlowWriter,LUAFlowWriter,client.writer())
+			SCRIPT_WRITE_PERSISTENT_OBJECT(FlowWriter,LUAFlowWriter,client.writer())
 		} else if(name=="id") {
 			SCRIPT_WRITE_STRING(Util::FormatHex(client.id,ID_SIZE).c_str())
 		} else if(name=="rawId") {

@@ -151,7 +151,7 @@ bool Server::onConnection(Client& client,AMFReader& parameters,AMFObjectWriter& 
 			pService=NULL;
 		}
 		if(!pService)
-			Script::ClearPersistentObject<Client,LUAClient>(_pState,client);
+			LUAClient::Clear(_pState,client);
 	SCRIPT_END
 
 	if(pService) {
@@ -185,7 +185,7 @@ void Server::onDisconnection(const Client& client) {
 			SCRIPT_FUNCTION_CALL
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
-	Script::ClearPersistentObject<Client,LUAClient>(_pState,client);
+	LUAClient::Clear(_pState,client);
 	--service.count;
 }
 
@@ -233,7 +233,7 @@ bool Server::onPublish(Client& client,const Publication& publication,string& err
 			result = false;
 		}
 		if(!result)
-			Script::ClearPersistentObject<Publication,LUAPublication>(_pState,publication);
+			LUAPublication::Clear(_pState,publication);
 	SCRIPT_END
 	return result;
 }
@@ -249,7 +249,7 @@ void Server::onUnpublish(Client& client,const Publication& publication) {
 		SCRIPT_END
 	}
 	if(publication.listeners.count()==0)
-		Script::ClearPersistentObject<Publication,LUAPublication>(_pState,publication);
+		LUAPublication::Clear(_pState,publication);
 }
 
 bool Server::onSubscribe(Client& client,const Listener& listener,string& error) { 
@@ -269,7 +269,7 @@ bool Server::onSubscribe(Client& client,const Listener& listener,string& error) 
 			result = false;
 		}
 		if(!result)
-			Script::ClearPersistentObject<Listener,LUAListener>(_pState,listener);
+			LUAListener::Clear(_pState,listener);
 	SCRIPT_END
 	return result;
 }
@@ -283,8 +283,8 @@ void Server::onUnsubscribe(Client& client,const Listener& listener) {
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
 	if(listener.publication.publisherId()==0 && listener.publication.listeners.count()==0)
-		Script::ClearPersistentObject<Publication,LUAPublication>(_pState,listener.publication);
-	Script::ClearPersistentObject<Listener,LUAListener>(_pState,listener);
+		LUAPublication::Clear(_pState,listener.publication);
+	LUAListener::Clear(_pState,listener);
 }
 
 void Server::onAudioPacket(Client& client,const Publication& publication,UInt32 time,PacketReader& packet) {
