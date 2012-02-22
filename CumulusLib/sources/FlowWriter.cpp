@@ -117,12 +117,15 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 	} else
 		_stageAck = stageReaden;
 
-	UInt32 maxStageRecv = _stageAck;
+	UInt32 maxStageRecv = stageReaden;
 	UInt32 pos=reader.position();
+
 	while(reader.available()>0)
 		maxStageRecv += reader.read7BitValue()+reader.read7BitValue()+2;
-	if(pos != reader.position())
+	if(pos != reader.position()) {
+		// TRACE("%u..x%s",stageReaden,Util::FormatHex(reader.current(),reader.available()).c_str());
 		reader.reset(pos);
+	}
 
 	UInt32 lostCount = 0,lostStage = 0;
 	bool repeated = false;
@@ -152,7 +155,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 			}
 
 			// Read lost informations
-			while(!stop && lostCount==0) {
+			while(!stop) {
 				if(lostCount==0) {
 					if(reader.available()>0) {
 						lostCount = reader.read7BitValue()+1;
@@ -186,7 +189,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 					++stage;
 					++itFrag;
 					header=true;
-				} else
+				} else // No repeated, it means that past lost packet was not repeatable, we can ack this intermediate received sequence
 					_stageAck = stage;
 				continue;
 			}
@@ -198,7 +201,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 					++stage;
 					header=true;
 				} else {
-					DEBUG("FlowWriter %u : message %u lost",id,stage);
+					INFO("FlowWriter %u : message %u lost",id,stage);
 					--_ackCount;
 					++_lostCount;
 					_stageAck = stage;
@@ -209,7 +212,8 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 			}
 
 			repeated = true;
-			if(itFrag->second >= maxStageRecv || stageReaden==(lostStage+2)) {
+			// Don't repeate before that the receiver receives the itFrag->second sending stage
+			if(itFrag->second >= maxStageRecv) {
 				++stage;
 				header=true;
 				--lostCount;
@@ -224,7 +228,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 			UInt32 available;
 			UInt32 fragment(itFrag->first);
 			BinaryReader& content = message.reader(fragment,available);
-			itFrag->second = _stage;
+			itFrag->second = _stage; // Save actual stage sending to wait that the receiver gets it before to retry
 			UInt32 contentSize = available;
 			++itFrag;
 
@@ -481,8 +485,7 @@ void FlowWriter::flush(bool full) {
 
 			// Write packet
 			size-=3; // type + timestamp removed, before the "writeMessage"
-			flush(_band.writeMessage(head ? 0x10 : 0x11,(UInt16)size,this)
-				,_stage,flags,head,content,contentSize);
+			flush(_band.writeMessage(head ? 0x10 : 0x11,(UInt16)size,this),_stage,flags,head,content,contentSize);
 
 			message.fragments[fragments] = _stage;
 			available -= contentSize;
