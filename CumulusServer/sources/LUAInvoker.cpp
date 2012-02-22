@@ -118,6 +118,8 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::FromAMF)
 		} else if(name=="absolutePath") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::AbsolutePath)
+		} else if(name=="epochMicrosecondsTime") {
+			SCRIPT_WRITE_NUMBER(Timestamp().epochMicroseconds())
 		} else if(name=="edges") {
 			SCRIPT_WRITE_OBJECT(Edges,LUAEdges,invoker.edges)
 		} else if(name=="createTCPClient") {
