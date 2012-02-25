@@ -30,6 +30,7 @@ namespace Cumulus {
 #define RTMFP_DEFAULT_PORT		(Poco::UInt16)1935
 #define RTMFP_MIN_PACKET_SIZE	12
 #define RTMFP_MAX_PACKET_LENGTH 1192
+#define RTMFP_TIMESTAMP_SCALE 4
 
 #define KEY_SIZE				0x80
 

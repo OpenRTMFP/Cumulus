@@ -26,7 +26,7 @@ namespace Cumulus {
 
 class StreamWriter : public FlowWriter {
 public:
-	StreamWriter(UInt8 type,const string& signature,BandWriter& band) : FlowWriter(signature,band),_type(type),reseted(false) {	}
+	StreamWriter(UInt8 type,const string& signature,BandWriter& band) : FlowWriter(signature,band),_type(type),reseted(false),pClient(NULL) {	}
 	~StreamWriter() {}
 
 	void write(UInt32 time,PacketReader& data,bool unbuffered) {
@@ -56,12 +56,13 @@ public:
 
 	QualityOfService	qos;
 	bool				reseted;
+	const Client*		pClient;
 
 private:
 	void ackMessageHandler(UInt32 ackCount,UInt32 lostCount,BinaryReader& content,UInt32 available,UInt32 size) {
 		if(available==0 || content.read8()!=_type)
 			return;
-		qos.add(content.read32(),ackCount,lostCount,size);
+		qos.add(content.read32(),ackCount,lostCount,size,pClient ? pClient->ping : 0);
 	}
 
 	// call on FlowWriter failed, we must rewritting bound infos
@@ -97,14 +98,16 @@ Listener::~Listener() {
 		_pVideoWriter->close();
 }
 
-void Listener::init() {
-	if(!_pAudioWriter)
+void Listener::init(const Client& client) {
+	if(!_pAudioWriter) {
 		_pAudioWriter = &_writer.newFlowWriter<AudioWriter>();
-	else
+		_pAudioWriter->pClient = &client;
+	} else
 		WARN("Listener %u audio track has already been initialized",id);
-	if(!_pVideoWriter)
+	if(!_pVideoWriter) {
 		_pVideoWriter = &_writer.newFlowWriter<VideoWriter>();
-	else
+		_pVideoWriter->pClient = &client;
+	} else
 		WARN("Listener %u video track has already been initialized",id);
 	writeBounds();
 }

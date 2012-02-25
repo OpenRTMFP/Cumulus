@@ -54,7 +54,7 @@ bool Publication::addListener(Peer& peer,UInt32 id,FlowWriter& writer,bool unbuf
 		_listeners.insert(it,pair<UInt32,Listener*>(id,pListener));
 		writer.writeStatusResponse("Play.Reset","Playing and resetting " + _name);
 		writer.writeStatusResponse("Play.Start","Started playing " + _name);
-		pListener->init();
+		pListener->init(peer);
 		return true;
 	}
 	writer.writeStatusResponse("Play.Failed",error.empty() ? ("Not authorized to play " + _name) : error);
@@ -165,7 +165,7 @@ void Publication::pushAudioPacket(UInt32 time,PacketReader& packet,UInt32 number
 	int pos = packet.position();
 	if(numberLostFragments>0)
 		INFO("%u audio fragments lost on publication %u",numberLostFragments,_publisherId);
-	_audioQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5);
+	_audioQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5,_pPublisher ? _pPublisher->ping : 0);
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
 		it->second->pushAudioPacket(time,packet);
@@ -188,7 +188,7 @@ void Publication::pushVideoPacket(UInt32 time,PacketReader& packet,UInt32 number
 	if(((*packet.current())&0xF0) == 0x10)
 		_firstKeyFrame = true;
 
-	_videoQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5);
+	_videoQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5,_pPublisher ? _pPublisher->ping : 0);
 	if(numberLostFragments>0)
 		INFO("%u video fragments lost on publication %u",numberLostFragments,_publisherId);
 

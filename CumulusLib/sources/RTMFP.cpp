@@ -25,8 +25,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <string.h>
-
-#define TIMESTAMP_SCALE 4
+#include <math.h>
 
 using namespace std;
 using namespace Poco;
@@ -176,7 +175,7 @@ void RTMFP::ComputeAsymetricKeys(const UInt8* sharedSecret, const UInt8* initiat
 }
 
 UInt16 RTMFP::Time(Timestamp::TimeVal timeVal) {
-	return (UInt16)(timeVal/(1000*TIMESTAMP_SCALE));
+	return (UInt32)ROUND(timeVal/(1000.0*RTMFP_TIMESTAMP_SCALE));
 }
 
 

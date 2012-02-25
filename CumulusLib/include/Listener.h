@@ -20,6 +20,7 @@
 #include "Cumulus.h"
 #include "FlowWriter.h"
 #include "QualityOfService.h"
+#include "Client.h"
 
 namespace Cumulus {
 
@@ -51,7 +52,7 @@ public:
 	const QualityOfService&	videoQOS() const;
 	const QualityOfService&	audioQOS() const;
 
-	void init();
+	void init(const Client& client);
 
 private:
 	Poco::UInt32 	computeTime(Poco::UInt32 time);

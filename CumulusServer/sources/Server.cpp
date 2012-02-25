@@ -350,3 +350,4 @@ void Server::onUnjoinGroup(Client& client,Group& group) {
 	if(group.size()==0)
 		Script::ClearPersistentObject<Group,LUAGroup>(_pState,group);
 }
+

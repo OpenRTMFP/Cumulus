@@ -157,9 +157,9 @@ void Flow::commit() {
 		current = it->first;
 		while(++it!=_fragments.end() && it->first==(++current))
 			++count;
-		--current;
 		size += Util::Get7BitValueSize(count);
 		lost.push_back(count);
+		--current;
 		count=0;
 	}
 
@@ -168,7 +168,7 @@ void Flow::commit() {
 		bufferSize=0;
 
 	PacketWriter& ack = _band.writeMessage(0x51,Util::Get7BitValueSize(id)+Util::Get7BitValueSize(bufferSize)+Util::Get7BitValueSize(stage)+size);
-//	UInt32 pos = ack.position();
+	UInt32 pos = ack.position();
 	ack.write7BitValue(id);
 	ack.write7BitValue(bufferSize);
 	ack.write7BitValue(stage);
@@ -176,8 +176,6 @@ void Flow::commit() {
 	list<UInt32>::const_iterator it2;
 	for(it2=lost.begin();it2!=lost.end();++it2)
 		ack.write7BitValue(*it2);
-	
-//	TRACE("Commit : %s",Util::FormatHex(ack.begin()+pos,ack.position()-pos).c_str());
 
 	commitHandler();
 	writer.flush();
@@ -187,7 +185,7 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 	if(_completed)
 		return;
 
-	// TRACE("Flow %u stage %u",id,stage);
+	TRACE("Flow %u stage %u",id,stage);
 
 	UInt32 nextStage = this->stage+1;
 

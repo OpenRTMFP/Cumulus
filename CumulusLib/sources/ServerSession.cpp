@@ -363,9 +363,16 @@ void ServerSession::packetHandler(PacketReader& packet) {
 
 	// with time echo
 	if(marker == 0xFD) {
-		UInt16 time = RTMFP::Time(_recvTimestamp.epochMicroseconds());
+		UInt16 time = RTMFP::TimeNow();
 		UInt16 timeEcho = packet.read16();
-		(UInt16&)peer.ping = timeEcho>time? 0 : time-timeEcho;
+		if(timeEcho>time) {
+			if(timeEcho-time<30)
+				time=0;
+			else
+				time += 0xFFFF-timeEcho;
+			timeEcho = 0;
+		}
+		(UInt16&)peer.ping = (time-timeEcho)*RTMFP_TIMESTAMP_SCALE;
 	}
 	else if(marker != 0xF9)
 		WARN("Packet marker unknown : %02x",marker);

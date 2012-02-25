@@ -29,7 +29,7 @@ public:
 	QualityOfService();
 	virtual ~QualityOfService();
 
-	void add(Poco::UInt32 time,Poco::UInt32 received,Poco::UInt32 lost,Poco::UInt32 size);
+	void add(Poco::UInt32 time,Poco::UInt32 received,Poco::UInt32 lost,Poco::UInt32 size,Poco::UInt32 ping);
 	void reset();
 
 	const Poco::UInt32	droppedFrames;
@@ -38,11 +38,13 @@ public:
 	const double		congestionRate;
 	const Poco::UInt32	latency;
 private:
+	bool				_fullSample;
 	std::list<Sample*>	_samples;
 	Poco::UInt32		_prevTime;
 	Poco::UInt32		_size;
 	Poco::Timestamp		_reception;
 	Poco::Int64			_latency;
+	Poco::Int64			_latencyGradient;
 
 	Poco::UInt32		_num;
 	Poco::UInt32		_den;
