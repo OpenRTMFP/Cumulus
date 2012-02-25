@@ -538,18 +538,15 @@ BinaryWriter& FlowWriter::writeRawMessage(bool withoutHeader) {
 }
 AMFWriter& FlowWriter::writeAMFPacket(const string& name) {
 	MessageBuffered& message(createBufferedMessage());
-	message.rawWriter.write8(Message::AMF);
-	message.rawWriter.write8(0);
-	message.rawWriter.write32(0);
-	message.amfWriter.write(name);
+	BinaryWriter& writer = message.rawWriter;
+	writer.write8(Message::AMF);writer.write8(0);writer.write32(0);
+	writer.write8(AMF_STRING);writer.writeString16(name);
 	return message.amfWriter;
 }
 
 void FlowWriter::writeResponseHeader(BinaryWriter& writer,const string& name,double callbackHandle) {
-	writer.write8(Message::AMF_WITH_HANDLER);
-	writer.write32(0);
-	writer.write8(AMF_STRING);
-	writer.writeString16(name);
+	writer.write8(Message::AMF_WITH_HANDLER);writer.write32(0);
+	writer.write8(AMF_STRING);writer.writeString16(name);
 	writer.write8(AMF_NUMBER); // marker
 	writer << callbackHandle;
 	writer.write8(AMF_NULL);
