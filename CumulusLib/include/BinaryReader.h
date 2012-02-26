@@ -31,6 +31,7 @@ public:
 	virtual ~BinaryReader();
 
 	Poco::UInt32	read7BitValue();
+	Poco::UInt64	read7BitLongValue();
 	Poco::UInt32	read7BitEncoded();
 	void			readString(std::string& value);
 	void			readRaw(Poco::UInt8* value,Poco::UInt32 size);

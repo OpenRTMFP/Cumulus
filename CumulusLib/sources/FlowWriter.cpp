@@ -94,7 +94,7 @@ void FlowWriter::close() {
 
 void FlowWriter::acknowledgment(PacketReader& reader) {
 	
-	UInt32 bufferSize = reader.read7BitValue(); // TODO use this value in reliability mechanism?
+	UInt64 bufferSize = reader.read7BitLongValue(); // TODO use this value in reliability mechanism?
 	
 	if(bufferSize==0) {
 		// In fact here, we should send a 0x18 message (with id flow),
@@ -103,9 +103,9 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 		return;
 	}
 
-	UInt32 stageAckPrec = _stageAck;
-	UInt32 stageReaden = reader.read7BitValue();
-	UInt32 stage = _stageAck+1;
+	UInt64 stageAckPrec = _stageAck;
+	UInt64 stageReaden = reader.read7BitLongValue();
+	UInt64 stage = _stageAck+1;
 
 	if(stageReaden>_stage) {
 		ERROR("Acknowledgment received %u superior than the current sending stage %u on flowWriter %u",stageReaden,_stage,id);
@@ -117,17 +117,18 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 	} else
 		_stageAck = stageReaden;
 
-	UInt32 maxStageRecv = stageReaden;
+	UInt64 maxStageRecv = stageReaden;
 	UInt32 pos=reader.position();
 
 	while(reader.available()>0)
-		maxStageRecv += reader.read7BitValue()+reader.read7BitValue()+2;
+		maxStageRecv += reader.read7BitLongValue()+reader.read7BitLongValue()+2;
 	if(pos != reader.position()) {
 		// TRACE("%u..x%s",stageReaden,Util::FormatHex(reader.current(),reader.available()).c_str());
 		reader.reset(pos);
 	}
 
-	UInt32 lostCount = 0,lostStage = 0;
+	UInt64 lostCount = 0;
+	UInt64 lostStage = 0;
 	bool repeated = false;
 	bool header = true;
 	bool stop=false;
@@ -142,7 +143,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 			continue;
 		}
 
-		map<UInt32,UInt32>::iterator itFrag=message.fragments.begin();
+		map<UInt32,UInt64>::iterator itFrag=message.fragments.begin();
 		while(message.fragments.end()!=itFrag) {
 			
 			// ACK
@@ -158,9 +159,9 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 			while(!stop) {
 				if(lostCount==0) {
 					if(reader.available()>0) {
-						lostCount = reader.read7BitValue()+1;
+						lostCount = reader.read7BitLongValue()+1;
 						lostStage = stageReaden+1;
-						stageReaden = lostStage+lostCount+reader.read7BitValue();
+						stageReaden = lostStage+lostCount+reader.read7BitLongValue();
 					} else {
 						stop=true;
 						break;
@@ -308,18 +309,18 @@ void FlowWriter::manage(Invoker& invoker) {
 	flush();
 }
 
-UInt32 FlowWriter::headerSize(UInt32 stage) {
-	UInt32 size= Util::Get7BitValueSize(id);
-	size+= Util::Get7BitValueSize(stage);
+UInt32 FlowWriter::headerSize(UInt64 stage) {
+	UInt32 size= Util::Get7BitLongValueSize1(id);
+	size+= Util::Get7BitLongValueSize1(stage);
 	if(_stageAck>stage)
 		CRITIC("stageAck %u superior to stage %u on flowWriter %u",_stageAck,stage,id);
-	size+= Util::Get7BitValueSize(stage-_stageAck);
-	size+= _stageAck>0 ? 0 : (signature.size()+(flowId==0?2:(4+Util::Get7BitValueSize(flowId))));
+	size+= Util::Get7BitLongValueSize1(stage-_stageAck);
+	size+= _stageAck>0 ? 0 : (signature.size()+(flowId==0?2:(4+Util::Get7BitLongValueSize1(flowId))));
 	return size;
 }
 
 
-void FlowWriter::flush(PacketWriter& writer,UInt32 stage,UInt8 flags,bool header,BinaryReader& reader,UInt16 size) {
+void FlowWriter::flush(PacketWriter& writer,UInt64 stage,UInt8 flags,bool header,BinaryReader& reader,UInt16 size) {
 	if(_stageAck==0 && header)
 		flags |= MESSAGE_HEADER;
 	if(size==0)
@@ -332,18 +333,18 @@ void FlowWriter::flush(PacketWriter& writer,UInt32 stage,UInt8 flags,bool header
 	writer.write8(flags);
 
 	if(header) {
-		writer.write7BitValue(id);
-		writer.write7BitValue(stage);
-		writer.write7BitValue((flags&MESSAGE_ABANDONMENT) ? 0 : (stage-_stageAck));
+		writer.write7BitLongValue(id);
+		writer.write7BitLongValue(stage);
+		writer.write7BitLongValue((flags&MESSAGE_ABANDONMENT) ? 0 : (stage-_stageAck));
 
 		// signature
 		if(_stageAck==0) {
 			writer.writeString8(signature);
 			// No write this in the case where it's a new flow!
 			if(flowId>0) {
-				writer.write8(1+Util::Get7BitValueSize(flowId)); // following size
+				writer.write8(1+Util::Get7BitLongValueSize1(flowId)); // following size
 				writer.write8(0x0a); // Unknown!
-				writer.write7BitValue(flowId);
+				writer.write7BitLongValue(flowId);
 			}
 			writer.write8(0); // marker of end for this part
 		}
@@ -361,7 +362,7 @@ void FlowWriter::raiseMessage() {
 	bool header = true;
 	bool stop = true;
 	bool sent = false;
-	UInt32 stage = _stageAck+1;
+	UInt64 stage = _stageAck+1;
 
 	for(it=_messagesSent.begin();it!=_messagesSent.end();++it) {
 		Message& message(**it);
@@ -383,7 +384,7 @@ void FlowWriter::raiseMessage() {
 			stop = false;
 		}
 
-		map<UInt32,UInt32>::const_iterator itFrag=message.fragments.begin();
+		map<UInt32,UInt64>::const_iterator itFrag=message.fragments.begin();
 		UInt32 available;
 		BinaryReader& content = message.reader(available);
 		

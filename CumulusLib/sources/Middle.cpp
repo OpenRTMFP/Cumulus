@@ -187,7 +187,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 
 			// response
 			packet >> _middleId;
-			_targetNonce.resize(packet.read7BitValue());
+			_targetNonce.resize((size_t)packet.read7BitLongValue());
 			packet.readRaw(&_targetNonce[0],_targetNonce.size());
 			
 			if(!_isPeer)
@@ -272,8 +272,8 @@ void Middle::packetHandler(PacketReader& packet) {
 		if(type==0x10) {
 
 			out.write8(content.read8());
-			UInt32 idFlow = content.read7BitValue();out.write7BitValue(idFlow);
-			UInt32 stage = content.read7BitValue();out.write7BitValue(stage);
+			UInt64 idFlow = content.read7BitLongValue();out.write7BitLongValue(idFlow);
+			UInt64 stage = content.read7BitLongValue();out.write7BitLongValue(stage);
 
 			if(idFlow==0x02 && stage==0x01) {
 				if(!_isPeer) {
@@ -394,7 +394,7 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 
-	UInt32 idFlow,stage;
+	UInt64 idFlow,stage;
 	UInt8 nbPeerSent = 0;
 
 	while(type!=0xFF) {
@@ -407,12 +407,12 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 		if(type==0x10 || type==0x11) {
 			UInt8 flag = content.read8();packetOut.write8(flag);
 			if(type==0x10) {
-				idFlow = content.read7BitValue();packetOut.write7BitValue(idFlow);
-				stage = content.read7BitValue();packetOut.write7BitValue(stage);
+				idFlow = content.read7BitLongValue();packetOut.write7BitLongValue(idFlow);
+				stage = content.read7BitLongValue();packetOut.write7BitLongValue(stage);
 			} else
 				++stage;
 
-			packetOut.write7BitValue(content.read7BitValue());
+			packetOut.write7BitLongValue(content.read7BitLongValue());
 			
 			if(!(flag&MESSAGE_WITH_BEFOREPART)) {
 

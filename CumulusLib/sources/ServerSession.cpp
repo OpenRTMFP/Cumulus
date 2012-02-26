@@ -63,7 +63,7 @@ void ServerSession::fail(const string& error) {
 
 	// Here no new sending must happen except "failSignal"
 	ServerSession::writer().clear(11);
-	map<UInt32,FlowWriter*>::const_iterator it;
+	map<UInt64,FlowWriter*>::const_iterator it;
 	for(it=_flowWriters.begin();it!=_flowWriters.end();++it)
 		it->second->clear();
 	peer.setFlowWriter(NULL);
@@ -104,7 +104,7 @@ void ServerSession::kill() {
 	peer.unsubscribeGroups();
 
 	// delete flows
-	map<UInt32,Flow*>::const_iterator it1;
+	map<UInt64,Flow*>::const_iterator it1;
 	for(it1=_flows.begin();it1!=_flows.end();++it1)
 		delete it1->second;
 	_flows.clear();
@@ -113,7 +113,7 @@ void ServerSession::kill() {
 	peer.onDisconnection();
 
 	// delete flowWriters
-	map<UInt32,FlowWriter*>::const_iterator it2;
+	map<UInt64,FlowWriter*>::const_iterator it2;
 	for(it2=_flowWriters.begin();it2!=_flowWriters.end();++it2)
 		delete it2->second;
 	_flowWriters.clear();
@@ -152,7 +152,7 @@ void ServerSession::manage() {
 		return;
 
 	// Raise FlowWriter
-	map<UInt32,FlowWriter*>::iterator it2=_flowWriters.begin();
+	map<UInt64,FlowWriter*>::iterator it2=_flowWriters.begin();
 	while(it2!=_flowWriters.end()) {
 		try {
 			it2->second->manage(_invoker);
@@ -381,8 +381,8 @@ void ServerSession::packetHandler(PacketReader& packet) {
 	// Variables for request (0x10 and 0x11)
 	UInt8 flags;
 	Flow* pFlow=NULL;
-	UInt32 stage=0;
-	UInt32 deltaNAck=0;
+	UInt64 stage=0;
+	UInt64 deltaNAck=0;
 
 	UInt8 type = packet.available()>0 ? packet.read8() : 0xFF;
 	bool answer = false;
@@ -429,7 +429,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 
 			case 0x5e : {
 				// Flow exception!
-				UInt32 id = message.read7BitValue();
+				UInt64 id = message.read7BitLongValue();
 				
 				FlowWriter* pFlowWriter = flowWriter(id);
 				if(pFlowWriter)
@@ -456,7 +456,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 					Util::Dump(message.current(),message.available(),out);
 					cout.write((const char*)&out[0],out.size());
 				}*/
-				UInt32 id = message.read7BitValue();
+				UInt64 id = message.read7BitLongValue();
 				FlowWriter* pFlowWriter = flowWriter(id);
 				if(pFlowWriter)
 					pFlowWriter->acknowledgment(message);
@@ -469,14 +469,14 @@ void ServerSession::packetHandler(PacketReader& packet) {
 			// 0x11 special request, in repeat case (following stage request)
 			case 0x10 : {
 				flags = message.read8();
-				UInt32 idFlow = message.read7BitValue();
-				stage = message.read7BitValue()-1;
-				deltaNAck = message.read7BitValue()-1;
+				UInt64 idFlow = message.read7BitLongValue();
+				stage = message.read7BitLongValue()-1;
+				deltaNAck = message.read7BitLongValue()-1;
 				
 				if(_failed)
 					break;
 
-				map<UInt32,Flow*>::const_iterator it = _flows.find(idFlow);
+				map<UInt64,Flow*>::const_iterator it = _flows.find(idFlow);
 				pFlow = it==_flows.end() ? NULL : it->second;
 
 				// Header part if present
@@ -493,7 +493,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 						if(message.read8()!=0x0A)
 							WARN("Unknown fullduplex header part for the flow '%u'",idFlow)
 						else
-							message.read7BitValue(); // Fullduplex useless here! Because we are creating a new Flow!
+							message.read7BitLongValue(); // Fullduplex useless here! Because we are creating a new Flow!
 
 						// Useless header part 
 						UInt8 length=message.read8();
@@ -510,7 +510,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 				
 				if(!pFlow) {
 					WARN("Flow %u unfound",idFlow);
-					((UInt32&)_pFlowNull->id) = idFlow;
+					((UInt64&)_pFlowNull->id) = idFlow;
 					pFlow = _pFlowNull;
 				}
 
@@ -556,29 +556,29 @@ void ServerSession::packetHandler(PacketReader& packet) {
 	flush();
 }
 
-FlowWriter* ServerSession::flowWriter(Poco::UInt32 id) {
-	map<UInt32,FlowWriter*>::const_iterator it = _flowWriters.find(id);
+FlowWriter* ServerSession::flowWriter(Poco::UInt64 id) {
+	map<UInt64,FlowWriter*>::const_iterator it = _flowWriters.find(id);
 	if(it==_flowWriters.end())
 		return NULL;
 	return it->second;
 }
 
-Flow& ServerSession::flow(Poco::UInt32 id) {
-	map<UInt32,Flow*>::const_iterator it = _flows.find(id);
+Flow& ServerSession::flow(Poco::UInt64 id) {
+	map<UInt64,Flow*>::const_iterator it = _flows.find(id);
 	if(it==_flows.end()) {
 		WARN("Flow %u unfound",id);
-		((UInt32&)_pFlowNull->id) = id;
+		((UInt64&)_pFlowNull->id) = id;
 		return *_pFlowNull;
 	}
 	return *it->second;
 }
 
-Flow* ServerSession::createFlow(UInt32 id,const string& signature) {
+Flow* ServerSession::createFlow(UInt64 id,const string& signature) {
 	if(died) {
 		ERROR("Session %u is died, no more Flow creation possible",id);
 		return NULL;
 	}
-	map<UInt32,Flow*>::const_iterator it = _flows.find(id);
+	map<UInt64,Flow*>::const_iterator it = _flows.find(id);
 	if(it!=_flows.end()) {
 		WARN("Flow %u has already been created",id);
 		return it->second;
@@ -603,9 +603,9 @@ Flow* ServerSession::createFlow(UInt32 id,const string& signature) {
 
 void ServerSession::initFlowWriter(FlowWriter& flowWriter) {
 	while(++_nextFlowWriterId==0 || _flowWriters.find(_nextFlowWriterId)!=_flowWriters.end());
-	(UInt32&)flowWriter.id = _nextFlowWriterId;
+	(UInt64&)flowWriter.id = _nextFlowWriterId;
 	if(_flows.begin()!=_flows.end())
-		(UInt32&)flowWriter.flowId = _flows.begin()->second->id;
+		(UInt64&)flowWriter.flowId = _flows.begin()->second->id;
 	_flowWriters[_nextFlowWriterId] = &flowWriter;
 }
 

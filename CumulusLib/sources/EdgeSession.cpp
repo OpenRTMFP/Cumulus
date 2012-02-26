@@ -80,7 +80,7 @@ void EdgeSession::packetHandler(PacketReader& packet) {
 		writer.write16(time);
 		writer.write8(0x70);
 		string address = peer.address.toString();
-		writer.write16(address.size() + Util::Get7BitValueSize(address.size()));
+		writer.write16(address.size() + Util::Get7BitValueSize1(address.size()));
 		writer << address;
 		middleDump=true;
 		send(writer,farServerId,_serverSocket,_serverSocket.peerAddress());

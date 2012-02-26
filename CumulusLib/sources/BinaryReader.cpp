@@ -71,6 +71,21 @@ UInt32 BinaryReader::read7BitValue() {
 	return result;
 }
 
+UInt64 BinaryReader::read7BitLongValue() {
+	UInt8 n = 0;
+    UInt8 b = read8();
+    UInt64 result = 0;
+    while ((b&0x80) && n < 8) {
+        result <<= 7;
+        result |= (b&0x7F);
+        b = read8();
+        ++n;
+    }
+    result <<= ((n<8) ? 7 : 8); // Use all 8 bits from the 4th byte
+    result |= b;
+	return result;
+}
+
 bool BinaryReader::readAddress(Address& address) {
 	UInt8 flag = read8();
 	((vector<UInt8>&)address.host).resize(4);

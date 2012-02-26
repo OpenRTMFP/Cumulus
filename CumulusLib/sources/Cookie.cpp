@@ -64,7 +64,7 @@ void Cookie::write() {
 	if(_writer.length()==0) {
 		_writer.write32(id);
 		if(!light) {
-			_writer.write7BitValue(_nonce.size());
+			_writer.write7BitLongValue(_nonce.size());
 			_writer.writeRaw(&_nonce[0],_nonce.size());
 			_writer.write8(0x58);
 		}

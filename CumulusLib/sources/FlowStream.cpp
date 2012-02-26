@@ -28,7 +28,7 @@ namespace Cumulus {
 string FlowStream::Signature("\x00\x54\x43\x04",4);
 string FlowStream::_Name("NetStream");
 
-FlowStream::FlowStream(UInt32 id,const string& signature,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,signature,_Name,peer,invoker,band),_pPublication(NULL),_state(IDLE),_numberLostFragments(0) {
+FlowStream::FlowStream(UInt64 id,const string& signature,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,signature,_Name,peer,invoker,band),_pPublication(NULL),_state(IDLE),_numberLostFragments(0) {
 	PacketReader reader((const UInt8*)signature.c_str(),signature.length());
 	reader.next(4);
 	_index = reader.read7BitValue();

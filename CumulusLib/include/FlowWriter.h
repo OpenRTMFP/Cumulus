@@ -40,18 +40,14 @@ public:
 	FlowWriter(const std::string& signature,BandWriter& band);
 	virtual ~FlowWriter();
 
-	const Poco::UInt32		id;
+	const Poco::UInt64		id;
 	const bool				critical;
-	const Poco::UInt32		flowId;
+	const Poco::UInt64		flowId;
 	const std::string		signature;
 
 	template<class FlowWriterType>
 	FlowWriterType& newFlowWriter() {
 		return *(new FlowWriterType(signature,_band));
-	}
-	template<class FlowWriterType,class FlowWriterFactoryType>
-	FlowWriterType& newFlowWriter(FlowWriterFactoryType& flowWriterFactory) {
-		return flowWriterFactory.newFlowWriter(signature,_band);
 	}
 
 	void			flush(bool full=false);
@@ -68,7 +64,7 @@ public:
 	void			cancel(Poco::UInt32 index);
 	Poco::UInt32	queue();
 
-	Poco::UInt32	stage();
+	Poco::UInt64	stage();
 
 	void			writeUnbufferedMessage(const Poco::UInt8* data,Poco::UInt32 size,const Poco::UInt8* memAckData=NULL,Poco::UInt32 memAckSize=0);
 
@@ -88,8 +84,8 @@ private:
 	void					writeResponseHeader(BinaryWriter& writer,const std::string& name,double callbackHandle);
 	AMFObjectWriter			writeAMFResponse(const std::string& name,const std::string& code,const  std::string& description);
 	
-	Poco::UInt32			headerSize(Poco::UInt32 stage);
-	void					flush(PacketWriter& writer,Poco::UInt32 stage,Poco::UInt8 flags,bool header,BinaryReader& reader,Poco::UInt16 size);
+	Poco::UInt32			headerSize(Poco::UInt64 stage);
+	void					flush(PacketWriter& writer,Poco::UInt64 stage,Poco::UInt8 flags,bool header,BinaryReader& reader,Poco::UInt16 size);
 
 	virtual void			ackMessageHandler(Poco::UInt32 ackCount,Poco::UInt32 lostCount,BinaryReader& content,Poco::UInt32 available,Poco::UInt32 size);
 	virtual void			reset(Poco::UInt32 count){}
@@ -103,9 +99,9 @@ private:
 
 	
 	std::list<Message*>		_messages;
-	Poco::UInt32			_stage;
+	Poco::UInt64			_stage;
 	std::list<Message*>		_messagesSent;
-	Poco::UInt32			_stageAck;
+	Poco::UInt64			_stageAck;
 	Poco::UInt32			_lostCount;
 	Poco::UInt32			_ackCount;
 	Poco::UInt32			_repeatable;
@@ -142,7 +138,7 @@ inline AMFObjectWriter FlowWriter::writeErrorResponse(const  std::string& code,c
 	return writeAMFResponse("_error",code,description);
 }
 
-inline Poco::UInt32 FlowWriter::stage() {
+inline Poco::UInt64 FlowWriter::stage() {
 	return _stage;
 }
 inline bool FlowWriter::consumed() {

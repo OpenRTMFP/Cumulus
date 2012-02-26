@@ -279,7 +279,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 		case 0x38: {
 			(UInt32&)farId = request.read32();
 
-			if(request.read7BitValue()!=COOKIE_SIZE) {
+			if(request.read7BitLongValue()!=COOKIE_SIZE) {
 				ERROR("Bad handshake cookie '%s': its size should be 64 bytes",Util::FormatHex(request.current(),COOKIE_SIZE).c_str());
 				return 0;
 			}
@@ -307,7 +307,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 
 				if(id==0x38) {
 					request.next(COOKIE_SIZE);
-					UInt32 size = request.read7BitValue();
+					size_t size = (size_t)request.read7BitLongValue();
 					// peerId = SHA256(farPubKey)
 					EVP_Digest(request.current(),size,(UInt8*)peer.id,NULL,EVP_sha256(),NULL);
 
@@ -317,7 +317,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 
 					size = request.read7BitValue();
 
-					cookie.computeKeys(&publicKey[0],publicKey.size(),request.current(),size,decryptKey,encryptKey);
+					cookie.computeKeys(&publicKey[0],publicKey.size(),request.current(),(UInt16)size,decryptKey,encryptKey);
 				} else {
 					// edge
 					pDecryptKey=NULL;

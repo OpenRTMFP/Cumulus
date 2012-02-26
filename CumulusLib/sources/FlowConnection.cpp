@@ -29,7 +29,7 @@ namespace Cumulus {
 string FlowConnection::Signature("\x00\x54\x43\x04\x00",5);
 string FlowConnection::_Name("NetConnection");
 
-FlowConnection::FlowConnection(UInt32 id,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,Signature,_Name,peer,invoker,band) {
+FlowConnection::FlowConnection(UInt64 id,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,Signature,_Name,peer,invoker,band) {
 	(bool&)writer.critical = true;
 }
 

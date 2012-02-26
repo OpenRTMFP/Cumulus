@@ -46,7 +46,7 @@ public:
 	BinaryReader&			reader(Poco::UInt32 fragment,Poco::UInt32& size);
 	virtual BinaryReader&	memAck(Poco::UInt32& available,Poco::UInt32& size);
 
-	std::map<Poco::UInt32,Poco::UInt32>		fragments;
+	std::map<Poco::UInt32,Poco::UInt64>		fragments;
 	const bool								repeatable;
 
 private:

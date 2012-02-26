@@ -33,9 +33,9 @@ FlowNull::FlowNull(Peer& peer,Invoker& invoker,BandWriter& band) : Flow(0,Util::
 FlowNull::~FlowNull() {
 }
 
-void FlowNull::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,UInt8 flags) {
+void FlowNull::fragmentHandler(UInt64 stage,UInt32 deltaNAck,PacketReader& fragment,UInt8 flags) {
 	fail("Message received for a Flow unknown");
-	(UInt32&)this->stage = stage;
+	(UInt64&)this->stage = stage;
 }
 
 

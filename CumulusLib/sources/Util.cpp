@@ -51,14 +51,14 @@ string Util::FormatHex(const UInt8* data,UInt32 size) {
 	return oss.str();
 }
 
-UInt8 Util::Get7BitValueSize(UInt32 value) {
-	if(value>=0x200000)
-		return 4;
-	if(value>=0x4000)
-		return 3;
-	if(value>=0x80)
-		return 2;
-	return 1;
+UInt8 Util::Get7BitLongValueSize1(UInt64 value) {
+	UInt64 limit = 0x80;
+	UInt8 result=1;
+	while(value>=limit) {
+		limit<<=7;
+		++result;
+	}
+	return result;
 }
 
 void Util::UnpackUrl(const string& url,string& path,map<string,string>& properties) {

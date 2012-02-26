@@ -71,9 +71,9 @@ public:
 };
 
 
-Flow::Flow(UInt32 id,const string& signature,const string& name,Peer& peer,Invoker& invoker,BandWriter& band) : id(id),stage(0),peer(peer),invoker(invoker),_completed(false),_pPacket(NULL),_band(band),writer(*new FlowWriter(signature,band)) {
+Flow::Flow(UInt64 id,const string& signature,const string& name,Peer& peer,Invoker& invoker,BandWriter& band) : id(id),stage(0),peer(peer),invoker(invoker),_completed(false),_pPacket(NULL),_band(band),writer(*new FlowWriter(signature,band)) {
 	if(writer.flowId==0)
-		((UInt32&)writer.flowId)=id;
+		((UInt64&)writer.flowId)=id;
 	// create code prefix for a possible response
 	writer._obj.assign(name);
 }
@@ -91,7 +91,7 @@ void Flow::complete() {
 		DEBUG("Flow %u consumed",id);
 
 	// delete fragments
-	map<UInt32,Fragment*>::const_iterator it;
+	map<UInt64,Fragment*>::const_iterator it;
 	for(it=_fragments.begin();it!=_fragments.end();++it)
 		delete it->second;
 	_fragments.clear();
@@ -108,8 +108,8 @@ void Flow::complete() {
 void Flow::fail(const string& error) {
 	ERROR("Flow %u failed : %s",id,error.c_str());
 	if(!_completed) {
-		BinaryWriter& writer = _band.writeMessage(0x5e,Util::Get7BitValueSize(id)+1);
-		writer.write7BitValue(id);
+		BinaryWriter& writer = _band.writeMessage(0x5e,Util::Get7BitLongValueSize1(id)+1);
+		writer.write7BitLongValue(id);
 		writer.write8(0); // unknown
 	}
 }
@@ -146,18 +146,18 @@ void Flow::commit() {
 
 	// Lost informations!
 	UInt32 size = 0;
-	list<UInt32> lost;
-	UInt32 current=stage;
+	list<UInt64> lost;
+	UInt64 current=stage;
 	UInt32 count=0;
-	map<UInt32,Fragment*>::const_iterator it=_fragments.begin();
+	map<UInt64,Fragment*>::const_iterator it=_fragments.begin();
 	while(it!=_fragments.end()) {
 		current = it->first-current-2;
-		size += Util::Get7BitValueSize(current);
+		size += Util::Get7BitLongValueSize1(current);
 		lost.push_back(current);
 		current = it->first;
 		while(++it!=_fragments.end() && it->first==(++current))
 			++count;
-		size += Util::Get7BitValueSize(count);
+		size += Util::Get7BitLongValueSize1(count);
 		lost.push_back(count);
 		--current;
 		count=0;
@@ -167,27 +167,27 @@ void Flow::commit() {
 	if(writer.signature.empty())
 		bufferSize=0;
 
-	PacketWriter& ack = _band.writeMessage(0x51,Util::Get7BitValueSize(id)+Util::Get7BitValueSize(bufferSize)+Util::Get7BitValueSize(stage)+size);
+	PacketWriter& ack = _band.writeMessage(0x51,Util::Get7BitLongValueSize1(id)+Util::Get7BitValueSize1(bufferSize)+Util::Get7BitLongValueSize1(stage)+size);
 	UInt32 pos = ack.position();
-	ack.write7BitValue(id);
+	ack.write7BitLongValue(id);
 	ack.write7BitValue(bufferSize);
-	ack.write7BitValue(stage);
+	ack.write7BitLongValue(stage);
 
-	list<UInt32>::const_iterator it2;
+	list<UInt64>::const_iterator it2;
 	for(it2=lost.begin();it2!=lost.end();++it2)
-		ack.write7BitValue(*it2);
+		ack.write7BitLongValue(*it2);
 
 	commitHandler();
 	writer.flush();
 }
 
-void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,UInt8 flags) {
+void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,UInt8 flags) {
 	if(_completed)
 		return;
 
 	TRACE("Flow %u stage %u",id,stage);
 
-	UInt32 nextStage = this->stage+1;
+	UInt64 nextStage = this->stage+1;
 
 	if(stage < nextStage) {
 		DEBUG("Stage %u on flow %u has already been received",stage,id);
@@ -200,7 +200,7 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 	}
 	
 	if(this->stage < (stage-deltaNAck)) {
-		map<UInt32,Fragment*>::iterator it=_fragments.begin();
+		map<UInt64,Fragment*>::iterator it=_fragments.begin();
 		while(it!=_fragments.end()) {
 			if( it->first > stage) 
 				break;
@@ -218,18 +218,18 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 	
 	if(stage>nextStage) {
 		// not following stage, bufferizes the stage
-		map<UInt32,Fragment*>::iterator it = _fragments.lower_bound(stage);
+		map<UInt64,Fragment*>::iterator it = _fragments.lower_bound(stage);
 		if(it==_fragments.end() || it->first!=stage) {
 			if(it!=_fragments.begin())
 				--it;
-			_fragments.insert(it,pair<UInt32,Fragment*>(stage,new Fragment(fragment,flags)));
+			_fragments.insert(it,pair<UInt64,Fragment*>(stage,new Fragment(fragment,flags)));
 			if(_fragments.size()>100)
 				DEBUG("_fragments.size()=%lu",_fragments.size()); 
 		} else
 			DEBUG("Stage %u on flow %u has already been received",stage,id);
 	} else {
 		fragmentSortedHandler(nextStage++,fragment,flags);
-		map<UInt32,Fragment*>::iterator it=_fragments.begin();
+		map<UInt64,Fragment*>::iterator it=_fragments.begin();
 		while(it!=_fragments.end()) {
 			if( it->first > nextStage)
 				break;
@@ -244,15 +244,15 @@ void Flow::fragmentHandler(UInt32 stage,UInt32 deltaNAck,PacketReader& fragment,
 	}
 }
 
-void Flow::fragmentSortedHandler(UInt32 stage,PacketReader& fragment,UInt8 flags) {
+void Flow::fragmentSortedHandler(UInt64 stage,PacketReader& fragment,UInt8 flags) {
 	if(stage<=this->stage) {
 		ERROR("Stage %u not sorted on flow %u",stage,id);
 		return;
 	}
 	if(stage>(this->stage+1)) {
 		// not following stage!
-		UInt32 lostCount = stage-this->stage-1;
-		(UInt32&)this->stage = stage;
+		UInt32 lostCount = (UInt32)(stage-this->stage-1);
+		(UInt64&)this->stage = stage;
 		if(_pPacket) {
 			delete _pPacket;
 			_pPacket = NULL;
@@ -263,7 +263,7 @@ void Flow::fragmentSortedHandler(UInt32 stage,PacketReader& fragment,UInt8 flags
 		}
 		lostFragmentsHandler(lostCount);
 	} else
-		(UInt32&)this->stage = stage;
+		(UInt64&)this->stage = stage;
 
 	// If MESSAGE_ABANDONMENT, content is not the right normal content!
 	if(flags&MESSAGE_ABANDONMENT) {

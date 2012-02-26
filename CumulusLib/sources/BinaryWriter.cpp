@@ -76,29 +76,30 @@ void BinaryWriter::writeAddress(const SocketAddress& address,bool publicFlag) {
 	write16(address.port());
 }
 
-
 void BinaryWriter::write7BitValue(UInt32 value) {
-	UInt8 n = Util::Get7BitValueSize(value);
-	switch(n) {
-		case 4:
-			write8(0x80 | ((value>>22)&0x7F));
-			write8(0x80 | ((value>>15)&0x7F));
-			write8(0x80 | ((value>>8)&0x7F));
-			write8(value&0xFF);
-			break;
-		case 3:
-			write8(0x80 | ((value>>14)&0x7F));
-			write8(0x80 | ((value>>7)&0x7F));
-			write8(value&0x7F);
-			break;
-		case 2:
-			write8(0x80 | ((value>>7)&0x7F));
-			write8(value&0x7F);
-			break;
-		default:
-			write8(value&0x7F);
-			break;
+	UInt8 shift = (Util::Get7BitValueSize1(value)-1)*7;
+	bool max = shift>=21;
+	if(max)
+		++shift;
+
+	while(shift>=7) {
+		write8(0x80 | ((value>>shift)&0x7F));
+		shift -= 7;
 	}
+	write8(max ? value&0xFF : value&0x7F);
+}
+
+void BinaryWriter::write7BitLongValue(UInt64 value) {
+	UInt8 shift = (Util::Get7BitLongValueSize1(value)-1)*7;
+	bool max = shift>=63;
+	if(max)
+		++shift;
+
+	while(shift>=7) {
+		write8(0x80 | ((value>>shift)&0x7F));
+		shift -= 7;
+	}
+	write8(max ? value&0xFF : value&0x7F);
 }
 
 

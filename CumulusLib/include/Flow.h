@@ -29,12 +29,12 @@ class Packet;
 class Fragment;
 class Flow {
 public:
-	Flow(Poco::UInt32 id,const std::string& signature,const std::string& name,Peer& peer,Invoker& invoker,BandWriter& band);
+	Flow(Poco::UInt64 id,const std::string& signature,const std::string& name,Peer& peer,Invoker& invoker,BandWriter& band);
 	virtual ~Flow();
 
-	const Poco::UInt32		id;
+	const Poco::UInt64		id;
 
-	virtual void		fragmentHandler(Poco::UInt32 stage,Poco::UInt32 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
+	virtual void		fragmentHandler(Poco::UInt64 stage,Poco::UInt64 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
 	
 	void				commit();
 
@@ -45,7 +45,7 @@ public:
 
 protected:
 
-	void		 fragmentSortedHandler(Poco::UInt32 stage,PacketReader& fragment,Poco::UInt8 flags);
+	void		 fragmentSortedHandler(Poco::UInt64 stage,PacketReader& fragment,Poco::UInt8 flags);
 	virtual void lostFragmentsHandler(Poco::UInt32 count);
 
 	virtual void messageHandler(const std::string& name,AMFReader& message);
@@ -57,7 +57,7 @@ protected:
 	Peer&					peer;
 	FlowWriter&				writer;
 	Invoker&				invoker;
-	const Poco::UInt32		stage;
+	const Poco::UInt64		stage;
 	
 private:
 	virtual void		commitHandler();
@@ -70,7 +70,7 @@ private:
 
 	// Receiving
 	Packet*								_pPacket;
-	std::map<Poco::UInt32,Fragment*>	_fragments;
+	std::map<Poco::UInt64,Fragment*>	_fragments;
 };
 
 inline const std::string& Flow::error() {

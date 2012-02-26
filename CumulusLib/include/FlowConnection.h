@@ -26,7 +26,7 @@ namespace Cumulus {
 
 class FlowConnection : public Flow {
 public:
-	FlowConnection(Poco::UInt32 id,Peer& peer,Invoker& invoker,BandWriter& band);
+	FlowConnection(Poco::UInt64 id,Peer& peer,Invoker& invoker,BandWriter& band);
 	virtual ~FlowConnection();
 
 	static std::string	Signature;

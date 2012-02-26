@@ -34,7 +34,7 @@ Message::~Message() {
 }
 
 BinaryReader& Message::reader(UInt32& size) {
-	map<UInt32,UInt32>::const_iterator it = fragments.begin();
+	map<UInt32,UInt64>::const_iterator it = fragments.begin();
 	size =  init(it==fragments.end() ? 0 : it->first);
 	return _reader;
 }

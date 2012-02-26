@@ -28,8 +28,8 @@ namespace Cumulus {
 string FlowGroup::Signature("\x00\x47\x43",3);
 string FlowGroup::_Name("NetGroup");
 
-FlowGroup::FlowGroup(UInt32 id,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,Signature,_Name,peer,invoker,band),_pGroup(NULL) {
-	(UInt32&)writer.flowId = id;
+FlowGroup::FlowGroup(UInt64 id,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,Signature,_Name,peer,invoker,band),_pGroup(NULL) {
+	(UInt64&)writer.flowId = id;
 }
 
 FlowGroup::~FlowGroup() {

@@ -104,19 +104,19 @@ private:
 
 	bool				keepAlive();
 
-	FlowWriter*			flowWriter(Poco::UInt32 id);
-	Flow&				flow(Poco::UInt32 id);
-	Flow*				createFlow(Poco::UInt32 id,const std::string& signature);
+	FlowWriter*			flowWriter(Poco::UInt64 id);
+	Flow&				flow(Poco::UInt64 id);
+	Flow*				createFlow(Poco::UInt64 id,const std::string& signature);
 	
 	bool								_failed;
 	Poco::UInt8							_timesFailed;
 	Poco::UInt8							_timesKeepalive;
 
-	std::map<Poco::UInt32,Flow*>		_flows;
+	std::map<Poco::UInt64,Flow*>		_flows;
 	FlowNull*							_pFlowNull;
-	std::map<Poco::UInt32,FlowWriter*>	_flowWriters;
+	std::map<Poco::UInt64,FlowWriter*>	_flowWriters;
 	FlowWriter*							_pLastFlowWriter;
-	Poco::UInt32						_nextFlowWriterId;
+	Poco::UInt64						_nextFlowWriterId;
 
 	Poco::UInt8							_buffer[PACKETSEND_SIZE];
 	PacketWriter						_writer;

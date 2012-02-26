@@ -41,6 +41,7 @@ public:
 	void writeString16(const std::string& value);
 	void writeString16(const char* value,Poco::UInt16 size);
 	void write7BitValue(Poco::UInt32 value);
+	void write7BitLongValue(Poco::UInt64 value);
 	void writeAddress(const Address& address,bool publicFlag);
 	void writeAddress(const Poco::Net::SocketAddress& address,bool publicFlag);
 
