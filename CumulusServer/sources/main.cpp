@@ -21,15 +21,11 @@
 #include "ApplicationKiller.h"
 #include "Poco/File.h"
 #include "Poco/FileStream.h"
-#include "Poco/Format.h"
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
 #include "string.h"
 #include <iostream>
-
-#define LOG_FILE(END)		"/log."#END
-#define LOG_FILE_VAR(NUM)	format("/log.%d",NUM)
 
 #define LOG_SIZE 1000000
 
@@ -67,9 +63,10 @@ private:
 		loadConfiguration(dir+config().getString("application.baseName","CumulusServer")+".ini"); // load default configuration files, if present
 		_isInteractive = isInteractive();
 		// logs
-		_logDir = config().getString("logs.dir",dir+"logs");
-		_pLogFile = new File(_logDir+LOG_FILE(0));
-		File(_logDir).createDirectory();
+		string logDir(config().getString("logs.directory",dir+"logs"));
+		File(logDir).createDirectory();
+		_logPath = logDir+"/"+config().getString("logs.name","log")+".";
+		_pLogFile = new File(_logPath+"0");
 		_logStream.open(_pLogFile->path(),ios::in | ios::ate);
 		Logs::SetLogger(*this);
 	}
@@ -174,13 +171,13 @@ private:
 		if(_pLogFile->getSize()>LOG_SIZE) {
 			_logStream.close();
 			int num = 10;
-			File file(_logDir+LOG_FILE(10));
+			File file(_logPath+"10");
 			if(file.exists())
 				file.remove();
 			while(--num>=0) {
-				file = _logDir+LOG_FILE_VAR(num);
+				file = _logPath+NumberFormatter::format(num);
 				if(file.exists())
-					file.renameTo(_logDir+LOG_FILE_VAR(num+1));
+					file.renameTo(_logPath+NumberFormatter::format(num+1));
 			}
 			_logStream.open(_pLogFile->path(),ios::in | ios::ate);
 		}	
@@ -232,7 +229,7 @@ private:
 	bool									_helpRequested;
 	SocketAddress*							_pCirrus;
 	bool									_middle;
-	string									_logDir;
+	string									_logPath;
 	File*									_pLogFile;
 	FileOutputStream						_logStream;
 	FastMutex								_logMutex;
