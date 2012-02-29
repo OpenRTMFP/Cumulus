@@ -51,7 +51,7 @@ string Util::FormatHex(const UInt8* data,UInt32 size) {
 	return oss.str();
 }
 
-UInt8 Util::Get7BitLongValueSize1(UInt64 value) {
+UInt8 Util::Get7BitValueSize(UInt64 value) {
 	UInt64 limit = 0x80;
 	UInt8 result=1;
 	while(value>=limit) {

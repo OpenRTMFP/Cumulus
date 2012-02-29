@@ -68,7 +68,7 @@ void ServerConnection::manage() {
 void ServerConnection::createSession(EdgeSession& session,const string& url) {
 	PacketWriter& packet(writer());
 	packet.write8(0x39);
-	packet.write16(5+COOKIE_SIZE+Util::Get7BitValueSize1(url.size())+url.size());
+	packet.write16(5+COOKIE_SIZE+Util::Get7BitValueSize(url.size())+url.size());
 	packet.write32(session.id);
 	packet.write8(COOKIE_SIZE);
 	packet.writeRaw(session.peer.id,ID_SIZE);

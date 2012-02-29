@@ -435,7 +435,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 				if(pFlowWriter)
 					pFlowWriter->fail(format("flowWriter rejected on session %u",this->id));
 				else
-					WARN("FlowWriter %u unfound for failed signal on session %u",id,this->id);
+					WARN("FlowWriter %llu unfound for failed signal on session %u",id,this->id);
 				break;
 
 			}
@@ -461,7 +461,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 				if(pFlowWriter)
 					pFlowWriter->acknowledgment(message);
 				else
-					WARN("FlowWriter %u unfound for acknowledgment on session %u",id,this->id);
+					WARN("FlowWriter %llu unfound for acknowledgment on session %u",id,this->id);
 				break;
 			}
 			/// Request
@@ -491,14 +491,14 @@ void ServerSession::packetHandler(PacketReader& packet) {
 
 						// Fullduplex header part
 						if(message.read8()!=0x0A)
-							WARN("Unknown fullduplex header part for the flow '%u'",idFlow)
+							WARN("Unknown fullduplex header part for the flow %llu",idFlow)
 						else
 							message.read7BitLongValue(); // Fullduplex useless here! Because we are creating a new Flow!
 
 						// Useless header part 
 						UInt8 length=message.read8();
 						while(length>0 && message.available()) {
-							WARN("Unknown message part on flow '%u'",idFlow);
+							WARN("Unknown message part on flow %llu",idFlow);
 							message.next(length);
 							length=message.read8();
 						}
@@ -509,7 +509,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 				}
 				
 				if(!pFlow) {
-					WARN("Flow %u unfound",idFlow);
+					WARN("Flow %llu unfound",idFlow);
 					((UInt64&)_pFlowNull->id) = idFlow;
 					pFlow = _pFlowNull;
 				}
@@ -566,7 +566,7 @@ FlowWriter* ServerSession::flowWriter(Poco::UInt64 id) {
 Flow& ServerSession::flow(Poco::UInt64 id) {
 	map<UInt64,Flow*>::const_iterator it = _flows.find(id);
 	if(it==_flows.end()) {
-		WARN("Flow %u unfound",id);
+		WARN("Flow %llu unfound",id);
 		((UInt64&)_pFlowNull->id) = id;
 		return *_pFlowNull;
 	}
@@ -575,12 +575,12 @@ Flow& ServerSession::flow(Poco::UInt64 id) {
 
 Flow* ServerSession::createFlow(UInt64 id,const string& signature) {
 	if(died) {
-		ERROR("Session %u is died, no more Flow creation possible",id);
+		ERROR("Session %u is died, no more Flow creation possible",this->id);
 		return NULL;
 	}
 	map<UInt64,Flow*>::const_iterator it = _flows.find(id);
 	if(it!=_flows.end()) {
-		WARN("Flow %u has already been created",id);
+		WARN("Flow %llu has already been created",id);
 		return it->second;
 	}
 
@@ -595,7 +595,7 @@ Flow* ServerSession::createFlow(UInt64 id,const string& signature) {
 	else
 		ERROR("New unknown flow '%s' on session %u",Util::FormatHex((const UInt8*)signature.c_str(),signature.size()).c_str(),this->id);
 	if(pFlow) {
-		DEBUG("New flow %u on session %u",id,this->id);
+		DEBUG("New flow %llu on session %u",id,this->id);
 		_flows[id] = pFlow;
 	}
 	return pFlow;

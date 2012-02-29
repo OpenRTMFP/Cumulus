@@ -88,7 +88,7 @@ void Flow::complete() {
 		return;
 
 	if(!writer.signature.empty()) // writer.signature.empty() == FlowNull instance, not display the message in FullNull case
-		DEBUG("Flow %u consumed",id);
+		DEBUG("Flow %llu consumed",id);
 
 	// delete fragments
 	map<UInt64,Fragment*>::const_iterator it;
@@ -106,9 +106,9 @@ void Flow::complete() {
 }
 
 void Flow::fail(const string& error) {
-	ERROR("Flow %u failed : %s",id,error.c_str());
+	ERROR("Flow %llu failed : %s",id,error.c_str());
 	if(!_completed) {
-		BinaryWriter& writer = _band.writeMessage(0x5e,Util::Get7BitLongValueSize1(id)+1);
+		BinaryWriter& writer = _band.writeMessage(0x5e,Util::Get7BitValueSize(id)+1);
 		writer.write7BitLongValue(id);
 		writer.write8(0); // unknown
 	}
@@ -152,12 +152,12 @@ void Flow::commit() {
 	map<UInt64,Fragment*>::const_iterator it=_fragments.begin();
 	while(it!=_fragments.end()) {
 		current = it->first-current-2;
-		size += Util::Get7BitLongValueSize1(current);
+		size += Util::Get7BitValueSize(current);
 		lost.push_back(current);
 		current = it->first;
 		while(++it!=_fragments.end() && it->first==(++current))
 			++count;
-		size += Util::Get7BitLongValueSize1(count);
+		size += Util::Get7BitValueSize(count);
 		lost.push_back(count);
 		--current;
 		count=0;
@@ -167,7 +167,7 @@ void Flow::commit() {
 	if(writer.signature.empty())
 		bufferSize=0;
 
-	PacketWriter& ack = _band.writeMessage(0x51,Util::Get7BitLongValueSize1(id)+Util::Get7BitValueSize1(bufferSize)+Util::Get7BitLongValueSize1(stage)+size);
+	PacketWriter& ack = _band.writeMessage(0x51,Util::Get7BitValueSize(id)+Util::Get7BitValueSize(bufferSize)+Util::Get7BitValueSize(stage)+size);
 	UInt32 pos = ack.position();
 	ack.write7BitLongValue(id);
 	ack.write7BitValue(bufferSize);
@@ -185,17 +185,17 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 	if(_completed)
 		return;
 
-	TRACE("Flow %u stage %u",id,stage);
+//	TRACE("Flow %llu stage %llu",id,stage);
 
 	UInt64 nextStage = this->stage+1;
 
 	if(stage < nextStage) {
-		DEBUG("Stage %u on flow %u has already been received",stage,id);
+		DEBUG("Stage %llu on flow %llu has already been received",stage,id);
 		return;
 	}
 
 	if(deltaNAck>stage) {
-		WARN("DeltaNAck %u superior to stage %u on flow %u",deltaNAck,stage,id);
+		WARN("DeltaNAck %llu superior to stage %llu on flow %llu",deltaNAck,stage,id);
 		deltaNAck=stage;
 	}
 	
@@ -226,7 +226,7 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 			if(_fragments.size()>100)
 				DEBUG("_fragments.size()=%lu",_fragments.size()); 
 		} else
-			DEBUG("Stage %u on flow %u has already been received",stage,id);
+			DEBUG("Stage %llu on flow %llu has already been received",stage,id);
 	} else {
 		fragmentSortedHandler(nextStage++,fragment,flags);
 		map<UInt64,Fragment*>::iterator it=_fragments.begin();
@@ -246,7 +246,7 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 
 void Flow::fragmentSortedHandler(UInt64 stage,PacketReader& fragment,UInt8 flags) {
 	if(stage<=this->stage) {
-		ERROR("Stage %u not sorted on flow %u",stage,id);
+		ERROR("Stage %llu not sorted on flow %llu",stage,id);
 		return;
 	}
 	if(stage>(this->stage+1)) {
@@ -351,19 +351,19 @@ void Flow::fragmentSortedHandler(UInt64 stage,PacketReader& fragment,UInt8 flags
 }
 
 void Flow::messageHandler(const std::string& name,AMFReader& message) {
-	ERROR("Message '%s' unknown for flow %u",name.c_str(),id);
+	ERROR("Message '%s' unknown for flow %llu",name.c_str(),id);
 }
 void Flow::rawHandler(UInt8 type,PacketReader& data) {
-	ERROR("Raw message %s unknown for flow %u",Util::FormatHex(data.current(),data.available()).c_str(),id);
+	ERROR("Raw message %s unknown for flow %llu",Util::FormatHex(data.current(),data.available()).c_str(),id);
 }
 void Flow::audioHandler(PacketReader& packet) {
-	ERROR("Audio packet untreated for flow %u",id);
+	ERROR("Audio packet untreated for flow %llu",id);
 }
 void Flow::videoHandler(PacketReader& packet) {
-	ERROR("Video packet untreated for flow %u",id);
+	ERROR("Video packet untreated for flow %llu",id);
 }
 void Flow::lostFragmentsHandler(UInt32 count) {
-	INFO("%u fragments lost on flow %u",count,id);
+	INFO("%u fragments lost on flow %llu",count,id);
 }
 
 

@@ -72,7 +72,7 @@ void FlowWriter::clear() {
 }
 
 void FlowWriter::fail(const string& error) {
-	WARN("FlowWriter %u has failed : %s",id,error.c_str());
+	DEBUG("FlowWriter %llu has failed : %s",id,error.c_str());
 	_stage=_stageAck=_lostCount=_ackCount=0;
 	clear();
 	if(_closed)
@@ -108,12 +108,12 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 	UInt64 stage = _stageAck+1;
 
 	if(stageReaden>_stage) {
-		ERROR("Acknowledgment received %u superior than the current sending stage %u on flowWriter %u",stageReaden,_stage,id);
+		ERROR("Acknowledgment received %llu superior than the current sending stage %llu on flowWriter %llu",stageReaden,_stage,id);
 		_stageAck = _stage;
 	} else if(stageReaden<=_stageAck) {
 		// already acked
 		if(reader.available()==0)
-			DEBUG("Acknowledgment %u obsolete on flowWriter %u",stageReaden,id);
+			DEBUG("Acknowledgment %llu obsolete on flowWriter %llu",stageReaden,id);
 	} else
 		_stageAck = stageReaden;
 
@@ -138,7 +138,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 		Message& message(**it);
 
 		if(message.fragments.empty()) {
-			CRITIC("Message %u is bad formatted on fowWriter %u",stage+1,id);
+			CRITIC("Message %llu is bad formatted on fowWriter %llu",stage+1,id);
 			++it;
 			continue;
 		}
@@ -170,7 +170,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 				// check the range
 				if(lostStage>_stage) {
 					// Not yet sent
-					ERROR("Lost information received %u have not been yet sent on flowWriter %u",lostStage,id);
+					ERROR("Lost information received %llu have not been yet sent on flowWriter %llu",lostStage,id);
 					stop=true;
 				} else if(lostStage<=_stageAck) {
 					// already acked
@@ -202,7 +202,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 					++stage;
 					header=true;
 				} else {
-					INFO("FlowWriter %u : message %u lost",id,stage);
+					INFO("FlowWriter %llu : message %llu lost",id,stage);
 					--_ackCount;
 					++_lostCount;
 					_stageAck = stage;
@@ -225,7 +225,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 
 			// Repeat message
 
-			DEBUG("FlowWriter %u : stage %u repeated",id,stage);
+			DEBUG("FlowWriter %llu : stage %llu repeated",id,stage);
 			UInt32 available;
 			UInt32 fragment(itFrag->first);
 			BinaryReader& content = message.reader(fragment,available);
@@ -284,7 +284,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 	}
 
 	if(lostCount>0 && reader.available()>0)
-		ERROR("Some lost information received have not been yet sent on flowWriter %u",id);
+		ERROR("Some lost information received have not been yet sent on flowWriter %llu",id);
 
 
 	// rest messages repeatable?
@@ -310,12 +310,12 @@ void FlowWriter::manage(Invoker& invoker) {
 }
 
 UInt32 FlowWriter::headerSize(UInt64 stage) {
-	UInt32 size= Util::Get7BitLongValueSize1(id);
-	size+= Util::Get7BitLongValueSize1(stage);
+	UInt32 size= Util::Get7BitValueSize(id);
+	size+= Util::Get7BitValueSize(stage);
 	if(_stageAck>stage)
-		CRITIC("stageAck %u superior to stage %u on flowWriter %u",_stageAck,stage,id);
-	size+= Util::Get7BitLongValueSize1(stage-_stageAck);
-	size+= _stageAck>0 ? 0 : (signature.size()+(flowId==0?2:(4+Util::Get7BitLongValueSize1(flowId))));
+		CRITIC("stageAck %llu superior to stage %llu on flowWriter %llu",_stageAck,stage,id);
+	size+= Util::Get7BitValueSize(stage-_stageAck);
+	size+= _stageAck>0 ? 0 : (signature.size()+(flowId==0?2:(4+Util::Get7BitValueSize(flowId))));
 	return size;
 }
 
@@ -342,7 +342,7 @@ void FlowWriter::flush(PacketWriter& writer,UInt64 stage,UInt8 flags,bool header
 			writer.writeString8(signature);
 			// No write this in the case where it's a new flow!
 			if(flowId>0) {
-				writer.write8(1+Util::Get7BitLongValueSize1(flowId)); // following size
+				writer.write8(1+Util::Get7BitValueSize(flowId)); // following size
 				writer.write8(0x0a); // Unknown!
 				writer.write7BitLongValue(flowId);
 			}
@@ -411,8 +411,8 @@ void FlowWriter::raiseMessage() {
 			// Actual sending packet is enough large? Here we send just one packet!
 			if(size>packet.available()) {
 				if(!sent)
-					ERROR("Raise messages on flowWriter %u without sending!",id);
-				DEBUG("Raise message on flowWriter %u finishs on stage %u",id,stage);
+					ERROR("Raise messages on flowWriter %llu without sending!",id);
+				DEBUG("Raise message on flowWriter %llu finishs on stage %llu",id,stage);
 				return;
 			}
 			sent=true;
@@ -505,7 +505,7 @@ void FlowWriter::flush(bool full) {
 
 void FlowWriter::cancel(UInt32 index) {
 	if(index>=queue()) {
-		ERROR("Impossible to cancel %u message on flowWriter %u",index,id);
+		ERROR("Impossible to cancel %u message on flowWriter %llu",index,id);
 		return;
 	}
 	list<Message*>::iterator it = _messages.begin();

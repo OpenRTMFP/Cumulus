@@ -31,8 +31,8 @@ public:
 
 	static bool		   SameAddress(const Poco::Net::SocketAddress& address1,const Poco::Net::SocketAddress& address2);
 	static std::string FormatHex(const Poco::UInt8* data,Poco::UInt32 size);
-	static Poco::UInt8 Get7BitValueSize1(Poco::UInt32 value);
-	static Poco::UInt8 Get7BitLongValueSize1(Poco::UInt64 value);
+	static Poco::UInt8 Get7BitValueSize(Poco::UInt32 value);
+	static Poco::UInt8 Get7BitValueSize(Poco::UInt64 value);
 
 	static void Dump(const Poco::UInt8* in, Poco::UInt32 size,std::vector<Poco::UInt8>& out,const char* header=NULL);
 
@@ -44,8 +44,8 @@ public:
 	static Poco::NullOutputStream	NullOutputStream;
 };
 
-inline Poco::UInt8 Util::Get7BitValueSize1(Poco::UInt32 value) {
-	return Get7BitLongValueSize1(value);
+inline Poco::UInt8 Util::Get7BitValueSize(Poco::UInt32 value) {
+	return Get7BitValueSize((Poco::UInt64)value);
 }
 
 } // namespace Cumulus

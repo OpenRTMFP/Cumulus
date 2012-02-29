@@ -172,8 +172,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 				while(content.available()) {
 				   if(content.read8()==0x01) {
 					   UInt8 a=content.read8(),b=content.read8(),c=content.read8(),d=content.read8();
-					   printf("%u.%u.%u.%u:%hu",a,b,c,d,content.read16());
-					   cout << endl;
+					   NOTE("%u.%u.%u.%u:%hu",a,b,c,d,content.read16());
 				   }
 				}
 				

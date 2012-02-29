@@ -99,6 +99,7 @@ void QualityOfService::add(UInt32 time,UInt32 received,UInt32 lost,UInt32 size,U
 	}
 
 	(double&)congestionRate = congestion>1 ? 1 : (congestion<-1 ? -1 : congestion);
+	//TRACE("congestion|congestionRate = %f|%f",congestion,congestionRate);
 }
 
 void QualityOfService::reset() {

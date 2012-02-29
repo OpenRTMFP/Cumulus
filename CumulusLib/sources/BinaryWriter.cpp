@@ -77,10 +77,12 @@ void BinaryWriter::writeAddress(const SocketAddress& address,bool publicFlag) {
 }
 
 void BinaryWriter::write7BitValue(UInt32 value) {
-	UInt8 shift = (Util::Get7BitValueSize1(value)-1)*7;
-	bool max = shift>=21;
-	if(max)
-		++shift;
+	UInt8 shift = (Util::Get7BitValueSize(value)-1)*7;
+	bool max = false;
+	if(shift>=21) { // 4 bytes maximum
+		shift = 22;
+		max = true;
+	}
 
 	while(shift>=7) {
 		write8(0x80 | ((value>>shift)&0x7F));
@@ -90,8 +92,8 @@ void BinaryWriter::write7BitValue(UInt32 value) {
 }
 
 void BinaryWriter::write7BitLongValue(UInt64 value) {
-	UInt8 shift = (Util::Get7BitLongValueSize1(value)-1)*7;
-	bool max = shift>=63;
+	UInt8 shift = (Util::Get7BitValueSize(value)-1)*7;
+	bool max = shift>=63; // Can give 10 bytes!
 	if(max)
 		++shift;
 
