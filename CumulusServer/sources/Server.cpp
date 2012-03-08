@@ -56,14 +56,19 @@ bool Server::readNextConfig(lua_State* pState,const Util::AbstractConfiguration&
 	for(it=keys.begin();it!=keys.end();++it) {
 		string key = root.empty() ? (*it) : (root+"."+*it);
 		if(!readNextConfig(pState,configurations,key)) {
-			if(configurations.hasOption(key)) {
-				string value = configurations.getString(key);
-				if(value=="false")
-					lua_pushboolean(_pState,0);
-				else
-					lua_pushstring(_pState,value.c_str());
-			} else
+			try {
+				if(configurations.hasOption(key)) {
+					string value = configurations.getString(key);
+					if(value=="false")
+						lua_pushboolean(_pState,0);
+					else
+						lua_pushstring(_pState,value.c_str());
+				} else
+					lua_pushnil(_pState);
+			} catch(Exception& ex) {
+				DEBUG("Configuration scripting conversion: %s",ex.displayText().c_str());
 				lua_pushnil(_pState);
+			}
 		}
 		lua_setfield(_pState,-2,(*it).c_str());
 	}
