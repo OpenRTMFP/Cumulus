@@ -57,14 +57,11 @@ bool Server::readNextConfig(lua_State* pState,const Util::AbstractConfiguration&
 		string key = root.empty() ? (*it) : (root+"."+*it);
 		if(!readNextConfig(pState,configurations,key)) {
 			try {
-				if(configurations.hasOption(key)) {
-					string value = configurations.getString(key);
-					if(value=="false")
-						lua_pushboolean(_pState,0);
-					else
-						lua_pushstring(_pState,value.c_str());
-				} else
-					lua_pushnil(_pState);
+				string value = configurations.getString(key);
+				if(value=="false")
+					lua_pushboolean(_pState,0);
+				else
+					lua_pushstring(_pState,value.c_str());
 			} catch(Exception& ex) {
 				DEBUG("Configuration scripting conversion: %s",ex.displayText().c_str());
 				lua_pushnil(_pState);

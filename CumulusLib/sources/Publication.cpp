@@ -17,7 +17,6 @@
 
 #include "Publication.h"
 #include "Logs.h"
-#include "Poco/StreamCopier.h"
 #include "string.h"
 
 using namespace std;
@@ -179,6 +178,7 @@ void Publication::pushVideoPacket(UInt32 time,PacketReader& packet,UInt32 number
 		ERROR("Video packet pushed on a publication %u who is idle",_publisherId);
 		return;
 	}
+	
 
 	// if some lost packet, it can be a keyframe, to avoid break video, we must wait next key frame
 	if(numberLostFragments>0)

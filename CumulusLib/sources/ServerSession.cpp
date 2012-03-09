@@ -73,7 +73,6 @@ void ServerSession::fail(const string& error) {
 
 	_failed=true;
 	if(!error.empty()) {
-		WARN("Session failed %u : %s",id,error.c_str());
 		peer.onFailed(error);
 		failSignal();
 	}

@@ -112,6 +112,8 @@ bool Peer::onConnection(AMFReader& parameters,AMFObjectWriter& response) {
 void Peer::onFailed(const string& error) {
 	if(connected)
 		_handler.onFailed(*this,error);
+	else
+		WARN("Client failed : %s",error.c_str());
 }
 
 void Peer::onDisconnection() {
