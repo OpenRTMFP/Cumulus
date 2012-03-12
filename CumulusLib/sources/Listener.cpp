@@ -18,6 +18,7 @@
 #include "Listener.h"
 #include "Publication.h"
 #include "Poco/StreamCopier.h"
+#include "Poco/NumberFormatter.h"
 
 using namespace Poco;
 using namespace std;
@@ -122,13 +123,13 @@ void Listener::sampleAccess(bool audio,bool video) const {
 
 const QualityOfService& Listener::audioQOS() const {
 	if(!_pAudioWriter)
-		throw Exception("Listener %u must be initialized before to be used",id);
+		return QualityOfService::QualityOfServiceNull;
 	return _pAudioWriter->qos;
 }
 
 const QualityOfService& Listener::videoQOS() const {
 	if(!_pVideoWriter)
-		throw Exception("Listener %u must be initialized before to be used",id);
+		return QualityOfService::QualityOfServiceNull;
 	return _pVideoWriter->qos;
 }
 

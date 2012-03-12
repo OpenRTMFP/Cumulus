@@ -36,7 +36,7 @@ EdgeSession* RTMFPServerEdge::findEdgeSession(UInt32 id) {
 	EdgeSession* pSession= dynamic_cast<EdgeSession*>(findSession(id));
 	if(pSession)
 		return pSession;
-	WARN("Unknown edge session %u",id);
+	DEBUG("Unknown edge session %u",id);
 	return NULL;
 }
 

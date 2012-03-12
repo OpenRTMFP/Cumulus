@@ -72,7 +72,7 @@ void FlowWriter::clear() {
 }
 
 void FlowWriter::fail(const string& error) {
-	DEBUG("FlowWriter %llu has failed : %s",id,error.c_str());
+	NOTE("FlowWriter %llu has failed : %s",id,error.c_str());
 	_stage=_stageAck=_lostCount=_ackCount=0;
 	clear();
 	if(_closed)

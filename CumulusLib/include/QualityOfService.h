@@ -37,6 +37,8 @@ public:
 	const double		byteRate;
 	const double		congestionRate;
 	const Poco::UInt32	latency;
+
+	static QualityOfService QualityOfServiceNull;
 private:
 	bool				_fullSample;
 	std::list<Sample*>	_samples;

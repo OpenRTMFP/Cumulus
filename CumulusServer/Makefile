@@ -11,7 +11,7 @@ LIBS ?= -lCumulus -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lcrypto -lssl
 OBJECT = $(OBJECTS:%=%.o)
 
 main: $(OBJECT)
-	@echo creating CumulusService executable $(EXEC)
+	@echo creating CumulusServer executable $(EXEC)
 	@$(CC) $(CFLAGS) $(LDFLAGS) $(LIBDIR) -o $(EXEC) $(OBJECT) $(LIBS)
 
 $(OBJECT): 

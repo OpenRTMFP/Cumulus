@@ -35,6 +35,8 @@ public:
 	const Int64		latencyGradient;
 };
 
+QualityOfService QualityOfService::QualityOfServiceNull;
+
 QualityOfService::QualityOfService() : lostRate(0),byteRate(0),latency(0),congestionRate(0),_latency(0),_prevTime(0),droppedFrames(0),_num(0),_den(0),_size(0),_latencyGradient(0),_fullSample(false) {
 }
 

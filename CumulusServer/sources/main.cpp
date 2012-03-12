@@ -24,8 +24,6 @@
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
-#include "string.h"
-#include <iostream>
 
 #define LOG_SIZE 1000000
 
@@ -139,7 +137,7 @@ private:
 		HelpFormatter helpFormatter(options());
 		helpFormatter.setCommand(commandName());
 		helpFormatter.setUsage("OPTIONS");
-		helpFormatter.setHeader("Cumulus 'rendezvous' server for RTMFP communication");
+		helpFormatter.setHeader("CumulusServer, open source RTMFP server");
 		helpFormatter.format(cout);
 	}
 
@@ -217,9 +215,9 @@ private:
 			} catch(Exception& ex) {
 				FATAL("Configuration problem : %s",ex.displayText().c_str());
 			} catch (exception& ex) {
-				FATAL("Cumulus service : %s",ex.what());
+				FATAL("CumulusServer : %s",ex.what());
 			} catch (...) {
-				FATAL("Cumulus service unknown error");
+				FATAL("CumulusServer unknown error");
 			}
 		}
 		return Application::EXIT_OK;
