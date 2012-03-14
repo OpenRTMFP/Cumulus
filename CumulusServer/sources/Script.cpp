@@ -475,8 +475,8 @@ void Script::ReadAMF(lua_State* pState,AMFWriter& writer,UInt32 count,map<UInt64
 					/* uses 'key' (at index -2) and 'value' (at index -1) */
 					int keyType = lua_type(pState,-2);
 					const char* key = NULL;
-					if(keyType==LUA_TSTRING && strcmp((key=lua_tostring(pState,-2)),"__type")!=0) {
-						if(object) {
+					if(keyType==LUA_TSTRING) {
+						if(object && strcmp((key=lua_tostring(pState,-2)),"__type")!=0) {
 							if(!start) {
 								writer.beginObject();
 								start=true;
