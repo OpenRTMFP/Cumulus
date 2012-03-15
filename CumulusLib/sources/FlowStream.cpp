@@ -28,7 +28,7 @@ namespace Cumulus {
 string FlowStream::Signature("\x00\x54\x43\x04",4);
 string FlowStream::_Name("NetStream");
 
-FlowStream::FlowStream(UInt64 id,const string& signature,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,signature,_Name,peer,invoker,band),_pPublication(NULL),_state(IDLE),_numberLostFragments(0) {
+FlowStream::FlowStream(UInt64 id,const string& signature,Peer& peer,Invoker& invoker,BandWriter& band) : Flow(id,signature,_Name,peer,invoker,band),_pPublication(NULL),_state(IDLE),_numberLostFragments(0),_pListener(NULL) {
 	PacketReader reader((const UInt8*)signature.c_str(),signature.length());
 	reader.next(4);
 	_index = reader.read7BitValue();
@@ -50,6 +50,7 @@ void FlowStream::disengage() {
 		invoker._streams.unsubscribe(peer,_index,name);
 		writer.writeStatusResponse("Play.Stop","Stopped playing " + name);
 	}
+	_pListener=NULL;
 	_state=IDLE;
 }
 
@@ -100,9 +101,11 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		if(message.available())
 			start = message.readNumber();
 
-		if(invoker._streams.subscribe(peer,_index,name,writer,start))
+		try {
+			_pListener = &invoker._streams.subscribe(peer,_index,name,writer,start);
 			_state = PLAYING;
-
+		} catch(...) {}
+		
 	} else if(action == "closeStream") {
 		disengage();
 	} else if(action=="publish") {
@@ -129,7 +132,11 @@ void FlowStream::messageHandler(const string& action,AMFReader& message) {
 		}
 		if(_pPublication)
 			_pPublication->pushDataPacket(action,message.reader);
-	} else
+	} else if(_pListener && action=="receiveAudio")
+		_pListener->receiveAudio = message.readBoolean();
+	else if(_pListener && action=="receiveVideo")
+		_pListener->receiveVideo = message.readBoolean();
+	else
 		Flow::messageHandler(action,message);
 
 }

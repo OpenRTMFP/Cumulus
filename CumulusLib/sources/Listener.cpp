@@ -87,7 +87,7 @@ public:
 
 Listener::Listener(UInt32 id,Publication& publication,FlowWriter& writer,bool unbuffered) :
 	_unbuffered(unbuffered),_writer(writer),_boundId(0),audioSampleAccess(false),videoSampleAccess(false),
-	id(id),publication(publication),_firstKeyFrame(false),
+	id(id),publication(publication),_firstKeyFrame(false),receiveAudio(true),receiveVideo(true),
 	_pAudioWriter(NULL),_pVideoWriter(NULL),
 	_time(0),_deltaTime(0),_addingTime(0) {
 }
@@ -194,6 +194,10 @@ void Listener::pushDataPacket(const string& name,PacketReader& packet) {
 }
 
 void Listener::pushVideoPacket(UInt32 time,PacketReader& packet) {
+	if(!receiveVideo) {
+		_firstKeyFrame=false;
+		return;
+	}
 	if(!_pVideoWriter) {
 		ERROR("Listener %u must be initialized before to be used",id);
 		return;
@@ -218,6 +222,8 @@ void Listener::pushVideoPacket(UInt32 time,PacketReader& packet) {
 
 
 void Listener::pushAudioPacket(UInt32 time,PacketReader& packet) {
+	if(!receiveAudio)
+		return;
 	if(!_pAudioWriter) {
 		ERROR("Listener %u must be initialized before to be used",id);
 		return;

@@ -44,6 +44,10 @@ int LUAListener::Get(lua_State *pState) {
 			SCRIPT_WRITE_BOOL(listener.audioSampleAccess);
 		} else if(name=="videoSampleAccess") {
 			SCRIPT_WRITE_BOOL(listener.videoSampleAccess);
+		} else if(name=="receiveAudio") {
+			SCRIPT_WRITE_BOOL(listener.receiveAudio);
+		} else if(name=="receiveVideo") {
+			SCRIPT_WRITE_BOOL(listener.receiveVideo);
 		}
 	SCRIPT_CALLBACK_RETURN
 }
@@ -59,7 +63,11 @@ int LUAListener::Set(lua_State *pState) {
 			bool value = lua_toboolean(pState,-1)==0 ? false : true;
 			if(value!=listener.videoSampleAccess)
 				listener.sampleAccess(listener.audioSampleAccess,value);
-		} else
+		} else if(name=="receiveAudio")
+			listener.receiveAudio = lua_toboolean(pState,-1)==0 ? false : true;
+		 else if(name=="receiveVideo")
+			listener.receiveVideo = lua_toboolean(pState,-1)==0 ? false : true;
+		else
 			lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

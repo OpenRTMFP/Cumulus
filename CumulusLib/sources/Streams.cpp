@@ -57,13 +57,16 @@ void Streams::unpublish(Peer& peer,UInt32 id,const string& name) {
 		destroyPublication(it);
 }
 
-bool Streams::subscribe(Peer& peer,UInt32 id,const string& name,FlowWriter& writer,double start) {
+Listener& Streams::subscribe(Peer& peer,UInt32 id,const string& name,FlowWriter& writer,double start) {
 	Publications::Iterator it = createPublication(name);
 	Publication& publication(*it->second);
-	bool result = publication.addListener(peer,id,writer,start==-3000 ? true : false);
-	if(!result && publication.publisherId()==0 && publication.listeners.count()==0)
-		destroyPublication(it);
-	return result;
+	try {
+		return publication.addListener(peer,id,writer,start==-3000 ? true : false);
+	} catch(...) {
+		if(publication.publisherId()==0 && publication.listeners.count()==0)
+			destroyPublication(it);
+		throw;
+	}
 }
 
 void Streams::unsubscribe(Peer& peer,UInt32 id,const string& name) {

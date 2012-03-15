@@ -43,6 +43,9 @@ public:
 
 	void flush();
 
+	bool receiveAudio;
+	bool receiveVideo;
+
 	const Publication&	publication;
 	const Poco::UInt32  id;
 

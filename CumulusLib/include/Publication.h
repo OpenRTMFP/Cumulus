@@ -45,7 +45,7 @@ public:
 	void					pushVideoPacket(Poco::UInt32 time,PacketReader& packet,Poco::UInt32 numberLostFragments=0);
 	void					pushDataPacket(const std::string& name,PacketReader& packet);
 
-	bool					addListener(Peer& peer,Poco::UInt32 id,FlowWriter& writer,bool unbuffered);
+	Listener&				addListener(Peer& peer,Poco::UInt32 id,FlowWriter& writer,bool unbuffered);
 	void					removeListener(Peer& peer,Poco::UInt32 id);
 
 	void					flush();

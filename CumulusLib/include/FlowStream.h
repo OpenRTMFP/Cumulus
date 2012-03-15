@@ -53,6 +53,7 @@ private:
 	Poco::UInt32	_index;
 
 	Publication*	_pPublication;
+	Listener*		_pListener;
 	StreamState		_state;
 
 	// Lost Fragments

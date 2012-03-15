@@ -39,11 +39,11 @@ Publication::~Publication() {
 }
 
 
-bool Publication::addListener(Peer& peer,UInt32 id,FlowWriter& writer,bool unbuffered) {
+Listener& Publication::addListener(Peer& peer,UInt32 id,FlowWriter& writer,bool unbuffered) {
 	map<UInt32,Listener*>::iterator it = _listeners.lower_bound(id);
 	if(it!=_listeners.end() && it->first==id) {
 		WARN("Listener %u is already subscribed for publication %u",id,_publisherId);
-		return true;
+		return *it->second;
 	}
 	if(it!=_listeners.begin())
 		--it;
@@ -54,11 +54,13 @@ bool Publication::addListener(Peer& peer,UInt32 id,FlowWriter& writer,bool unbuf
 		writer.writeStatusResponse("Play.Reset","Playing and resetting " + _name);
 		writer.writeStatusResponse("Play.Start","Started playing " + _name);
 		pListener->init(peer);
-		return true;
+		return *pListener;
 	}
-	writer.writeStatusResponse("Play.Failed",error.empty() ? ("Not authorized to play " + _name) : error);
+	if(error.empty())
+		error = "Not authorized to play " + _name;
+	writer.writeStatusResponse("Play.Failed",error);
 	delete pListener;
-	return false;
+	throw Exception(error);
 }
 
 void Publication::removeListener(Peer& peer,UInt32 id) {
