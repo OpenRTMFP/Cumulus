@@ -44,8 +44,9 @@ FlowWriter::FlowWriter(FlowWriter& flowWriter) :
 FlowWriter::~FlowWriter() {
 	_closed=true;
 	clear();
+	if(!signature.empty())
+		DEBUG("FlowWriter %llu consumed",id);
 }
-
 
 void FlowWriter::clear() {
 	// delete messages
@@ -72,11 +73,11 @@ void FlowWriter::clear() {
 }
 
 void FlowWriter::fail(const string& error) {
-	NOTE("FlowWriter %llu has failed : %s",id,error.c_str());
-	_stage=_stageAck=_lostCount=_ackCount=0;
-	clear();
 	if(_closed)
 		return;
+	WARN("FlowWriter %llu has failed : %s",id,error.c_str());
+	clear();
+	_stage=_stageAck=_lostCount=_ackCount=0;
 	_band.resetFlowWriter(*new FlowWriter(*this));
 	_band.initFlowWriter(*this);
 	reset(++_resetCount);
@@ -93,7 +94,7 @@ void FlowWriter::close() {
 }
 
 void FlowWriter::acknowledgment(PacketReader& reader) {
-	
+
 	UInt64 bufferSize = reader.read7BitLongValue(); // TODO use this value in reliability mechanism?
 	
 	if(bufferSize==0) {

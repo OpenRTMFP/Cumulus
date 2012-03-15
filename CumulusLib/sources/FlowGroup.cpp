@@ -73,7 +73,7 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 				}
 				peer.joinGroup(*_pGroup);
 			} else
-				peer.joinGroup(groupId);
+				_pGroup = &peer.joinGroup(groupId);
 		}
 	} else
 		Flow::rawHandler(type,data);

@@ -20,16 +20,18 @@
 #include "Poco/Net/Socket.h"
 
 class SocketManaged {
-public:
+	friend class SocketManager;
+protected:
 	SocketManaged(const Poco::Net::Socket& socket):error(false),writable(false),readable(false),socket(socket){}
 	virtual ~SocketManaged(){}
-
+	
+private:
 	virtual void	onReadable(Poco::UInt32 available)=0;
 	virtual void	onWritable()=0;
 	virtual void	onError(const std::string& error)=0;
 
 	virtual bool	haveToWrite()=0;
-	
+
 	const bool					error;
 	const bool					writable;
 	const bool					readable;

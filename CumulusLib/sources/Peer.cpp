@@ -32,7 +32,7 @@ Peer::~Peer() {
 	unsubscribeGroups();
 }
 
-void Peer::joinGroup(const UInt8* id) {
+Group& Peer::joinGroup(const UInt8* id) {
 	// create group is need
 	Entities<Group>::Map::iterator it = _handler._groups.lower_bound(id);
 	Group* pGroup = NULL;
@@ -44,6 +44,7 @@ void Peer::joinGroup(const UInt8* id) {
 	} else
 		pGroup = it->second;
 	joinGroup(*pGroup);
+	return *pGroup;
 }
 
 void Peer::joinGroup(Group& group) {
@@ -64,14 +65,14 @@ void Peer::joinGroup(Group& group) {
 
 void Peer::unjoinGroup(Group& group) {
 	map<Group*,UInt32>::iterator it = _groups.lower_bound(&group);
-	if(it==_groups.end() || it->first==&group)
+	if(it==_groups.end() || it->first!=&group)
 		return;
 
 	group._peers.erase(it->second);
 	_groups.erase(it);
+	onUnjoinGroup(group);
 	if(group.size()==0) {
 		_handler._groups.erase(group.id);
-		onUnjoinGroup(group);
 		delete &group;
 	}
 }
@@ -81,9 +82,9 @@ void Peer::unsubscribeGroups() {
 	for(it=_groups.begin();it!=_groups.end();++it) {
 		Group& group = *it->first;
 		group._peers.erase(it->second);
+		onUnjoinGroup(group);
 		if(group.size()==0) {
 			_handler._groups.erase(group.id);
-			onUnjoinGroup(group);
 			delete &group;
 		}
 	}

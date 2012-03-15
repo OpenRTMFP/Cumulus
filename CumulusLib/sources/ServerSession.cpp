@@ -491,7 +491,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 						// Fullduplex header part
 						if(message.read8()!=0x0A)
 							WARN("Unknown fullduplex header part for the flow %llu",idFlow)
-						else
+						else 
 							message.read7BitLongValue(); // Fullduplex useless here! Because we are creating a new Flow!
 
 						// Useless header part 
@@ -606,6 +606,8 @@ void ServerSession::initFlowWriter(FlowWriter& flowWriter) {
 	if(_flows.begin()!=_flows.end())
 		(UInt64&)flowWriter.flowId = _flows.begin()->second->id;
 	_flowWriters[_nextFlowWriterId] = &flowWriter;
+	if(!flowWriter.signature.empty())
+		DEBUG("New flowWriter %llu on session %u",flowWriter.id,this->id);
 }
 
 void ServerSession::resetFlowWriter(FlowWriter& flowWriter) {

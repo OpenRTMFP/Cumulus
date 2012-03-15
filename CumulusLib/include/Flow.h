@@ -42,26 +42,25 @@ public:
 
 	bool				consumed();
 	const std::string&	error();
+	void				complete();
 
 protected:
-
-	void		 fragmentSortedHandler(Poco::UInt64 stage,PacketReader& fragment,Poco::UInt8 flags);
-	virtual void lostFragmentsHandler(Poco::UInt32 count);
-
 	virtual void messageHandler(const std::string& name,AMFReader& message);
 	virtual void rawHandler(Poco::UInt8 type,PacketReader& data);
 	virtual void audioHandler(PacketReader& packet);
 	virtual void videoHandler(PacketReader& packet);
 
-	
+	virtual void lostFragmentsHandler(Poco::UInt32 count);
+
 	Peer&					peer;
 	FlowWriter&				writer;
 	Invoker&				invoker;
 	const Poco::UInt64		stage;
 	
 private:
+	void		 fragmentSortedHandler(Poco::UInt64 stage,PacketReader& fragment,Poco::UInt8 flags);
+	
 	virtual void		commitHandler();
-	void				complete();
 	Message::Type		unpack(PacketReader& reader);
 
 	bool				_completed;

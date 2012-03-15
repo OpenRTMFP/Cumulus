@@ -36,7 +36,7 @@ public:
 	Poco::Net::SocketAddress address();
 	Poco::Net::SocketAddress peerAddress();
 
-	const char*						error();
+	const char*				error();
 
 private:
 	virtual Poco::UInt32		onReception(const Poco::UInt8* data,Poco::UInt32 size)=0;

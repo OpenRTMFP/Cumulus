@@ -359,7 +359,7 @@ void RTMFPServer::manage() {
 }
 
 void RTMFPServer::displayCount(UInt32 sessions) {
-	INFO("%u clients",clients.count());
+	INFO("%u clients",_pCirrus ? sessions : clients.count());
 }
 
 

@@ -44,7 +44,7 @@ public:
 
 	void unsubscribeGroups();
 	void joinGroup(Group& group);
-	void joinGroup(const Poco::UInt8* id);
+	Group& joinGroup(const Poco::UInt8* id);
 	void unjoinGroup(Group& group);
 
 

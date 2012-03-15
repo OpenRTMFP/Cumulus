@@ -207,8 +207,10 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 			// leave all stages <= stage
 			PacketReader reader(it->second->begin(),it->second->size());
 			fragmentSortedHandler(it->first,reader,it->second->flags);
-			if(_completed) // to prevent a crash bug!! (double fragments deletion)
-				return;
+			if(it->second->flags&MESSAGE_END) {
+				complete();
+				return; // to prevent a crash bug!! (double fragments deletion)
+			}
 			delete it->second;
 			_fragments.erase(it++);
 		}
@@ -229,14 +231,18 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 			DEBUG("Stage %llu on flow %llu has already been received",stage,id);
 	} else {
 		fragmentSortedHandler(nextStage++,fragment,flags);
+		if(flags&MESSAGE_END)
+			complete();
 		map<UInt64,Fragment*>::iterator it=_fragments.begin();
 		while(it!=_fragments.end()) {
 			if( it->first > nextStage)
 				break;
 			PacketReader reader(it->second->begin(),it->second->size());
 			fragmentSortedHandler(nextStage++,reader,it->second->flags);
-			if(_completed)
-				break;
+			if(it->second->flags&MESSAGE_END) {
+				complete();
+				return; // to prevent a crash bug!! (double fragments deletion)
+			}
 			delete it->second;
 			_fragments.erase(it++);
 		}
@@ -344,9 +350,6 @@ void Flow::fragmentSortedHandler(UInt64 stage,PacketReader& fragment,UInt8 flags
 		delete _pPacket;
 		_pPacket=NULL;
 	}
-
-	if(flags&MESSAGE_END)
-		complete();
 	
 }
 
