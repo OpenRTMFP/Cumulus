@@ -370,6 +370,14 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\sources\LUAMail.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\LUAMail.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\LUAPublication.cpp"
 					>
 				</File>
@@ -424,8 +432,24 @@
 				</File>
 			</Filter>
 			<Filter
-				Name="Sockets"
+				Name="Net"
 				>
+				<File
+					RelativePath=".\sources\SMTPSession.cpp"
+					>
+					<FileConfiguration
+						Name="release|Win32"
+						ExcludedFromBuild="true"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\sources\SMTPSession.h"
+					>
+				</File>
 				<File
 					RelativePath=".\sources\SocketManaged.h"
 					>

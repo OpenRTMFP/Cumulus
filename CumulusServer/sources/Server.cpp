@@ -34,9 +34,10 @@ using namespace Cumulus;
 
 const string Server::WWWPath;
 
-Server::Server(const std::string& root,ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : _blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_hasOnRealTime(true),_pService(NULL) {
+Server::Server(const std::string& root,ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : _blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_hasOnRealTime(true),_pService(NULL),
+	luaMail(_pState=Script::CreateState(),configurations.getString("smtp.host","localhost"),configurations.getInt("smtp.port",SMTPSession::SMTP_PORT),configurations.getInt("smtp.timeout",60)) {
+	
 	File((string&)WWWPath = root+"www").createDirectory();
-	_pState = Script::CreateState();
 	Service::InitGlobalTable(_pState);
 	SCRIPT_BEGIN(_pState)
 		SCRIPT_CREATE_PERSISTENT_OBJECT(Invoker,LUAInvoker,*this)
@@ -74,6 +75,7 @@ bool Server::readNextConfig(lua_State* pState,const Util::AbstractConfiguration&
 
 
 Server::~Server() {
+	Script::ClearPersistentObject<LUAMail,LUAMail>(_pState,luaMail);
 	Script::CloseState(_pState);
 }
 

@@ -22,6 +22,7 @@
 #include "Service.h"
 #include "Blacklist.h"
 #include "SocketManager.h"
+#include "LUAMail.h"
 
 class Server : public Cumulus::RTMFPServer {
 public:
@@ -30,6 +31,7 @@ public:
 
 	static const std::string				WWWPath;
 	SocketManager							socketManager;
+	LUAMail									luaMail;
 
 private:
 	void					manage();

@@ -127,6 +127,8 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPClient)
 		} else if(name=="configs") {
 			lua_getglobal(pState,"cumulus.configs");
+		} else if(name=="mail") {
+			SCRIPT_WRITE_PERSISTENT_OBJECT(LUAMail,LUAMail,((Server&)invoker).luaMail)
 		}
 	SCRIPT_CALLBACK_RETURN
 }

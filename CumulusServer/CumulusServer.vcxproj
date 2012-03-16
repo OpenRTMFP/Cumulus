@@ -26,6 +26,7 @@
     <ClInclude Include="sources\LUAInvoker.h" />
     <ClInclude Include="sources\LUAListener.h" />
     <ClInclude Include="sources\LUAListeners.h" />
+    <ClInclude Include="sources\LUAMail.h" />
     <ClInclude Include="sources\LUAPublication.h" />
     <ClInclude Include="sources\LUAPublications.h" />
     <ClInclude Include="sources\LUAQualityOfService.h" />
@@ -33,6 +34,7 @@
     <ClInclude Include="sources\Script.h" />
     <ClInclude Include="sources\Server.h" />
     <ClInclude Include="sources\Service.h" />
+    <ClInclude Include="sources\SMTPSession.h" />
     <ClInclude Include="sources\SocketManaged.h" />
     <ClInclude Include="sources\SocketManager.h" />
     <ClInclude Include="sources\TCPClient.h" />
@@ -52,6 +54,7 @@
     <ClCompile Include="sources\LUAInvoker.cpp" />
     <ClCompile Include="sources\LUAListener.cpp" />
     <ClCompile Include="sources\LUAListeners.cpp" />
+    <ClCompile Include="sources\LUAMail.cpp" />
     <ClCompile Include="sources\LUAPublication.cpp" />
     <ClCompile Include="sources\LUAPublications.cpp" />
     <ClCompile Include="sources\LUAQualityOfService.cpp" />
@@ -60,6 +63,7 @@
     <ClCompile Include="sources\Script.cpp" />
     <ClCompile Include="sources\Server.cpp" />
     <ClCompile Include="sources\Service.cpp" />
+    <ClCompile Include="sources\SMTPSession.cpp" />
     <ClCompile Include="sources\SocketManager.cpp" />
     <ClCompile Include="sources\TCPClient.cpp" />
   </ItemGroup>

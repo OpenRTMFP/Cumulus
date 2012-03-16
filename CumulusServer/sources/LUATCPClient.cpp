@@ -27,7 +27,6 @@ LUATCPClient::LUATCPClient(SocketManager& manager,lua_State* pState) : _pState(p
 }
 
 LUATCPClient::~LUATCPClient() {
-	Script::ClearPersistentObject<LUATCPClient,LUATCPClient>(_pState,*this);
 }
 
 UInt32 LUATCPClient::onReception(const UInt8* data,UInt32 size){
@@ -125,7 +124,7 @@ int LUATCPClient::Get(lua_State* pState) {
 }
 
 int LUATCPClient::Set(lua_State* pState) {
-	SCRIPT_CALLBACK(TCPClient,LUATCPClient,client)
+	SCRIPT_CALLBACK(LUATCPClient,LUATCPClient,client)
 		SCRIPT_READ_STRING(name,"")
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
