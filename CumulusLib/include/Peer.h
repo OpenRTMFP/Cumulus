@@ -34,7 +34,6 @@ public:
 	Peer(Handler& handler);
 	virtual ~Peer();
 
-	Poco::Net::SocketAddress		address;
 	std::list<Address>				addresses;
 
 	const bool						connected;

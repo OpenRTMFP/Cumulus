@@ -42,6 +42,8 @@ int LUAClient::Get(lua_State *pState) {
 			SCRIPT_WRITE_BINARY(client.id,ID_SIZE);
 		} else if(name=="path") {
 			SCRIPT_WRITE_STRING(client.path.c_str())
+		} else if(name=="address") {
+			SCRIPT_WRITE_STRING(client.address.toString().c_str())
 		} else if(name=="pageUrl") {
 			SCRIPT_WRITE_STRING(client.pageUrl.toString().c_str())
 		} else if(name=="close") {

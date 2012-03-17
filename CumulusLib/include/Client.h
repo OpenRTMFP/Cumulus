@@ -48,6 +48,7 @@ public:
 	Client();
 	virtual ~Client();
 
+	const Poco::Net::SocketAddress				address;
 	const std::string							path;
 	const std::map<std::string,std::string>		properties;
 	const Poco::URI								swfUrl;

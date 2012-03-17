@@ -336,7 +336,7 @@ void FlowWriter::flush(PacketWriter& writer,UInt64 stage,UInt8 flags,bool header
 	if(header) {
 		writer.write7BitLongValue(id);
 		writer.write7BitLongValue(stage);
-		writer.write7BitLongValue((flags&MESSAGE_ABANDONMENT) ? 0 : (stage-_stageAck));
+		writer.write7BitLongValue(stage-_stageAck);
 
 		// signature
 		if(_stageAck==0) {
