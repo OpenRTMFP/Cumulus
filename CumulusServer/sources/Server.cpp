@@ -142,7 +142,7 @@ bool Server::onConnection(Client& client,AMFReader& parameters,AMFObjectWriter& 
 			SCRIPT_WRITE_OBJECT(AMFObjectWriter,LUAAMFObjectWriter,response)
 			SCRIPT_WRITE_AMF(parameters,0)
 			SCRIPT_FUNCTION_CALL
-			if(SCRIPT_NEXT_TYPE==LUA_TSTRING || !SCRIPT_READ_BOOL(true)) {
+			if(SCRIPT_CAN_READ && (SCRIPT_NEXT_TYPE==LUA_TSTRING || !SCRIPT_READ_BOOL(true))) {
 				string rejected("client rejected");
 				if(SCRIPT_CAN_READ)
 					rejected = SCRIPT_READ_STRING("client rejected");
