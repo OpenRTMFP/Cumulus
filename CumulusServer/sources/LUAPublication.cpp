@@ -39,8 +39,10 @@ int	LUAPublication::Close(lua_State *pState) {
 		lua_replace(pState,-2);
 		if(lua_islightuserdata(pState,-1))
 			((Invoker*)lua_touserdata(pState,-1))->unpublish(publication);
-		else
-			publication.closePublisher(SCRIPT_READ_STRING(""),SCRIPT_READ_STRING(""));
+		else {
+			string code = SCRIPT_READ_STRING("");
+			publication.closePublisher(code,SCRIPT_READ_STRING(""));
+		}
 		lua_pop(pState,1);
 	SCRIPT_CALLBACK_RETURN
 }

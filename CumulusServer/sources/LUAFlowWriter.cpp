@@ -112,7 +112,8 @@ int LUAFlowWriter::WriteAMFMessage(lua_State* pState) {
 
 int LUAFlowWriter::WriteStatusResponse(lua_State* pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
-		AMFObjectWriter response = writer.writeStatusResponse(SCRIPT_READ_STRING(""),SCRIPT_READ_STRING(""));
+		string code = SCRIPT_READ_STRING("");
+		AMFObjectWriter response = writer.writeStatusResponse(code,SCRIPT_READ_STRING(""));
 		while(SCRIPT_CAN_READ) {
 			response.writer.writePropertyName(SCRIPT_READ_STRING(""));
 			Script::ReadAMF(pState,response.writer,1);

@@ -66,7 +66,8 @@ int	LUATCPClient::Destroy(lua_State* pState) {
 
 int	LUATCPClient::Connect(lua_State* pState) {
 	SCRIPT_CALLBACK(LUATCPClient,LUATCPClient,client)
-		client.connect(SCRIPT_READ_STRING(""),SCRIPT_READ_UINT(0));
+		string host = SCRIPT_READ_STRING("");
+		client.connect(host,SCRIPT_READ_UINT(0));
 		if(client.error())
 			SCRIPT_WRITE_STRING(client.error())
 	SCRIPT_CALLBACK_RETURN
