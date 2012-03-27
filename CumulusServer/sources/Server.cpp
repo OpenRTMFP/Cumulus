@@ -100,10 +100,8 @@ bool Server::realTime(bool& terminate) {
 			SCRIPT_FUNCTION_BEGIN("onRealTime")
 				_hasOnRealTime=true;
 				SCRIPT_FUNCTION_CALL
-				if(SCRIPT_CAN_READ) {
-					SCRIPT_READ_BOOL(result,idle)
-					idle = result;
-				}
+				if(SCRIPT_CAN_READ)
+					idle = SCRIPT_READ_BOOL(idle);
 			SCRIPT_FUNCTION_END
 		SCRIPT_END
 	}
@@ -144,8 +142,10 @@ bool Server::onConnection(Client& client,AMFReader& parameters,AMFObjectWriter& 
 			SCRIPT_WRITE_OBJECT(AMFObjectWriter,LUAAMFObjectWriter,response)
 			SCRIPT_WRITE_AMF(parameters,0)
 			SCRIPT_FUNCTION_CALL
-			if(SCRIPT_CAN_READ) {
-				SCRIPT_READ_STRING(rejected,"client rejected")
+			if(SCRIPT_NEXT_TYPE==LUA_TSTRING || !SCRIPT_READ_BOOL(true)) {
+				string rejected("client rejected");
+				if(SCRIPT_CAN_READ)
+					rejected = SCRIPT_READ_STRING("client rejected");
 				pService=NULL;
 				client.writer().writeErrorResponse("Connect.Rejected",rejected);
 			}
@@ -227,10 +227,8 @@ bool Server::onPublish(Client& client,const Publication& publication,string& err
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,client)
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,publication)
 			SCRIPT_FUNCTION_CALL
-			if(SCRIPT_CAN_READ) {
-				SCRIPT_READ_BOOL(accept,true)
-				result = accept;
-			}
+			if(SCRIPT_CAN_READ)
+				result = SCRIPT_READ_BOOL(true);
 		SCRIPT_FUNCTION_END
 		if(SCRIPT_LAST_ERROR) {
 			error = SCRIPT_LAST_ERROR;
@@ -263,10 +261,8 @@ bool Server::onSubscribe(Client& client,const Listener& listener,string& error) 
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,client)
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Listener,LUAListener,listener)
 			SCRIPT_FUNCTION_CALL
-			if(SCRIPT_CAN_READ) {
-				SCRIPT_READ_BOOL(accept,true)
-				result = accept;
-			}
+			if(SCRIPT_CAN_READ)
+				result = SCRIPT_READ_BOOL(true);
 		SCRIPT_FUNCTION_END
 		if(SCRIPT_LAST_ERROR) {
 			error = SCRIPT_LAST_ERROR;

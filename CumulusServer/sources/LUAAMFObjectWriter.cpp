@@ -19,12 +19,13 @@
 #include "AMFObjectWriter.h"
 
 using namespace Cumulus;
+using namespace std;
 
 const char*		LUAAMFObjectWriter::Name="Cumulus::AMFObjectWriter";
 
 int LUAAMFObjectWriter::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="write")
 			SCRIPT_WRITE_FUNCTION(&LUAAMFObjectWriter::Write)
 	SCRIPT_CALLBACK_RETURN
@@ -32,14 +33,14 @@ int LUAAMFObjectWriter::Get(lua_State *pState) {
 
 int LUAAMFObjectWriter::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }
 
 int LUAAMFObjectWriter::Write(lua_State* pState) {
 	SCRIPT_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(SCRIPT_CAN_READ) {
 			writer.writer.writePropertyName(name);
 			Script::ReadAMF(pState,writer.writer,1);

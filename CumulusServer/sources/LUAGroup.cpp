@@ -46,7 +46,7 @@ int LUAGroup::IPairs(lua_State* pState) {
 
 int LUAGroup::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Group,LUAGroup,group)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="id") {
 			SCRIPT_WRITE_STRING(Cumulus::Util::FormatHex(group.id,ID_SIZE).c_str());
 		} else if(name=="rawId") {
@@ -61,7 +61,7 @@ int LUAGroup::Get(lua_State *pState) {
 
 int LUAGroup::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Group,LUAGroup,group)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

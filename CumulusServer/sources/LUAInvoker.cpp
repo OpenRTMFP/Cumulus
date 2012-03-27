@@ -34,7 +34,7 @@ const char*		LUAInvoker::Name="Cumulus::Invoker";
 
 int	LUAInvoker::Publish(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		try {
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,invoker.publish(name))
 			lua_getmetatable(pState,-1);
@@ -50,8 +50,7 @@ int	LUAInvoker::Publish(lua_State *pState) {
 
 int	LUAInvoker::AbsolutePath(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
-		SCRIPT_READ_STRING(path,"")
-		SCRIPT_WRITE_STRING((Server::WWWPath+path+"/").c_str())
+		SCRIPT_WRITE_STRING((Server::WWWPath+SCRIPT_READ_STRING("")+"/").c_str())
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -102,7 +101,7 @@ int	LUAInvoker::FromAMF(lua_State *pState) {
 
 int LUAInvoker::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="clients") {
 			SCRIPT_WRITE_OBJECT(Entities<Client>,LUAClients,invoker.clients)
 		} else if(name=="groups") {
@@ -135,7 +134,7 @@ int LUAInvoker::Get(lua_State *pState) {
 
 int LUAInvoker::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

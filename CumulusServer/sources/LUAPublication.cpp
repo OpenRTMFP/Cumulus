@@ -19,7 +19,9 @@
 #include "LUAListeners.h"
 #include "LUAQualityOfService.h"
 
+using namespace std;
 using namespace Cumulus;
+using namespace Poco;
 
 const char*		LUAPublication::Name="Cumulus::Publication";
 
@@ -37,11 +39,8 @@ int	LUAPublication::Close(lua_State *pState) {
 		lua_replace(pState,-2);
 		if(lua_islightuserdata(pState,-1))
 			((Invoker*)lua_touserdata(pState,-1))->unpublish(publication);
-		else {
-			SCRIPT_READ_STRING(code,"")
-			SCRIPT_READ_STRING(description,"")
-			publication.closePublisher(code,description);
-		}
+		else
+			publication.closePublisher(SCRIPT_READ_STRING(""),SCRIPT_READ_STRING(""));
 		lua_pop(pState,1);
 	SCRIPT_CALLBACK_RETURN
 }
@@ -54,35 +53,31 @@ int	LUAPublication::Flush(lua_State *pState) {
 
 int	LUAPublication::PushAudioPacket(lua_State *pState) {
 	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
-		SCRIPT_READ_UINT(time,0)
+		UInt32 time = SCRIPT_READ_UINT(0);
 		SCRIPT_READ_BINARY(pData,size)
-		SCRIPT_READ_UINT(offset,0)
-		SCRIPT_READ_UINT(numberLost,0)
 		if(pData) {
 			PacketReader reader(pData,size);
-			reader.next(offset);
-			publication.pushAudioPacket(time,reader,numberLost);
+			reader.next(SCRIPT_READ_UINT(0)); // offset
+			publication.pushAudioPacket(time,reader,SCRIPT_READ_UINT(0));
 		}
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAPublication::PushVideoPacket(lua_State *pState) {
 	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
-		SCRIPT_READ_UINT(time,0)
+		UInt32 time = SCRIPT_READ_UINT(0);
 		SCRIPT_READ_BINARY(pData,size)
-		SCRIPT_READ_UINT(offset,0)
-		SCRIPT_READ_UINT(numberLost,0)
 		if(pData) {
 			PacketReader reader(pData,size);
-			reader.next(offset);
-			publication.pushVideoPacket(time,reader,numberLost);
+			reader.next(SCRIPT_READ_UINT(0)); // offset
+			publication.pushVideoPacket(time,reader,SCRIPT_READ_UINT(0));
 		}
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAPublication::PushDataPacket(lua_State *pState) {
 	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		SCRIPT_READ_BINARY(pData,size)
 		if(pData) {
 			PacketReader reader(pData,size);
@@ -94,7 +89,7 @@ int	LUAPublication::PushDataPacket(lua_State *pState) {
 
 int LUAPublication::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="publisherId") {
 			SCRIPT_WRITE_NUMBER(publication.publisherId())
 		} else if(name=="name") {
@@ -121,7 +116,7 @@ int LUAPublication::Get(lua_State *pState) {
 
 int LUAPublication::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Publication,LUAPublication,publication)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

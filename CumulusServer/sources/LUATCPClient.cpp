@@ -18,6 +18,7 @@
 #include "LUATCPClient.h"
 #include "Service.h"
 
+using namespace std;
 using namespace Poco;
 
 
@@ -35,8 +36,7 @@ UInt32 LUATCPClient::onReception(const UInt8* data,UInt32 size){
 		SCRIPT_MEMBER_FUNCTION_BEGIN(LUATCPClient,LUATCPClient,*this,"onReception")
 			SCRIPT_WRITE_BINARY(data,size)
 			SCRIPT_FUNCTION_CALL
-			SCRIPT_READ_UINT(readen,0)
-			rest = readen;
+			rest = SCRIPT_READ_UINT(0);
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
 	return rest;
@@ -66,9 +66,7 @@ int	LUATCPClient::Destroy(lua_State* pState) {
 
 int	LUATCPClient::Connect(lua_State* pState) {
 	SCRIPT_CALLBACK(LUATCPClient,LUATCPClient,client)
-		SCRIPT_READ_STRING(host,"")
-		SCRIPT_READ_UINT(port,0)
-		client.connect(host,port);
+		client.connect(SCRIPT_READ_STRING(""),SCRIPT_READ_UINT(0));
 		if(client.error())
 			SCRIPT_WRITE_STRING(client.error())
 	SCRIPT_CALLBACK_RETURN
@@ -96,7 +94,7 @@ int	LUATCPClient::Send(lua_State* pState) {
 
 int LUATCPClient::Get(lua_State* pState) {
 	SCRIPT_CALLBACK(LUATCPClient,LUATCPClient,client)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="connect") {
 			SCRIPT_WRITE_FUNCTION(&LUATCPClient::Connect)
 		} else if(name=="disconnect") {
@@ -125,7 +123,7 @@ int LUATCPClient::Get(lua_State* pState) {
 
 int LUATCPClient::Set(lua_State* pState) {
 	SCRIPT_CALLBACK(LUATCPClient,LUATCPClient,client)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

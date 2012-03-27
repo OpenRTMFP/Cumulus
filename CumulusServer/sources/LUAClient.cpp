@@ -32,7 +32,7 @@ void LUAClient::Clear(lua_State* pState,const Client& client){
 
 int LUAClient::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Client,LUAClient,client)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="writer") {
 			SCRIPT_CALLBACK_NOTCONST_CHECK
 			SCRIPT_WRITE_PERSISTENT_OBJECT(FlowWriter,LUAFlowWriter,client.writer())
@@ -64,7 +64,7 @@ int LUAClient::Get(lua_State *pState) {
 
 int LUAClient::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Client,LUAClient,client)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

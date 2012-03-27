@@ -92,12 +92,13 @@ extern "C" {
 #define SCRIPT_FUNCTION_END										Service::StopVolatileObjectsRecording(__pState);lua_pop(__pState,__results-__top);__args = __results-__args; if(__args>0) SCRIPT_WARN("%d arguments not required on '%s' results",__args,__name.c_str()) else if(__args<0) SCRIPT_WARN("%d missing arguments on '%s' results",-__args,__name.c_str()) } } }
 
 #define SCRIPT_CAN_READ											(__results-__args)>0
-#define SCRIPT_READ_BOOL(VALUE,DEFAULT)							bool VALUE = (__results-(__args++))<=0 ? DEFAULT : (lua_isboolean(__pState,__args) ? (lua_toboolean(__pState,__args)==0 ? false : true) : DEFAULT);
-#define SCRIPT_READ_STRING(VALUE,DEFAULT)						std::string VALUE = (__results-(__args++))<=0 ? DEFAULT : (lua_isstring(__pState,__args) ? lua_tostring(__pState,__args) : DEFAULT);
+#define SCRIPT_NEXT_TYPE										(SCRIPT_CAN_READ ? lua_type(__pState,__args+1) : LUA_TNIL)
+#define SCRIPT_READ_BOOL(DEFAULT)								((__results-(__args++))<=0 ? DEFAULT : (lua_toboolean(__pState,__args)==0 ? false : true))
+#define SCRIPT_READ_STRING(DEFAULT)								((__results-(__args++))<=0 ? DEFAULT : (lua_isstring(__pState,__args) ? lua_tostring(__pState,__args) : DEFAULT))
 #define SCRIPT_READ_BINARY(VALUE,SIZE)							bool __yes = ((__results-(__args++))>0 && lua_isstring(__pState,__args)); Poco::UInt32 SIZE = __yes ? lua_objlen(__pState,__args) : 0; const Poco::UInt8* VALUE = __yes ? (const Poco::UInt8*)lua_tostring(__pState,__args) : NULL;
-#define SCRIPT_READ_UINT(VALUE,DEFAULT)							Poco::UInt32 VALUE = (__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? (Poco::UInt32)lua_tonumber(__pState,__args) : DEFAULT);
-#define SCRIPT_READ_INT(VALUE,DEFAULT)							Poco::Int32 VALUE = (__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? (Poco::Int32)lua_tointeger(__pState,__args) : DEFAULT);
-#define SCRIPT_READ_DOUBLE(VALUE,DEFAULT)						double VALUE = (__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? lua_tonumber(__pState,__args) : DEFAULT);
+#define SCRIPT_READ_UINT(DEFAULT)								(UInt32)((__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? (Poco::UInt32)lua_tonumber(__pState,__args) : DEFAULT))
+#define SCRIPT_READ_INT(DEFAULT)								(Int32)((__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? (Poco::Int32)lua_tointeger(__pState,__args) : DEFAULT))
+#define SCRIPT_READ_DOUBLE(DEFAULT)								(double)((__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? lua_tonumber(__pState,__args) : DEFAULT))
 #define SCRIPT_READ_AMF(WRITER)									Script::ReadAMF(__pState,WRITER,__results-__args);__args=__results;						
 
 #define SCRIPT_END												}

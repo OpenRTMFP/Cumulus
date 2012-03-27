@@ -61,7 +61,7 @@ int LUAFlowWriter::Close(lua_State* pState) {
 
 int LUAFlowWriter::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="flush") {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::Flush)
 		} else if(name=="writeAMFResult") {
@@ -84,15 +84,14 @@ int LUAFlowWriter::Get(lua_State *pState) {
 
 int LUAFlowWriter::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }
 
 int LUAFlowWriter::Flush(lua_State* pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
-		SCRIPT_READ_BOOL(full,false)
-		writer.flush(full);
+		writer.flush(SCRIPT_READ_BOOL(false));
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -105,7 +104,7 @@ int LUAFlowWriter::WriteAMFResult(lua_State* pState) {
 
 int LUAFlowWriter::WriteAMFMessage(lua_State* pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		AMFWriter& amf = writer.writeAMFMessage(name);
 		SCRIPT_READ_AMF(amf)
 	SCRIPT_CALLBACK_RETURN
@@ -113,12 +112,9 @@ int LUAFlowWriter::WriteAMFMessage(lua_State* pState) {
 
 int LUAFlowWriter::WriteStatusResponse(lua_State* pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
-		SCRIPT_READ_STRING(code,"")
-		SCRIPT_READ_STRING(description,"")
-		AMFObjectWriter response = writer.writeStatusResponse(code,description);
+		AMFObjectWriter response = writer.writeStatusResponse(SCRIPT_READ_STRING(""),SCRIPT_READ_STRING(""));
 		while(SCRIPT_CAN_READ) {
-			SCRIPT_READ_STRING(name,"")
-			response.writer.writePropertyName(name);
+			response.writer.writePropertyName(SCRIPT_READ_STRING(""));
 			Script::ReadAMF(pState,response.writer,1);
 		}
 	SCRIPT_CALLBACK_RETURN

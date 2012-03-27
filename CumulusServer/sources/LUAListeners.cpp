@@ -19,6 +19,7 @@
 #include "Listeners.h"
 #include "LUAListener.h"
 
+using namespace std;
 using namespace Cumulus;
 
 const char*		LUAListeners::Name="Cumulus::Listeners";
@@ -41,7 +42,7 @@ int LUAListeners::IPairs(lua_State* pState) {
 
 int LUAListeners::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Listeners,LUAListeners,listeners)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="ipairs")
 			SCRIPT_WRITE_FUNCTION(&LUAListeners::IPairs)
 		else if(name == "count")
@@ -52,7 +53,7 @@ int LUAListeners::Get(lua_State *pState) {
 
 int LUAListeners::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Listeners,LUAListeners,listeners)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

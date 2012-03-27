@@ -19,7 +19,7 @@
 #include "Publications.h"
 #include "LUAPublication.h"
 
-
+using namespace std;
 using namespace Cumulus;
 
 const char*		LUAPublications::Name="Cumulus::Publications";
@@ -42,14 +42,13 @@ int LUAPublications::Pairs(lua_State* pState) {
 
 int LUAPublications::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Publications,LUAPublications,publications)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="pairs")
 			SCRIPT_WRITE_FUNCTION(&LUAPublications::Pairs)
 		else if(name == "count")
 			SCRIPT_WRITE_NUMBER(publications.count())
 		else if(name=="(") {
-			SCRIPT_READ_STRING(publication,"")
-			Publications::Iterator it = publications(publication);
+			Publications::Iterator it = publications(SCRIPT_READ_STRING(""));
 			if(it!=publications.end())
 				SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,*it->second)
 		}
@@ -58,7 +57,7 @@ int LUAPublications::Get(lua_State *pState) {
 
 int LUAPublications::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Publications,LUAPublications,publications)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

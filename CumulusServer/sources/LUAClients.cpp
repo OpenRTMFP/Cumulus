@@ -45,13 +45,13 @@ int LUAClients::Pairs(lua_State* pState) {
 
 int LUAClients::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Entities<Client>,LUAClients,clients)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="pairs")
 			SCRIPT_WRITE_FUNCTION(&LUAClients::Pairs)
 		else if(name=="count")
 			SCRIPT_WRITE_NUMBER(clients.count())
 		else if(name=="(") {
-			SCRIPT_READ_STRING(id,"")
+			string id = SCRIPT_READ_STRING("");
 			Client* pClient = NULL;
 			if(id.size()==ID_SIZE)
 				pClient = clients((const UInt8*)id.c_str());
@@ -70,7 +70,7 @@ int LUAClients::Get(lua_State *pState) {
 
 int LUAClients::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Entities<Client>,LUAClients,clients)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

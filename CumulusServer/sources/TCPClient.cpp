@@ -50,7 +50,7 @@ void TCPClient::onReadable(UInt32 available) {
 
 	try {
 		int received = _socket.receiveBytes(&_recvBuffer[_available],available);
-		if(received==0) {
+		if(received<=0) {
 			error(""); // Graceful disconnection
 			return;
 		}
@@ -58,7 +58,7 @@ void TCPClient::onReadable(UInt32 available) {
 
 		UInt32 gotten = _available-onReception(&_recvBuffer[0],_available);
 		if(gotten>_available) {
-			WARN("TCPClient : onReception has returned a 'rest' value more important than the avaiable value (%u>%u)",gotten,_available);
+			WARN("TCPClient : onReception has returned a 'rest' value more important than the available value (%u>%u)",gotten,_available);
 			gotten=_available;
 		}
 		_available -= gotten;

@@ -19,6 +19,7 @@
 #include "LUAQualityOfService.h"
 #include "LUAPublication.h"
 
+using namespace std;
 using namespace Cumulus;
 
 const char*		LUAListener::Name="Cumulus::Listener";
@@ -31,7 +32,7 @@ void LUAListener::Clear(lua_State* pState,const Listener& listener){
 
 int LUAListener::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Listener,LUAListener,listener)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="id") {
 			SCRIPT_WRITE_NUMBER(listener.id)
 		} else if(name=="audioQOS") {
@@ -54,7 +55,7 @@ int LUAListener::Get(lua_State *pState) {
 
 int LUAListener::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Listener,LUAListener,listener)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="audioSampleAccess") {
 			bool value = lua_toboolean(pState,-1)==0 ? false : true;
 			if(value!=listener.audioSampleAccess)

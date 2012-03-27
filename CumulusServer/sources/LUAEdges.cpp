@@ -18,7 +18,7 @@
 #include "LUAEdges.h"
 #include "Edges.h"
 
-
+using namespace std;
 using namespace Cumulus;
 
 const char*		LUAEdges::Name="Cumulus::Edges";
@@ -41,14 +41,13 @@ int LUAEdges::Pairs(lua_State* pState) {
 
 int LUAEdges::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Edges,LUAEdges,edges)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="pairs")
 			SCRIPT_WRITE_FUNCTION(&LUAEdges::Pairs)
 		else if(name=="count")
 			SCRIPT_WRITE_NUMBER(edges.count())
 		else if(name=="(") {
-			SCRIPT_READ_STRING(address,"")
-			Edge* pEdge = edges(address);
+			Edge* pEdge = edges(SCRIPT_READ_STRING(""));
 			if(pEdge)
 				SCRIPT_WRITE_NUMBER(pEdge->count)
 		}
@@ -57,7 +56,7 @@ int LUAEdges::Get(lua_State *pState) {
 
 int LUAEdges::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Edges,LUAEdges,edges)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

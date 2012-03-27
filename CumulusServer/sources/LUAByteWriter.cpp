@@ -20,6 +20,7 @@
 #include "Poco/StreamConverter.h"
 
 
+using namespace std;
 using namespace Cumulus;
 using namespace Poco;
 
@@ -27,7 +28,7 @@ const char*		LUAByteWriter::Name="LUAByteWriter";
 
 int LUAByteWriter::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="writeBoolean")
 			SCRIPT_WRITE_FUNCTION(&LUAByteWriter::WriteBoolean)
 		else if(name=="writeByte")
@@ -61,22 +62,20 @@ int LUAByteWriter::Get(lua_State *pState) {
 
 int LUAByteWriter::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteBoolean(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_BOOL(value,false)
-		writer.writer.write8(value ? 1 : 0);
+		writer.writer.write8(SCRIPT_READ_BOOL(false) ? 1 : 0);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteByte(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_INT(value,0)
-		writer.writer.write8((UInt8)value);
+		writer.writer.write8((UInt8)SCRIPT_READ_INT(0));
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -89,29 +88,26 @@ int	LUAByteWriter::WriteBytes(lua_State *pState) {
 
 int	LUAByteWriter::WriteDouble(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_DOUBLE(value,0)
-		writer.writer << value;
+		writer.writer << SCRIPT_READ_DOUBLE(0);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteFloat(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_DOUBLE(value,0)
-		writer.writer << (float)value;
+		writer.writer << (float)SCRIPT_READ_DOUBLE(0);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteInt(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_INT(value,0)
-		writer.writer.write32(value);
+		writer.writer.write32(SCRIPT_READ_INT(0));
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteMultiByte(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_STRING(data,"")
-		SCRIPT_READ_STRING(format,"")
+		string data = SCRIPT_READ_STRING("");
+		string format = SCRIPT_READ_STRING("");
 		TextEncoding& encodingFrom = TextEncoding::byName("UTF8");
 		TextEncoding& encodingTo = TextEncoding::byName(format);
 		OutputStreamConverter(writer.writer.stream(),encodingFrom,encodingTo).write(data.c_str(),data.size());
@@ -126,42 +122,36 @@ int	LUAByteWriter::WriteAMF(lua_State *pState) {
 
 int	LUAByteWriter::WriteShort(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_INT(value,0)
-		writer.writer.write16(value);
+		writer.writer.write16(SCRIPT_READ_INT(0));
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUnsignedByte(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_UINT(value,0)
-		writer.writer.write8(value);
+		writer.writer.write8(SCRIPT_READ_UINT(0));
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUnsignedInt(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_UINT(value,0)
-		writer.writer.write32(value);
+		writer.writer.write32(SCRIPT_READ_UINT(0));
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUnsignedShort(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_UINT(value,0)
-		writer.writer.write16(value);
+		writer.writer.write16(SCRIPT_READ_UINT(0));
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUTF(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_STRING(value,"")
-		writer.writer.writeString16(value);
+		writer.writer.writeString16(SCRIPT_READ_STRING(""));
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAByteWriter::WriteUTFBytes(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		SCRIPT_READ_STRING(value,"")
-		writer.writer.writeRaw(value);
+		writer.writer.writeRaw(SCRIPT_READ_STRING(""));
 	SCRIPT_CALLBACK_RETURN
 }

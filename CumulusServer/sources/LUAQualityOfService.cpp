@@ -18,6 +18,7 @@
 #include "LUAQualityOfService.h"
 #include "QualityOfService.h"
 
+using namespace std;
 using namespace Cumulus;
 
 const char*		LUAQualityOfService::Name="Cumulus::QualityOfService";
@@ -25,7 +26,7 @@ const char*		LUAQualityOfService::Name="Cumulus::QualityOfService";
 
 int LUAQualityOfService::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(QualityOfService,LUAQualityOfService,qos)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="lostRate") {
 			SCRIPT_WRITE_NUMBER(qos.lostRate)
 		} else if(name=="byteRate") {
@@ -42,7 +43,7 @@ int LUAQualityOfService::Get(lua_State *pState) {
 
 int LUAQualityOfService::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(QualityOfService,LUAQualityOfService,qos)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

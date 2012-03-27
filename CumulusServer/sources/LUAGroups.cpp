@@ -47,13 +47,13 @@ int LUAGroups::Pairs(lua_State* pState) {
 
 int LUAGroups::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Entities<Group>,LUAGroups,groups)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="pairs")
 			SCRIPT_WRITE_FUNCTION(&LUAGroups::Pairs)
 		else if(name=="count")
 			SCRIPT_WRITE_NUMBER(groups.count())
 		else if(name=="(") {
-			SCRIPT_READ_STRING(id,"")
+			string id = SCRIPT_READ_STRING("");
 			Group* pGroup = NULL;
 			if(id.size()==ID_SIZE)
 				pGroup = groups((const UInt8*)id.c_str());
@@ -72,7 +72,7 @@ int LUAGroups::Get(lua_State *pState) {
 
 int LUAGroups::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(Entities<Group>,LUAGroups,groups)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }

@@ -40,21 +40,19 @@ void LUAMail::onSent(){
 
 int	LUAMail::Send(lua_State* pState) {
 	SCRIPT_CALLBACK(LUAMail,LUAMail,mail)
-		SCRIPT_READ_STRING(sender,"")
-		SCRIPT_READ_STRING(subject,"")
-		SCRIPT_READ_STRING(content,"")
+		string sender = SCRIPT_READ_STRING("");
+		string subject = SCRIPT_READ_STRING("");
+		string content = SCRIPT_READ_STRING("");
 		list<string> recipients;
-		while(SCRIPT_CAN_READ) {
-			SCRIPT_READ_STRING(recipient,"")
-			recipients.push_back(recipient);
-		}
+		while(SCRIPT_CAN_READ)
+			recipients.push_back(SCRIPT_READ_STRING(""));
 		mail.send(sender,recipients,subject,content);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int LUAMail::Get(lua_State* pState) {
 	SCRIPT_CALLBACK(LUAMail,LUAMail,mail)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		if(name=="send") {
 			SCRIPT_WRITE_FUNCTION(&LUAMail::Send)
 		} else if(name=="error") {
@@ -68,7 +66,7 @@ int LUAMail::Get(lua_State* pState) {
 
 int LUAMail::Set(lua_State* pState) {
 	SCRIPT_CALLBACK(LUAMail,LUAMail,mail)
-		SCRIPT_READ_STRING(name,"")
+		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }
