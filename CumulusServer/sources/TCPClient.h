@@ -24,6 +24,7 @@
 
 class TCPClient : private SocketManaged {
 public:
+	TCPClient(const Poco::Net::StreamSocket& socket,SocketManager& manager);
 	TCPClient(SocketManager& manager);
 	virtual ~TCPClient();
 

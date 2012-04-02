@@ -26,33 +26,37 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-ServerConnection::ServerConnection(Handler& handler,Session& handshake) : ServerSession(0,0,Peer(handler),NULL,NULL,(Invoker&)handler),_handshake(handshake),_connected(false) {
+ServerConnection::ServerConnection(SendingEngine& sendingEngine,Handler& handler,Session& handshake) : Session(sendingEngine,0,0,Peer(handler),NULL,NULL),_handshake(handshake),_connected(false) {
 	RandomInputStream().read((char*)peer.id,ID_SIZE);
 }
 
 ServerConnection::~ServerConnection() {
-	kill();
 }
+
 
 void ServerConnection::connect(const SocketAddress& publicAddress) {
 	INFO("RTMFP server connection attempt");
 	PacketWriter& packet(writer());
+	packet.write8(0x0b);
+	packet.write16(RTMFP::TimeNow());
 	packet.write8(0x41);
 	UInt16 pos = packet.position();
 	packet.next(2);
 	packet.writeAddress(publicAddress,false);
 	packet.reset(pos);
 	packet.write16(packet.length()-packet.position()-2);
-	flush();
+	send();
 }
 
 void ServerConnection::disconnect() {
 	(bool&)died=false;
 	_connected=false;
 	PacketWriter& packet(writer());
+	packet.write8(0x0b);
+	packet.write16(RTMFP::TimeNow());
 	packet.write8(0x45);
 	packet.write16(0);
-	flush();
+	send();
 }
 
 void ServerConnection::manage() {
@@ -67,6 +71,8 @@ void ServerConnection::manage() {
 
 void ServerConnection::createSession(EdgeSession& session,const string& url) {
 	PacketWriter& packet(writer());
+	packet.write8(0x0b);
+	packet.write16(RTMFP::TimeNow());
 	packet.write8(0x39);
 	packet.write16(5+COOKIE_SIZE+Util::Get7BitValueSize(url.size())+url.size());
 	packet.write32(session.id);
@@ -75,12 +81,14 @@ void ServerConnection::createSession(EdgeSession& session,const string& url) {
 	packet.writeRaw(peer.id,ID_SIZE);
 	packet << url;
 	packet << session.peer.address.toString();
-	flush();
+	send();
 }
 
 void ServerConnection::sendP2PHandshake(const string& tag,const SocketAddress& address,const UInt8* peerIdWanted) {
 	_p2pHandshakers[tag] = address;
 	PacketWriter& packet(writer());
+	packet.write8(0x0b);
+	packet.write16(RTMFP::TimeNow());
 	packet.write8(0x30);
 	packet.write16(3+ID_SIZE+tag.size());
 	packet.write8(0x22);
@@ -88,7 +96,7 @@ void ServerConnection::sendP2PHandshake(const string& tag,const SocketAddress& a
 	packet.write8(0x0F);
 	packet.writeRaw(peerIdWanted,ID_SIZE);
 	packet.writeRaw(tag);
-	flush();
+	send();
 }
 
 void ServerConnection::packetHandler(PacketReader& packet) {
@@ -114,9 +122,9 @@ void ServerConnection::packetHandler(PacketReader& packet) {
 
 			(SocketAddress&)_handshake.peer.address = it->second;
 			packet.reset(0);
-			PacketWriter writer(packet.current(),packet.available()+16); // +16 for futur 0xFFFF padding
-			writer.clear(packet.available());
-			_handshake.send(writer);
+			_handshake.writer().clear();
+			_handshake.writer().writeRaw(packet.current(),packet.available());
+			_handshake.send();
 			_p2pHandshakers.erase(it);
 
 			break;
@@ -129,15 +137,17 @@ void ServerConnection::packetHandler(PacketReader& packet) {
 			}
 			// Edge keepalive
 			PacketWriter& packet(writer());
+			packet.write8(0x0b);
+			packet.write16(RTMFP::TimeNow());
 			packet.write8(0x41);
 			packet.write16(0);
-			flush();
+			send();
 			INFO("Keepalive RTMFP server");
 			break;
 		}
 		case 0x45: {
 			// Server is death!
-			(bool&)died=true;
+			kill();
 			break;
 		}
 		default:

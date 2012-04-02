@@ -43,7 +43,7 @@ public:
 	Iterator begin() const;
 	Iterator end() const;
 	
-	bool	manage();
+	void	manage();
 	void	clear();
 private:
 	void    remove(std::map<Poco::UInt32,Session*>::iterator it);

@@ -16,6 +16,7 @@
 */
 
 #include "AESEngine.h"
+#include "RTMFP.h"
 #include <string.h>
 
 using namespace std;
@@ -23,8 +24,11 @@ using namespace Poco;
 
 namespace Cumulus {
 
-AESEngine::AESEngine(const UInt8* key,Direction direction) : _direction(direction),null(key?false:true) {
-	if(null)
+AESEngine AESEngine::s_aesDecrypt(RTMFP_SYMETRIC_KEY,AESEngine::DECRYPT);
+AESEngine AESEngine::s_aesEncrypt(RTMFP_SYMETRIC_KEY,AESEngine::ENCRYPT);
+
+AESEngine::AESEngine(const UInt8* key,Direction direction) : type(key ? DEFAULT : EMPTY),_direction(direction) {
+	if(!key)
 		return;
 	if(_direction==DECRYPT)
 		AES_set_decrypt_key(key, 0x80,&_key);
@@ -32,13 +36,22 @@ AESEngine::AESEngine(const UInt8* key,Direction direction) : _direction(directio
 		AES_set_encrypt_key(key, 0x80,&_key);
 }
 
+AESEngine::AESEngine(const AESEngine& other,Type type) : type(other.type==EMPTY ? EMPTY : type),_key(other._key),_direction(other._direction) {
+}
+
 
 AESEngine::~AESEngine() {
 }
 
 void AESEngine::process(const UInt8* in,UInt8* out,UInt32 size) {
-	if(null)
+	if(type==EMPTY)
 		return;
+	if(type==SYMMETRIC) {
+		if(_direction==DECRYPT)
+			s_aesDecrypt.process(in,out,size);
+		else
+			s_aesEncrypt.process(in,out,size);
+	}
 	UInt8	iv[AES_KEY_SIZE];
 	memset(iv,0,sizeof(iv));
 	AES_cbc_encrypt(in, out,size,&_key,iv, _direction);

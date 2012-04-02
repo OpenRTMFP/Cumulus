@@ -118,7 +118,7 @@ void AMFWriter::writeDate(const Timestamp& date){
 		if(amf0Preference) {
 			writer.write8(AMF_DATE);
 			writer << ((double)date.epochMicroseconds()/1000);
-			writer.write16(0); // Timezone, TODO?
+			writer.write16(0); // Timezone, useless in AMF0 format (always equals 0)
 			return;
 		}
 		writer.write8(AMF_AVMPLUS_OBJECT);

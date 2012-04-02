@@ -41,13 +41,11 @@ public:
 	static void						Pack(PacketWriter& packet,Poco::UInt32 farId);
 
 	static bool						ReadCRC(PacketReader& packet);
-	static bool						Decode(PacketReader& packet);
-	static bool						Decode(AESEngine& aesDecrypt,PacketReader& packet);
 	static void						WriteCRC(PacketWriter& packet);
-	static void						Encode(PacketWriter& packet);
+	static bool						Decode(AESEngine& aesDecrypt,PacketReader& packet);
 	static void						Encode(AESEngine& aesEncrypt,PacketWriter& packet);
 	
-	static Poco::UInt16				CheckSum(PacketReader& packet);
+	
 
 	static DH*						BeginDiffieHellman(Poco::UInt8* pubKey);
 	static void						ComputeDiffieHellmanSecret(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt16 farPubKeySize,Poco::UInt8* sharedSecret);
@@ -63,9 +61,7 @@ public:
 	static Poco::UInt16				Time(Poco::Timestamp::TimeVal timeVal);
 
 private:
-
-	static AESEngine				s_aesDecrypt;
-	static AESEngine				s_aesEncrypt;
+	static Poco::UInt16				CheckSum(PacketReader& packet);
 
 	RTMFP();
 	~RTMFP();
@@ -73,14 +69,6 @@ private:
 
 inline void RTMFP::EndDiffieHellman(DH* pDH) {
 	DH_free(pDH);
-}
-
-inline bool RTMFP::Decode(PacketReader& packet) {
-	return Decode(s_aesDecrypt,packet);
-}
-
-inline void RTMFP::Encode(PacketWriter& packet) {
-	Encode(s_aesEncrypt,packet);
 }
 
 inline Poco::UInt16 RTMFP::TimeNow() {

@@ -28,32 +28,12 @@ ScopedMemoryClip::ScopedMemoryClip(MemoryStreamBuf& buffer,UInt32 offset) : _off
 		_offset = _buffer._bufferSize-1;
 	if(_offset<0)
 		_offset=0;
-	clip(_offset);
+	_buffer.clip(_offset);
 }
 ScopedMemoryClip::~ScopedMemoryClip() {
-	clip(-(Int32)_offset);
+	_buffer.clip(-(Int32)_offset);
 }
 
-void ScopedMemoryClip::clip(Int32 offset) {
-	char* gpos = _buffer.gCurrent();
-
-	_buffer._pBuffer += offset;
-	_buffer._bufferSize -= offset;
-	
-	int ppos = _buffer.pCurrent()-_buffer._pBuffer;
-
-	_buffer.setg(_buffer._pBuffer,gpos,_buffer._pBuffer + _buffer._bufferSize);
-
-	_buffer.setp(_buffer._pBuffer,_buffer._pBuffer + _buffer._bufferSize);
-	_buffer.pbump(ppos);
-
-	if(_buffer._written<offset)
-		_buffer._written=0;
-	else
-		_buffer._written-=offset;
-	if(_buffer._written>_buffer._bufferSize)
-		_buffer._written=_buffer._bufferSize;
-}
 
 MemoryStreamBuf::MemoryStreamBuf(char* pBuffer, UInt32 bufferSize): _pBuffer(pBuffer),_bufferSize(bufferSize),_written(0) {
 	setg(_pBuffer, _pBuffer,_pBuffer + _bufferSize);
@@ -69,6 +49,30 @@ MemoryStreamBuf::MemoryStreamBuf(MemoryStreamBuf& other): _pBuffer(other._pBuffe
 
 MemoryStreamBuf::~MemoryStreamBuf() {
 }
+
+void MemoryStreamBuf::clip(Int32 offset) {
+	if(offset==0)
+		return;
+	char* gpos = gCurrent();
+
+	_pBuffer += offset;
+	_bufferSize -= offset;
+	
+	int ppos = pCurrent()-_pBuffer;
+
+	setg(_pBuffer,gpos,_pBuffer + _bufferSize);
+
+	setp(_pBuffer,_pBuffer + _bufferSize);
+	pbump(ppos);
+
+	if(_written<offset)
+		_written=0;
+	else
+		_written-=offset;
+	if(_written>_bufferSize)
+		_written=_bufferSize;
+}
+
 
 void MemoryStreamBuf::next(UInt32 size) {
 	pbump(size);

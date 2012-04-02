@@ -23,7 +23,8 @@ using namespace Poco;
 using namespace Poco::Net;
 
 
-SocketManager::SocketManager() : Startable("SocketManager") {
+SocketManager::SocketManager() : Startable("SocketManager"),_timeout(0,1) {
+	setPriority(Thread::PRIO_HIGHEST);
 	start();
 }
 
@@ -88,6 +89,7 @@ void SocketManager::run(const volatile bool& terminate) {
 		readables.clear();
 		writables.clear();
 		errors.clear();
+		bool empty = true;
 
 		{
 			ScopedLock<Mutex> lock(_mutex);
@@ -96,12 +98,17 @@ void SocketManager::run(const volatile bool& terminate) {
 				SocketManaged& socket = *it->second;
 				if(socket.error)
 					continue;
+				empty = false;
 				if(!socket.readable)
 					readables.push_back(it->first);
 				if(socket.haveToWrite() && !socket.writable)
 					writables.push_back(it->first);
 				errors.push_back(it->first);
 			}
+		}
+		if(empty) {
+			Thread::sleep(1);
+			continue;
 		}
 
 		try {
@@ -126,10 +133,10 @@ void SocketManager::run(const volatile bool& terminate) {
 					if(it2 != _sockets.end())
 						(bool&)it2->second->error = true;
 				}
-			} else
-				Thread::sleep(1);
+			}
+		} catch(IOException&) {
 		} catch(Exception& ex) {
-			WARN("SocketManager error, ",ex.displayText().c_str())
+			WARN("SocketManager error, %s",ex.displayText().c_str())
 		}
 
 	}

@@ -43,13 +43,17 @@ public:
 	void	limit(Poco::UInt32 length=0);
 	void	next(Poco::UInt32 size);
 	void	flush();
-	
+	void	clip(Poco::UInt32 offset);
+
 private:
 	MemoryOutputStream	_memory;
 	PacketWriter*		_pOther;
 	Poco::UInt32		_size;
 };
 
+inline void PacketWriter::clip(Poco::UInt32 offset) {
+	_memory.clip(offset);
+}
 inline Poco::UInt32 PacketWriter::available() {
 	return _memory.available();
 }

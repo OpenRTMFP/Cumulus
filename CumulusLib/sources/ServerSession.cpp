@@ -31,24 +31,21 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-ServerSession::ServerSession(UInt32 id,
+ServerSession::ServerSession(SendingEngine& sendingEngine,
+				 UInt32 id,
 				 UInt32 farId,
 				 const Peer& peer,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey,
-				 Invoker& invoker) : Session(id,farId,peer,decryptKey,encryptKey),pTarget(NULL),_invoker(invoker),_failed(false),_timesFailed(0),_timeSent(0),_nextFlowWriterId(0),_timesKeepalive(0),_pLastFlowWriter(NULL),_writer(_buffer,sizeof(_buffer)) {
+				 Invoker& invoker) : Session(sendingEngine,id,farId,peer,decryptKey,encryptKey),pTarget(NULL),_invoker(invoker),_failed(false),_timesFailed(0),_timeSent(0),_nextFlowWriterId(0),_timesKeepalive(0),_pLastFlowWriter(NULL) {
 	_pFlowNull = new FlowNull(this->peer,invoker,*this);
-	_writer.next(11);
-	_writer.limit(RTMFP_MAX_PACKET_LENGTH); // set normal limit
-	
+	Session::writer().clear(11);
 }
 
 
 ServerSession::~ServerSession() {
-	if(!died) {
-		failSignal();
-		kill();
-	}
+	kill();
+
 	// delete helloAttempts
 	map<string,Attempt*>::const_iterator it0;
 	for(it0=_helloAttempts.begin();it0!=_helloAttempts.end();++it0)
@@ -80,6 +77,7 @@ void ServerSession::fail(const string& error) {
 }
 
 void ServerSession::failSignal() {
+	_failed=true;
 	if(died)
 		return;
 	++_timesFailed;
@@ -93,7 +91,8 @@ void ServerSession::failSignal() {
 }
 
 void ServerSession::kill() {
-	_failed=true;
+	if(!_failed)
+		failSignal();
 	if(died)
 		return;
 
@@ -117,7 +116,7 @@ void ServerSession::kill() {
 		delete it2->second;
 	_flowWriters.clear();
 
-	(bool&)died=true;
+	Session::kill();
 }
 
 void ServerSession::manage() {
@@ -266,8 +265,6 @@ void ServerSession::flush(UInt8 marker,bool echoTime) {
 
 	PacketWriter& packet(ServerSession::writer());
 	if(packet.length()>=RTMFP_MIN_PACKET_SIZE) {
-		
-		packet.limit(); // no limit for sending!
 
 		// After 30 sec, send packet without echo time
 		if(_recvTimestamp.isElapsed(30000000))
@@ -279,61 +276,55 @@ void ServerSession::flush(UInt8 marker,bool echoTime) {
 		else
 			offset = 2;
 
-		{
-			ScopedMemoryClip clip((MemoryStreamBuf&)*packet.stream().rdbuf(),offset);
+		packet.clip(offset);
+		packet.reset(6);
+		packet.write8(marker);
+		packet.write16(RTMFP::TimeNow());
+		if(echoTime)
+			packet.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
+		
+		Session::send();
 
-			packet.reset(6);
-			packet.write8(marker);
-			packet.write16(RTMFP::TimeNow());
-			if(echoTime)
-				packet.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
-			
-			Session::send(packet);
-		}
-
-		packet.clear(11);
-		packet.limit(RTMFP_MAX_PACKET_LENGTH); // reset the normal limit
+		Session::writer().clear(11);
 	}
 }
 
 PacketWriter& ServerSession::writer() {
-	if(!_writer.good()) {
+	if(!Session::writer().good()) {
 		if(!_failed)
 			WARN("Writing packet failed : the writer has certainly exceeded the size set");
-		_writer.reset(11);
+		Session::writer().reset(11);
 	}
-	_writer.limit(RTMFP_MAX_PACKET_LENGTH);
-	return _writer;
+	Session::writer().limit(RTMFP_MAX_PACKET_LENGTH);
+	return Session::writer();
 }
 
 PacketWriter& ServerSession::writeMessage(UInt8 type,UInt16 length,FlowWriter* pFlowWriter) {
-	PacketWriter& writer = ServerSession::writer();
 
 	// No sending formated message for a failed session!
 	if(_failed) {
-		writer.clear(11);
-		writer.limit(writer.position());
-		return writer;
+		Session::writer().clear(11);
+		Session::writer().limit(Session::writer().position());
+		return Session::writer();
 	}
 
 	_pLastFlowWriter=pFlowWriter;
 
 	UInt16 size = length + 3; // for type and size
 
-	if(size>writer.available()) {
+	if(size>Session::writer().available()) {
 		flush(false); // send packet (and without time echo)
-		if(size > writer.available()) {
+		if(size > Session::writer().available()) {
 			CRITIC("Message truncated because exceeds maximum UDP packet size on session %u",id);
-			size = writer.available();
+			size = Session::writer().available();
 		}
 		_pLastFlowWriter=NULL;
 	}
 
+	PacketWriter& writer = Session::writer();
 	writer.limit(writer.position()+size);
-
 	writer.write8(type);
 	writer.write16(length);
-
 	return writer;
 }
 
@@ -413,6 +404,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 
 			case 0x4c :
 				/// Session death!
+				_failed=true; // to avoid the fail signal!!
 				kill();
 				return;
 

@@ -23,6 +23,7 @@
 #include "Blacklist.h"
 #include "SocketManager.h"
 #include "LUAMail.h"
+#include "TCPServer.h"
 
 class Server : public Cumulus::RTMFPServer {
 public:

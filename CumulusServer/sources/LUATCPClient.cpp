@@ -20,9 +20,13 @@
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Net;
 
 
 const char*		LUATCPClient::Name="LUATCPClient";
+
+LUATCPClient::LUATCPClient(const StreamSocket& socket,SocketManager& manager,lua_State* pState) : _pState(pState),TCPClient(socket,manager) {
+}
 
 LUATCPClient::LUATCPClient(SocketManager& manager,lua_State* pState) : _pState(pState),TCPClient(manager) {
 }
@@ -53,6 +57,13 @@ void LUATCPClient::onDisconnection(){
 void LUATCPClient::Create(SocketManager& manager,lua_State* pState) {
 	SCRIPT_BEGIN(pState)
 		SCRIPT_WRITE_OBJECT(LUATCPClient,LUATCPClient,*(new LUATCPClient(manager,pState)))
+		SCRIPT_ADD_DESTRUCTOR(&LUATCPClient::Destroy);
+	SCRIPT_END
+}
+
+void LUATCPClient::Create(const StreamSocket& socket,SocketManager& manager,lua_State* pState) {
+	SCRIPT_BEGIN(pState)
+		SCRIPT_WRITE_OBJECT(LUATCPClient,LUATCPClient,*(new LUATCPClient(socket,manager,pState)))
 		SCRIPT_ADD_DESTRUCTOR(&LUATCPClient::Destroy);
 	SCRIPT_END
 }

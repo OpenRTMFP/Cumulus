@@ -27,7 +27,7 @@ public:
 	FlowNull(Peer& peer,Invoker& invoker,BandWriter& band);
 	virtual ~FlowNull();
 	
-	void	fragmentHandler(Poco::UInt64 stage,Poco::UInt32 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
+	void	fragmentHandler(Poco::UInt64 stage,Poco::UInt64 deltaNAck,PacketReader& fragment,Poco::UInt8 flags);
 
 	FlowWriter&			writer();
 

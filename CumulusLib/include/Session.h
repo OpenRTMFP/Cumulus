@@ -23,6 +23,7 @@
 #include "AESEngine.h"
 #include "RTMFP.h"
 #include "Peer.h"
+#include "SendingEngine.h"
 #include "Poco/Net/DatagramSocket.h"
 
 namespace Cumulus {
@@ -30,7 +31,8 @@ namespace Cumulus {
 class Session {
 public:
 
-	Session(Poco::UInt32 id,
+	Session(SendingEngine&	sendingEngine,
+			Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
 			const Poco::UInt8* decryptKey,
@@ -44,7 +46,7 @@ public:
 	const bool			checked;
 	const bool			died;
 
-	Poco::UInt8			flags;
+	Poco::UInt8			flags; // Allow to children class to save some flags (see ServerSession and SESSION_BY_EDGE)
 
 	bool				middleDump;
 
@@ -52,29 +54,38 @@ public:
 
 	void				setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address);
 	void				receive(PacketReader& packet);
-	void				send(PacketWriter& packet);
-	
-protected:
-	void				send(PacketWriter& packet,Poco::UInt32 farId,Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& receiver);
+	void				send();
+	PacketWriter&		writer();
+	virtual void		kill();
 
-	virtual bool		decode(PacketReader& packet);
-	virtual void		encode(PacketWriter& packet);
+protected:
+	void				send(Poco::UInt32 farId,Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& receiver);
 
 	AESEngine			aesDecrypt;
 	AESEngine			aesEncrypt;
 
 private:
+	virtual AESEngine	decoder();
+	virtual AESEngine	encoder();
+
 	virtual void	packetHandler(PacketReader& packet)=0;
 	
+	SendingEngine&				_sendingEngine;
+	Poco::AutoPtr<SendingUnit>	_pSendingUnit;
 	Poco::Net::DatagramSocket*	_pSocket;
+	SendingThread*				_pSendingThread;
 };
 
-inline bool Session::decode(PacketReader& packet) {
-	return RTMFP::Decode(aesDecrypt,packet);
+inline PacketWriter& Session::writer() {
+	return _pSendingUnit->packet;
 }
 
-inline void Session::encode(PacketWriter& packet) {
-	RTMFP::Encode(aesEncrypt,packet);
+inline AESEngine Session::decoder() {
+	return aesDecrypt.next();
+}
+
+inline AESEngine Session::encoder() {
+	return aesEncrypt.next();
 }
 
 

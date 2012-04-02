@@ -18,7 +18,6 @@
 #include "Middle.h"
 #include "Logs.h"
 #include "Util.h"
-#include "RTMFP.h"
 #include "AMFWriter.h"
 #include "AMFReader.h"
 #include "Poco/Format.h"
@@ -33,14 +32,15 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Middle::Middle(UInt32 id,
+Middle::Middle(SendingEngine& sendingEngine,
+			    UInt32 id,
 				UInt32 farId,
 				const Peer& peer,
 				const UInt8* decryptKey,
 				const UInt8* encryptKey,
 				Handler& handler,
 				const Sessions&	sessions,
-				Target& target) : ServerSession(id,farId,peer,decryptKey,encryptKey,(Invoker&)handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
+				Target& target) : ServerSession(sendingEngine,id,farId,peer,decryptKey,encryptKey,(Invoker&)handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
 					_middleId(0),_sessions(sessions),_firstResponse(false),_queryUrl("rtmfp://"+target.address.toString()+peer.path),_middlePeer(peer),_target(target) {
 
 	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.properties);
@@ -82,23 +82,11 @@ Middle::Middle(UInt32 id,
 }
 
 Middle::~Middle() {
+	fail(""); // To avoid the failSignal
 	if(_pMiddleAesDecrypt)
 		delete _pMiddleAesDecrypt;
 	if(_pMiddleAesEncrypt)
 		delete _pMiddleAesEncrypt;
-}
-
-bool Middle::decode(PacketReader& packet) {
-	if(farId==0)
-		return RTMFP::Decode(packet);
-	return Session::decode(packet);
-}
-void Middle::encode(PacketWriter& packet) {
-	if(farId==0) {
-		RTMFP::Encode(packet);
-		return;
-	}
-	Session::encode(packet);
 }
 
 PacketWriter& Middle::handshaker() {
@@ -220,7 +208,7 @@ void Middle::sendHandshakeToTarget(UInt8 type) {
 
 	Logs::Dump(packet,6,format("Middle to %s handshaking",_target.address.toString()).c_str(),true);
 
-	RTMFP::Encode(packet);
+	RTMFP::Encode(aesEncrypt.next(AESEngine::SYMMETRIC),packet);
 	RTMFP::Pack(packet,0);
 	_socket.sendBytes(packet.begin(),(int)packet.length());
 	writer(); // To delete the handshake response!
@@ -520,7 +508,7 @@ void Middle::manage() {
 	if(died)
 		return;
 
-	while(_socket.available()>0) {
+	if(_socket.available()>0) {
 
 		int len = 0;
 		try {
@@ -541,7 +529,7 @@ void Middle::manage() {
 
 		// Handshaking
 		if(id==0 || !_pMiddleAesDecrypt) {
-			if(!RTMFP::Decode(packet)) {
+			if(!RTMFP::Decode(aesDecrypt.next(AESEngine::SYMMETRIC),packet)) {
 				ERROR("Target handshake decrypt error");
 				return;
 			}

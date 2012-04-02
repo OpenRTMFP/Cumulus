@@ -120,6 +120,8 @@
     <ClCompile Include="sources\PacketWriter.cpp" />
     <ClCompile Include="sources\Address.cpp" />
     <ClCompile Include="sources\RTMFPServerEdge.cpp" />
+    <ClCompile Include="sources\SendingEngine.cpp" />
+    <ClCompile Include="sources\SendingThread.cpp" />
     <ClCompile Include="sources\ServerConnection.cpp" />
     <ClCompile Include="sources\ServerSession.cpp" />
     <ClCompile Include="sources\Startable.cpp" />
@@ -173,6 +175,9 @@
     <ClInclude Include="include\PacketWriter.h" />
     <ClInclude Include="include\Address.h" />
     <ClInclude Include="include\RTMFPServerEdge.h" />
+    <ClInclude Include="include\SendingEngine.h" />
+    <ClInclude Include="include\SendingThread.h" />
+    <ClInclude Include="include\SendingUnit.h" />
     <ClInclude Include="include\ServerConnection.h" />
     <ClInclude Include="include\ServerSession.h" />
     <ClInclude Include="include\Startable.h" />

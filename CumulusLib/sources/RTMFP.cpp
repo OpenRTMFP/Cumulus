@@ -32,10 +32,6 @@ using namespace Poco;
 
 namespace Cumulus {
 
-AESEngine RTMFP::s_aesDecrypt(RTMFP_SYMETRIC_KEY,AESEngine::DECRYPT);
-AESEngine RTMFP::s_aesEncrypt(RTMFP_SYMETRIC_KEY,AESEngine::ENCRYPT);
-
-
 UInt8 g_dh1024p[] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xC9, 0x0F, 0xDA, 0xA2, 0x21, 0x68, 0xC2, 0x34,
@@ -92,7 +88,7 @@ bool RTMFP::ReadCRC(PacketReader& packet) {
 
 
 void RTMFP::Encode(AESEngine& aesEncrypt,PacketWriter& packet) {
-	if(!aesEncrypt.null) {
+	if(aesEncrypt.type != AESEngine::EMPTY) {
 		// paddingBytesLength=(0xffffffff-plainRequestLength+5)&0x0F
 		int paddingBytesLength = (0xFFFFFFFF-packet.length()+5)&0x0F;
 		// Padd the plain request with paddingBytesLength of value 0xff at the end

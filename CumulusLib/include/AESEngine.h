@@ -31,16 +31,36 @@ public:
 		DECRYPT=0,
 		ENCRYPT
 	};
+	enum Type {
+		DEFAULT=0,
+		EMPTY,
+		SYMMETRIC
+	};
 	AESEngine(const Poco::UInt8* key,Direction direction);
+	AESEngine(const AESEngine& other,Type type=DEFAULT);
 	virtual ~AESEngine();
 
-	void process(const Poco::UInt8* in,Poco::UInt8* out,Poco::UInt32 size);
+	AESEngine	next(Type type);
+	AESEngine	next();
+	void		process(const Poco::UInt8* in,Poco::UInt8* out,Poco::UInt32 size);
 
-	const bool null;
+	const Type	type;
 private:
 	Direction	_direction;
 	AES_KEY		_key;
+	
+
+	static AESEngine	s_aesDecrypt;
+	static AESEngine	s_aesEncrypt;
 };
+
+inline AESEngine AESEngine::next() {
+	return AESEngine(*this);
+}
+
+inline AESEngine AESEngine::next(Type type) {
+	return AESEngine(*this,type);
+}
 
 
 

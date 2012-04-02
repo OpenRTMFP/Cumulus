@@ -93,7 +93,7 @@ Session* Sessions::find(UInt32 id) {
 
 
 
-bool Sessions::manage() {
+void Sessions::manage() {
 	map<UInt32,Session*>::iterator it= _sessions.begin();
 	while(it!=end()) {
 		it->second->manage();
@@ -103,9 +103,10 @@ bool Sessions::manage() {
 		}
 		++it;
 	}
-	bool result = _sessions.size()!=_oldCount;
-	_oldCount=_sessions.size();
-	return result;
+	if(_sessions.size()!=_oldCount) {
+		INFO("%u clients",count());
+		_oldCount=_sessions.size();
+	}
 }
 
 

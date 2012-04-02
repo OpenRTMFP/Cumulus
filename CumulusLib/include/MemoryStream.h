@@ -31,10 +31,10 @@ public:
 	ScopedMemoryClip(MemoryStreamBuf& buffer,Poco::UInt32 offset);
 	~ScopedMemoryClip();
 private:
-	void				clip(Poco::Int32 offset);
 	Poco::UInt32		_offset;
 	MemoryStreamBuf&   _buffer;
 };
+
 
 class MemoryStreamBuf: public std::streambuf {
 	friend class ScopedMemoryClip;
@@ -53,8 +53,12 @@ public:
 	void			position(Poco::UInt32 pos=0);
 	char*			gCurrent();
 	char*			pCurrent();
+	
+	void			clip(Poco::UInt32 offset);
 
 private:
+	void			clip(Poco::Int32 offset);
+
 	virtual int overflow(int_type c);
 	virtual int underflow();
 	virtual int sync();
@@ -66,6 +70,10 @@ private:
 	MemoryStreamBuf();
 	MemoryStreamBuf& operator = (const MemoryStreamBuf&);
 };
+
+inline void MemoryStreamBuf::clip(Poco::UInt32 offset) {
+	clip((Poco::Int32)offset);
+}
 
 /// inlines
 
@@ -105,6 +113,7 @@ public:
 	char*			begin();
 	void			next(Poco::UInt32 size);
 	Poco::UInt32	available();
+	void			clip(Poco::UInt32 offset);
 		
 private:
 	MemoryStreamBuf _buf;
@@ -113,6 +122,9 @@ private:
 /// inlines
 inline char* MemoryIOS::begin() {
 	return rdbuf()->begin();
+}
+inline void MemoryIOS::clip(Poco::UInt32 offset) {
+	rdbuf()->clip(offset);
 }
 inline void MemoryIOS::resize(Poco::UInt32 newSize) {
 	rdbuf()->resize(newSize);

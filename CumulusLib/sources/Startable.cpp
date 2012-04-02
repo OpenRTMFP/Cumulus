@@ -44,8 +44,12 @@ void Startable::start() {
 	}
 
 	_terminate = false;
-	_thread.start(*this);
-	_haveToJoin = true;
+	try {
+		_thread.start(*this);
+		_haveToJoin = true;
+	} catch (Poco::Exception& ex) {
+		ERROR("Impossible to start the thread : %s",ex.displayText().c_str());
+	}
 }
 
 bool Startable::prerun() {

@@ -26,40 +26,27 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-EdgeSession::EdgeSession(UInt32 id,
+EdgeSession::EdgeSession(SendingEngine& sendingEngine,
+				UInt32 id,
 				UInt32 farId,
 				const Peer& peer,
 				const UInt8* decryptKey,
 				const UInt8* encryptKey,
 				DatagramSocket& serverSocket,
-				Cookie& cookie) : Session(id,farId,peer,decryptKey,encryptKey),_serverSocket(serverSocket),farServerId(0),_handshaking(false),_pCookie(&cookie) {
+				Cookie& cookie) : Session(sendingEngine,id,farId,peer,decryptKey,encryptKey),_serverSocket(serverSocket),farServerId(0),_handshaking(false),_pCookie(&cookie) {
 		
 }
 
 EdgeSession::~EdgeSession() {
 	if(!died) {
 		WARN("Session failed on the edge side : sessions are deleting");
-		Poco::UInt8 death[32];
-		PacketWriter writer(death,sizeof(death)); 
-		writer.next(6);
-		writer.write8(0x4a);
-		writer << RTMFP::TimeNow();
-		writer.write8(0x0C);
-		writer.write16(0);
-		send(writer);
+		writer().clear(6);
+		writer().write8(0x4a);
+		writer() << RTMFP::TimeNow();
+		writer().write8(0x0C);
+		writer().write16(0);
+		send();
 	}
-}
-
-void EdgeSession::encode(PacketWriter& packet) {
-	if(middleDump) {
-		RTMFP::WriteCRC(packet);
-		return;
-	}
-	if(_handshaking) {
-		RTMFP::Encode(packet);
-		return;
-	}
-	Session::encode(packet);
 }
 
 void EdgeSession::packetHandler(PacketReader& packet) {
@@ -73,17 +60,15 @@ void EdgeSession::packetHandler(PacketReader& packet) {
 	} else if(peer.addresses.front()!=peer.address) {
 		// Tell to server that peer address has changed!
 		INFO("Session %u has changed its public address",id);
-		UInt8 data[100];
-		PacketWriter writer(data,100);
-		writer.clear(6);
-		writer.write8(0x89);
-		writer.write16(time);
-		writer.write8(0x70);
+		writer().clear(6);
+		writer().write8(0x89);
+		writer().write16(time);
+		writer().write8(0x70);
 		string address = peer.address.toString();
-		writer.write16(address.size() + Util::Get7BitValueSize(address.size()));
-		writer << address;
+		writer().write16(address.size() + Util::Get7BitValueSize(address.size()));
+		writer() << address;
 		middleDump=true;
-		send(writer,farServerId,_serverSocket,_serverSocket.peerAddress());
+		send(farServerId,_serverSocket,_serverSocket.peerAddress());
 		middleDump=false;
 	}
 	
@@ -97,15 +82,15 @@ void EdgeSession::packetHandler(PacketReader& packet) {
 		type = packet.available()>0 ? packet.read8() : 0xFF;
 	}
 	if(type==0x4C)
-		(bool&)died=true;
+		kill();
 
 	// Send to server
 	packet.reset(0);
-	PacketWriter writer(packet.current(),packet.available());
-	writer.clear(packet.available());
+	writer().clear();
+	writer().writeRaw(packet.current(),packet.available());
 
 	middleDump=true;
-	send(writer,farServerId,_serverSocket,_serverSocket.peerAddress());
+	send(farServerId,_serverSocket,_serverSocket.peerAddress());
 	middleDump=false;
 }
 
@@ -124,15 +109,14 @@ void EdgeSession::serverPacketHandler(PacketReader& packet) {
 		(UInt8&)_pCookie->response = 0x78;
 
 		packet.reset(0);
-		PacketWriter writer(packet.current(),256);
-		writer.next(9);
-		writer.write8(0x78);
-		writer.next(2);
-		UInt16 size = _pCookie->read(writer);
-		writer.reset(10);
-		writer.write16(size);
+		writer().clear(9);
+		writer().write8(0x78);
+		writer().next(2);
+		UInt16 size = _pCookie->read(writer());
+		writer().reset(10);
+		writer().write16(size);
 		_pCookie=NULL;
-		send(writer);
+		send();
 		
 		_handshaking=false;
 		return;
@@ -163,9 +147,10 @@ void EdgeSession::serverPacketHandler(PacketReader& packet) {
 	}
 
 	packet.reset(0);
-	PacketWriter writer(packet.current(),packet.available()+16); // +16 for futur 0xFFFF padding
-	writer.clear(packet.available());
-	send(writer);
+	writer().clear();
+	writer().writeRaw(packet.current(),packet.available());
+	send();
+
 }
 
 } // namespace Cumulus

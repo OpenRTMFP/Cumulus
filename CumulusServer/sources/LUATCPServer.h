@@ -18,9 +18,9 @@
 #pragma once
 
 #include "Script.h"
-#include "TCPClient.h"
+#include "TCPServer.h"
 
-class LUATCPClient : private TCPClient {
+class LUATCPServer : private TCPServer {
 public:
 	static const char* Name;
 
@@ -31,20 +31,16 @@ public:
 
 	
 	static void	Create(SocketManager& manager,lua_State* pState);
-	static void	Create(const Poco::Net::StreamSocket& socket,SocketManager& manager,lua_State* pState);
 private:
-	LUATCPClient(const Poco::Net::StreamSocket& socket,SocketManager& manager,lua_State* pState);
-	LUATCPClient(SocketManager& manager,lua_State* pState);
-	virtual ~LUATCPClient();
+	LUATCPServer(SocketManager& manager,lua_State* pState);
+	virtual ~LUATCPServer();
 
 	static int	Destroy(lua_State* pState);
 
-	Poco::UInt32	onReception(const Poco::UInt8* data,Poco::UInt32 size);
-	void			onDisconnection();
+	void		clientHandler(Poco::Net::StreamSocket& socket);
 
-	static int	Send(lua_State* pState);
-	static int  Connect(lua_State* pState);
-	static int  Disconnect(lua_State* pState);
+	static int	Start(lua_State* pState);
+	static int  Stop(lua_State* pState);
 
 	lua_State*			_pState;
 };

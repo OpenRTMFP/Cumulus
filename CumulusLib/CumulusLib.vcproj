@@ -264,14 +264,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\Startable.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Startable.h"
-					>
-				</File>
-				<File
 					RelativePath=".\sources\Util.cpp"
 					>
 				</File>
@@ -624,6 +616,38 @@
 				</File>
 				<File
 					RelativePath=".\include\AMFWriter.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Threading"
+				>
+				<File
+					RelativePath=".\sources\SendingEngine.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\SendingEngine.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\SendingThread.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\SendingThread.h"
+					>
+				</File>
+				<File
+					RelativePath=".\include\SendingUnit.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Startable.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Startable.h"
 					>
 				</File>
 			</Filter>

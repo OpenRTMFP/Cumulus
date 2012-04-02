@@ -39,9 +39,9 @@ private:
 };
 
 
-class ServerConnection : public ServerSession {
+class ServerConnection : public Session {
 public:
-	ServerConnection(Handler& handler,Session& handshake);
+	ServerConnection(SendingEngine& sendingEngine,Handler& handler,Session& handshake);
 	~ServerConnection();
 
 	bool	connected();
@@ -55,8 +55,6 @@ public:
 	void	sendP2PHandshake(const std::string& tag,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);
 
 private:
-	void	flush();
-	
 	void	packetHandler(PacketReader& packet);
 
 	Session&										_handshake;
@@ -67,10 +65,6 @@ private:
 
 inline void ServerConnection::clear() {
 	_p2pHandshakers.clear();
-}
-
-inline void ServerConnection::flush() {
-	ServerSession::flush(0x0b,false);
 }
 
 inline bool ServerConnection::connected() {

@@ -29,7 +29,8 @@ namespace Cumulus {
 
 class Middle : public ServerSession {
 public:
-	Middle(Poco::UInt32 id,
+	Middle(SendingEngine& sendingEngine,
+			Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
 			const Poco::UInt8* decryptKey,
@@ -49,8 +50,8 @@ public:
 	void				manage();
 	
 private:
-	bool decode(PacketReader& packet);
-	void encode(PacketWriter& packet);
+	AESEngine	decoder();
+	AESEngine	encoder();
 
 	PacketWriter&		writer();
 
@@ -84,6 +85,14 @@ private:
 
 inline const Peer& Middle::middlePeer() {
 	return _middlePeer;
+}
+
+inline AESEngine Middle::decoder() {
+	return aesDecrypt.next(farId==0 ? AESEngine::SYMMETRIC : AESEngine::DEFAULT);
+}
+
+inline AESEngine Middle::encoder() {
+	return aesEncrypt.next(farId==0 ? AESEngine::SYMMETRIC : AESEngine::DEFAULT);
 }
 
 

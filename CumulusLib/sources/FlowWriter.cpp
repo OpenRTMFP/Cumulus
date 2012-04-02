@@ -243,18 +243,17 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 				contentSize = itFrag->first - fragment;
 			}
 
-			PacketWriter& packet(_band.writer());
 			UInt32 size = contentSize+4;
 			
-			if(!header && size>packet.available()) {
+			if(!header && size>_band.writer().available()) {
 				_band.flush(false);
 				header=true;
 			}
-			
+
 			if(header)
 				size+=headerSize(stage);
 
-			if(size>packet.available())
+			if(size>_band.writer().available())
 				_band.flush(false);
 
 			// Write packet
@@ -403,14 +402,13 @@ void FlowWriter::raiseMessage() {
 				contentSize = itFrag->first - fragment;
 			}
 
-			PacketWriter& packet(_band.writer());
 			UInt32 size = contentSize+4;
 
 			if(header)
 				size+=headerSize(stage);
 
 			// Actual sending packet is enough large? Here we send just one packet!
-			if(size>packet.available()) {
+			if(size>_band.writer().available()) {
 				if(!sent)
 					ERROR("Raise messages on flowWriter %llu without sending!",id);
 				DEBUG("Raise message on flowWriter %llu finishs on stage %llu",id,stage);
@@ -454,14 +452,13 @@ void FlowWriter::flush(bool full) {
 
 		do {
 
-			PacketWriter& packet(_band.writer());
-
 			// Actual sending packet is enough large?
-			if(packet.available()<12) { // 12 to have a size minimum of fragmentation!
+			if(_band.writer().available()<12) { // 12 to have a size minimum of fragmentation!
 				_band.flush(false); // send packet (and without time echo)
 				header=true;
 			}
 
+			PacketWriter& packet(_band.writer());
 			bool head = header;
 
 			UInt32 contentSize = available;

@@ -64,7 +64,6 @@ private:
 	RTMFPServer(const std::string& name);
 	virtual void    onStart(){}
 	virtual void    onStop(){}
-	virtual void	displayCount(Poco::UInt32 sessions);
 
 	Session*		findSession(Poco::UInt32 id);
 	bool			prerun();
@@ -74,6 +73,7 @@ private:
 	void			destroySession(Session& session);
 	
 	Handshake					_handshake;
+	SendingEngine				_sendingEngine;
 
 	Poco::UInt16				_port;
 	Poco::Net::DatagramSocket	_socket;

@@ -25,7 +25,8 @@ namespace Cumulus {
 
 class EdgeSession : public Session {
 public:
-	EdgeSession(Poco::UInt32 id,
+	EdgeSession(SendingEngine& sendingEngine,
+			Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
 			const Poco::UInt8* decryptKey,
@@ -39,7 +40,7 @@ public:
 	void						serverPacketHandler(PacketReader& packet);
 	
 private:
-	void						encode(PacketWriter& packet);
+	AESEngine					encoder();
 	void						packetHandler(PacketReader& packet);
 
 	Poco::Net::DatagramSocket&	_serverSocket;
@@ -49,6 +50,11 @@ private:
 	bool						_handshaking;
 	
 };
+
+inline AESEngine EdgeSession::encoder() {
+	return aesEncrypt.next(middleDump ? AESEngine::EMPTY : (_handshaking ? AESEngine::SYMMETRIC : AESEngine::DEFAULT));
+}
+
 
 
 } // namespace Cumulus

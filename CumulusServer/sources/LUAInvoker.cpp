@@ -22,6 +22,7 @@
 #include "LUAPublications.h"
 #include "LUAGroups.h"
 #include "LUATCPClient.h"
+#include "LUATCPServer.h"
 #include "Server.h"
 #include "Poco/Net/StreamSocket.h"
 #include "math.h"
@@ -57,6 +58,12 @@ int	LUAInvoker::AbsolutePath(lua_State *pState) {
 int	LUAInvoker::CreateTCPClient(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
 		LUATCPClient::Create(((Server&)invoker).socketManager,pState);
+	SCRIPT_CALLBACK_RETURN
+}
+
+int	LUAInvoker::CreateTCPServer(lua_State *pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		LUATCPServer::Create(((Server&)invoker).socketManager,pState);
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -124,6 +131,8 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_OBJECT(Edges,LUAEdges,invoker.edges)
 		} else if(name=="createTCPClient") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPClient)
+		} else if(name=="createTCPServer") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPServer)
 		} else if(name=="configs") {
 			lua_getglobal(pState,"cumulus.configs");
 		} else if(name=="mail") {

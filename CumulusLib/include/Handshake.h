@@ -36,7 +36,7 @@ public:
 
 class Handshake : public ServerSession {
 public:
-	Handshake(Gateway& gateway,Poco::Net::DatagramSocket& edgesSocket,Handler& handler,Entity& entity);
+	Handshake(SendingEngine& sendingEngine,Gateway& gateway,Poco::Net::DatagramSocket& edgesSocket,Handler& handler,Entity& entity);
 	~Handshake();
 
 	void	createCookie(PacketWriter& writer,HelloAttempt& attempt,const std::string& tag,const std::string& queryUrl);
@@ -50,8 +50,8 @@ private:
 	std::map<std::string,Edge*>&	edges();
 	bool		updateEdge(PacketReader& request);
 	void		flush();
-	bool		decode(PacketReader& packet);
-	void		encode(PacketWriter& packet);
+	AESEngine	decoder();
+	AESEngine	encoder();
 
 	void		packetHandler(PacketReader& packet);
 	Poco::UInt8	handshakeHandler(Poco::UInt8 id,PacketReader& request,PacketWriter& response);
@@ -76,6 +76,13 @@ inline std::map<std::string,Edge*>& Handshake::edges() {
 	return _invoker._edges;
 }
 
+inline AESEngine Handshake::decoder() {
+	return aesDecrypt.next(isEdges ? AESEngine::EMPTY : AESEngine::DEFAULT);
+}
+
+inline AESEngine Handshake::encoder() {
+	return aesEncrypt.next(isEdges ? AESEngine::EMPTY : AESEngine::DEFAULT);
+}
 
 
 } // namespace Cumulus

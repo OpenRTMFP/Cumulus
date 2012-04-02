@@ -430,6 +430,21 @@
 					RelativePath=".\sources\LUATCPClient.h"
 					>
 				</File>
+				<File
+					RelativePath=".\sources\LUATCPServer.cpp"
+					>
+					<FileConfiguration
+						Name="debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\sources\LUATCPServer.h"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="Net"
@@ -437,13 +452,6 @@
 				<File
 					RelativePath=".\sources\SMTPSession.cpp"
 					>
-					<FileConfiguration
-						Name="release|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
 				</File>
 				<File
 					RelativePath=".\sources\SMTPSession.h"
@@ -467,6 +475,14 @@
 				</File>
 				<File
 					RelativePath=".\sources\TCPClient.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\TCPServer.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\TCPServer.h"
 					>
 				</File>
 			</Filter>

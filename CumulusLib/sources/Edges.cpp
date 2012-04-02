@@ -30,7 +30,7 @@ Edge::Edge() : _raise(0),count(0) {
 Edge::~Edge() {
 	map<UInt32,Session*>::const_iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it)
-		(bool&)it->second->died = true;
+		it->second->kill();
 }
 
 void Edge::update() {

@@ -45,9 +45,6 @@ public:
 	void stop();
 	bool running();
 
-protected:
-	
-
 private:
 	bool			serverHandler();
 	bool			realTime(bool& terminate);
@@ -58,7 +55,6 @@ private:
 	void			destroySession(Session& session);
 	void			repeatCookie(Poco::UInt32 farId,Cookie& cookie);
 	void			run(const volatile bool& terminate);
-	void			displayCount(Poco::UInt32 sessions);
 
 	ServerConnection					_serverConnection;
 
@@ -67,6 +63,7 @@ private:
 	Poco::Net::SocketAddress			_serverAddress;
 	Poco::Net::SocketAddress			_publicAddress;
 	Poco::UInt8							_buff[PACKETRECV_SIZE];
+	Poco::Timespan						_timeout;
 };
 
 inline bool RTMFPServerEdge::running() {
@@ -76,5 +73,6 @@ inline bool RTMFPServerEdge::running() {
 inline void RTMFPServerEdge::stop() {
 	RTMFPServer::stop();
 }
+
 
 } // namespace Cumulus

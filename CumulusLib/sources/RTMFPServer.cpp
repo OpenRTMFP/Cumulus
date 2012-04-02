@@ -33,7 +33,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -41,7 +41,7 @@ RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(
 	DEBUG("Id of this RTMFP server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
-RTMFPServer::RTMFPServer(const string& name) : Startable(name),_pCirrus(NULL),_handshake(*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(const string& name) : Startable(name),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -136,15 +136,17 @@ bool RTMFPServer::prerun() {
 
 void RTMFPServer::run(const volatile bool& terminate) {
 	SocketAddress address("0.0.0.0",_port);
-	_socket.bind(address,true);
+	_socket.bind(address);
 
 	SocketAddress edgesAddress("0.0.0.0",_edgesPort);
-	if(_edgesPort>0)
-		_edgesSocket.bind(edgesAddress,true);
+	if(_edgesPort>0) 
+		_edgesSocket.bind(edgesAddress);
 
 	SocketAddress sender;
 	UInt8 buff[PACKETRECV_SIZE];
 	int size = 0;
+	Timespan timeout(0,1);
+	
 
 	while(!terminate) {
 		bool stop=false;
@@ -153,75 +155,72 @@ void RTMFPServer::run(const volatile bool& terminate) {
 			break;
 
 		_handshake.isEdges=false;
-		if(_socket.available()>0) {
+
+		int edgesAvailable = _edgesPort>0 ? _edgesSocket.available() : 0;
+		DatagramSocket* pSocket = _socket.available()>edgesAvailable ? &_socket : (edgesAvailable>0 ? &_edgesSocket : NULL);
+		if(pSocket) {
 			try {
-				size = _socket.receiveFrom(buff,sizeof(buff),sender);
+				size = pSocket->receiveFrom(buff,sizeof(buff),sender);
 			} catch(Exception& ex) {
-				DEBUG("Main socket reception : %s",ex.displayText().c_str());
-				_socket.close();
-				_socket.bind(address,true);
+				DEBUG("RTMFPServer socket reception : %s",ex.displayText().c_str());
+				pSocket->close();
+				pSocket->bind(pSocket==&_edgesSocket ? edgesAddress : address);
+				continue;
+			}
+
+			if(pSocket==&_edgesSocket) {
+				_handshake.isEdges=true;
+				Edge* pEdge = edges(sender);
+				if(pEdge)
+					pEdge->update();
+			}
+
+			if(isBanned(sender.host())) {
+				INFO("Data rejected because client %s is banned",sender.host().toString().c_str());
+				continue;
+			}
+
+			if(size<RTMFP_MIN_PACKET_SIZE) {
+				ERROR("Invalid packet");
 				continue;
 			}
 			
-		} else if(_edgesPort>0 && _edgesSocket.available()>0) {
-			try {
-				size = _edgesSocket.receiveFrom(buff,sizeof(buff),sender);
-				_handshake.isEdges=true;
-			} catch(Exception& ex) {
-				DEBUG("Main socket reception : %s",ex.displayText().c_str());
-				_edgesSocket.close();
-				_edgesSocket.bind(edgesAddress,true);
+			PacketReader packet(buff,size);
+			Session* pSession=findSession(RTMFP::Unpack(packet));
+			
+			if(!pSession)
 				continue;
-			}
-			Edge* pEdge = edges(sender);
-			if(pEdge)
-				pEdge->update();
-		} else {
-			if(idle) {
-				Thread::sleep(1);
-				if(!_timeLastManage.isElapsed(_freqManage)) {
-					// Just middle session!
-					if(_middle) {
-						Sessions::Iterator it;
-						for(it=_sessions.begin();it!=_sessions.end();++it) {
-							Middle* pMiddle = dynamic_cast<Middle*>(it->second);
-							if(pMiddle)
-								pMiddle->manage();
-						}
-					}
-				} else {
-					_timeLastManage.update();
-					manage();
+
+			if(!pSession->checked)
+				_handshake.commitCookie(*pSession);
+
+			pSession->setEndPoint(*pSocket,sender);
+			pSession->receive(packet);
+
+			// Just middle session!
+			if(_middle) {
+				Sessions::Iterator it;
+				for(it=_sessions.begin();it!=_sessions.end();++it) {
+					Middle* pMiddle = dynamic_cast<Middle*>(it->second);
+					if(pMiddle)
+						pMiddle->manage();
 				}
 			}
-			continue;
+
+		} else if(idle) {
+			if(_timeLastManage.isElapsed(_freqManage)) {
+				_timeLastManage.update();
+				manage();
+			} else if(_edgesPort>0)
+				_edgesSocket.poll(timeout,Socket::SELECT_READ); // to wait 1 microsecond
+			else
+				_socket.poll(timeout,Socket::SELECT_READ); // to wait 1 microsecond
 		}
-
-		if(isBanned(sender.host())) {
-			INFO("Data rejected because client %s is banned",sender.host().toString().c_str());
-			continue;
-		}
-
-		if(size<RTMFP_MIN_PACKET_SIZE) {
-			ERROR("Invalid packet");
-			continue;
-		}
-		
-		PacketReader packet(buff,size);
-		Session* pSession=findSession(RTMFP::Unpack(packet));
-		
-		if(!pSession)
-			continue;
-
-		if(!pSession->checked)
-			_handshake.commitCookie(*pSession);
-
-		pSession->setEndPoint(_handshake.isEdges ? _edgesSocket : _socket,sender);
-		pSession->receive(packet);
 	}
 
 	_handshake.clear();
 	_sessions.clear();
+	_sendingEngine.clear();
 	_socket.close();
 	if(_edgesPort>0)
 		_edgesSocket.close();
@@ -326,14 +325,14 @@ Session& RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* d
 
 	ServerSession* pSession;
 	if(pTarget) {
-		pSession = new Middle(_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this,_sessions,*pTarget);
+		pSession = new Middle(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this,_sessions,*pTarget);
 		if(_pCirrus==pTarget)
 			pSession->pTarget = cookie.pTarget;
 		DEBUG("500ms sleeping to wait cirrus handshaking");
 		Thread::sleep(500); // to wait the cirrus handshake
 		pSession->manage();
 	} else {
-		pSession = new ServerSession(_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this);
+		pSession = new ServerSession(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this);
 		pSession->pTarget = cookie.pTarget;
 	}
 
@@ -352,15 +351,11 @@ void RTMFPServer::destroySession(Session& session) {
 
 void RTMFPServer::manage() {
 	_handshake.manage();
-	if(_sessions.manage())
-		displayCount(_sessions.count());
+	_sessions.manage();
 	if(!_middle && !_pCirrus && _timeLastManage.isElapsed(20000))
 		WARN("Process management has lasted more than 20ms : %ums",UInt32(_timeLastManage.elapsed()/1000));
 }
 
-void RTMFPServer::displayCount(UInt32 sessions) {
-	INFO("%u clients",_pCirrus ? sessions : clients.count());
-}
 
 
 } // namespace Cumulus

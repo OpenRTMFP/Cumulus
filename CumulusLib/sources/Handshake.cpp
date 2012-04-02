@@ -28,7 +28,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(Gateway& gateway,DatagramSocket& edgesSocket,Handler& handler,Entity& entity) : ServerSession(0,0,Peer(handler),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,(Invoker&)handler),
+Handshake::Handshake(SendingEngine& sendingEngine,Gateway& gateway,DatagramSocket& edgesSocket,Handler& handler,Entity& entity) : ServerSession(sendingEngine,0,0,Peer(handler),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,(Invoker&)handler),
 	_gateway(gateway),_edgesSocket(edgesSocket),isEdges(false) {
 	(bool&)checked=true;
 
@@ -37,32 +37,12 @@ Handshake::Handshake(Gateway& gateway,DatagramSocket& edgesSocket,Handler& handl
 	memcpy(&_certificat[68],"\x02\x15\x02\x02\x15\x05\x02\x15\x0E",9);
 
 	// Display far id flash side
-	// TODO create a Handler.serverId variable (or inherited Handler from Entity), and maybe move this log to "start" server (here, this information is never seen)
 	EVP_Digest(_certificat,sizeof(_certificat),(unsigned char *)entity.id,NULL,EVP_sha256(),NULL);
 }
 
 
 Handshake::~Handshake() {
-	kill();
-}
-
-bool Handshake::decode(PacketReader& packet) {
-	if(!isEdges)
-		return ServerSession::decode(packet);
-	// Check the first 2 CRC bytes 
-	packet.reset(4);
-	UInt16 sum = packet.read16();
-	return (sum == RTMFP::CheckSum(packet));
-}
-
-void Handshake::encode(PacketWriter& packet) {
-	if(!isEdges)
-		return ServerSession::encode(packet);
-	// Compute the CRC and add it at the beginning of the request
-	PacketReader reader(packet.begin(),packet.length());
-	reader.next(6);
-	UInt16 sum = RTMFP::CheckSum(reader);
-	packet.reset(4);packet << sum;
+	fail(""); // To avoid the failSignal
 }
 
 void Handshake::manage() {

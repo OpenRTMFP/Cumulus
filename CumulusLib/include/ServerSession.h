@@ -47,7 +47,8 @@ private:
 class ServerSession : public BandWriter,public Session {
 public:
 
-	ServerSession(Poco::UInt32 id,
+	ServerSession(SendingEngine& sendingEngine,
+			Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
 			const Poco::UInt8* decryptKey,
@@ -59,6 +60,7 @@ public:
 	PacketWriter&		writer();
 	bool				failed() const;
 	void				manage();
+	void				kill();
 
 	void				p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag,Session* pSession);
 
@@ -83,7 +85,6 @@ protected:
 
 	virtual void	failSignal();
 	void			fail(const std::string& fail);
-	void			kill();
 
 	void			flush(bool echoTime=true);
 	void			flush(Poco::UInt8 marker,bool echoTime);
@@ -117,9 +118,6 @@ private:
 	std::map<Poco::UInt64,FlowWriter*>	_flowWriters;
 	FlowWriter*							_pLastFlowWriter;
 	Poco::UInt64						_nextFlowWriterId;
-
-	Poco::UInt8							_buffer[PACKETSEND_SIZE];
-	PacketWriter						_writer;
 
 	std::map<std::string,Attempt*>		_helloAttempts;
 };

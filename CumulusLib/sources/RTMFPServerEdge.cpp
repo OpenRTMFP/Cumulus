@@ -24,13 +24,14 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServerEdge::RTMFPServerEdge() : RTMFPServer("RTMFPServerEdge"),_serverConnection(*this,_handshake) {
+RTMFPServerEdge::RTMFPServerEdge() : RTMFPServer("RTMFPServerEdge"),_serverConnection(_sendingEngine,*this,_handshake),_timeout(0,1) {
 
 }
 
 RTMFPServerEdge::~RTMFPServerEdge() {
 
 }
+
 
 EdgeSession* RTMFPServerEdge::findEdgeSession(UInt32 id) {
 	EdgeSession* pSession= dynamic_cast<EdgeSession*>(findSession(id));
@@ -83,13 +84,14 @@ void RTMFPServerEdge::run(const volatile bool& terminate) {
 
 	while(!terminate) {
 
-		if(!serverHandler()) {
+		if(!_serverSocket.poll(_timeout,Socket::SELECT_READ)) {  // sleep 1 microsecond
 			if(connectAttemptTime.isElapsed(6000000)) {
 				_serverConnection.connect(_publicAddress);
 				connectAttemptTime.update();
 			}
-			Thread::sleep(1);
+			continue;
 		}
+		serverHandler();
 
 		if(_serverConnection.connected()) {
 			NOTE("RTMFP server %s successful connection",_serverAddress.toString().c_str());
@@ -103,14 +105,14 @@ void RTMFPServerEdge::run(const volatile bool& terminate) {
 			}
 			NOTE("RTMFP server %s connection lost",_serverAddress.toString().c_str());
 		}
-
 	}
+	_sendingEngine.clear();
 	_serverSocket.close();
 }
 
 
 Session& RTMFPServerEdge::createSession(UInt32 farId,const Peer& peer,const UInt8* decryptKey,const UInt8* encryptKey,Cookie& cookie) {
-	EdgeSession* pSession = new EdgeSession(_sessions.nextId(),farId,peer,decryptKey,encryptKey,_serverSocket,cookie);
+	EdgeSession* pSession = new EdgeSession(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,_serverSocket,cookie);
 	pSession->setEndPoint(_socket,peer.address);
 	_serverConnection.createSession(*pSession,cookie.queryUrl);
 	_sessions.add(pSession);
@@ -135,22 +137,17 @@ UInt8 RTMFPServerEdge::p2pHandshake(const string& tag,PacketWriter& response,con
 
 bool RTMFPServerEdge::realTime(bool& terminate) {
 	
-	RTMFPServer::realTime(terminate);
-	
 	if(_serverConnection.died) {
 		terminate = true;
 		_serverConnection.disconnect();
 		return false;
 	}
-	
 	return !serverHandler();
 }
 
 bool RTMFPServerEdge::serverHandler() {
-	bool result=false;
 	try {
 		if(_serverSocket.available()>0) {
-
 			int size = _serverSocket.receiveBytes(_buff,sizeof(_buff));
 			_timeLastServerReception.update();
 
@@ -165,25 +162,19 @@ bool RTMFPServerEdge::serverHandler() {
 					_serverConnection.receive(packet);
 			} else
 				ERROR("Invalid packet");
-			
+			return true;
 		}
-		result=_serverSocket.available()>0;
 	} catch(Exception& ex) {
 		WARN("Server socket reception error : %s",ex.displayText().c_str());
 	}
-	return result;
+	return false;
 }
 
 void RTMFPServerEdge::manage() {
 	RTMFPServer::manage();
 	_serverConnection.manage();
 	if(_timeLastServerReception.isElapsed(40000000)) // timeout of 40 sec, server is death!
-		(bool&)_serverConnection.died=true;
+		_serverConnection.kill();
 }
-
-void RTMFPServerEdge::displayCount(UInt32 sessions) {
-	INFO("%u clients",sessions);
-}
-
 
 } // namespace Cumulus

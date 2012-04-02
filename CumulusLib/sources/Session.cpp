@@ -25,18 +25,23 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Session::Session(UInt32 id,
+Session::Session(SendingEngine& sendingEngine,
+				 UInt32 id,
 				 UInt32 farId,
 				 const Peer& peer,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey) : 
-		flags(0),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pSocket(NULL),middleDump(false) {
+		_pSendingThread(NULL),_sendingEngine(sendingEngine),flags(0),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pSocket(NULL),middleDump(false),_pSendingUnit(new SendingUnit()) {
 
 }
 
-
 Session::~Session() {
+}
 
+void Session::kill() {
+	if(died)
+		return;
+	(bool&)died=true;
 }
 
 void Session::setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address) {
@@ -46,7 +51,7 @@ void Session::setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::Soc
 }
 
 void Session::receive(PacketReader& packet) {
-	if(!decode(packet)) {
+	if(!RTMFP::Decode(decoder(),packet)) {
 		ERROR("Decrypt error on session %u",id);
 		return;
 	}
@@ -55,30 +60,27 @@ void Session::receive(PacketReader& packet) {
 	packetHandler(packet);
 }
 
-void Session::send(PacketWriter& packet) {
+void Session::send() {
 	if(!_pSocket) {
 		ERROR("Impossible to send on a null socket for session %u",id);
 		return;
 	}
-	send(packet,farId,*_pSocket,peer.address);
+	send(farId,*_pSocket,peer.address);
 }
 
-void Session::send(PacketWriter& packet,UInt32 farId,DatagramSocket& socket,const SocketAddress& receiver) {
-	Logs::Dump(packet,6,format("Response to %s",receiver.toString()).c_str(),middleDump);
+void Session::send(UInt32 farId,DatagramSocket& socket,const SocketAddress& receiver) {
+	Logs::Dump(_pSendingUnit->packet,6,format("Response to %s",receiver.toString()).c_str(),middleDump);
+	
 
-	encode(packet);
-	RTMFP::Pack(packet,farId);
-
-	try {
-		if(socket.sendTo(packet.begin(),(int)packet.length(),receiver)!=packet.length())
-			ERROR("Socket sending error on session %u : all data were not sent",id);
-	} catch(Exception& ex) {
-		 WARN("Socket sending error on session %u : %s",id,ex.displayText().c_str());
-	} catch(exception& ex) {
-		 WARN("Socket sending error on session %u : %s",id,ex.what());
-	} catch(...) {
-		 WARN("Socket sending unknown error on session %u",id);
-	}
+	_pSendingUnit->packet.limit(); // no limit for sending!
+	_pSendingUnit->id = id;
+	_pSendingUnit->farId = farId;
+	_pSendingUnit->socket = socket;
+	_pSendingUnit->address = receiver;
+	_pSendingUnit->pAES = new AESEngine(encoder());
+	_pSendingThread = _sendingEngine.enqueue(_pSendingUnit,_pSendingThread);
+	_pSendingUnit = new SendingUnit();
 }
+
 
 } // namespace Cumulus

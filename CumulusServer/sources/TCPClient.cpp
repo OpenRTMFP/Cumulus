@@ -24,7 +24,12 @@
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Net;
 
+TCPClient::TCPClient(const StreamSocket& socket,SocketManager& manager) : _socket(socket),_connected(true),_available(0),SocketManaged(_socket),_manager(manager) {
+	_socket.setBlocking(false);
+	_manager.add(*this);
+}
 
 TCPClient::TCPClient(SocketManager& manager) : _connected(false),_available(0),SocketManaged(_socket),_manager(manager) {
 }
