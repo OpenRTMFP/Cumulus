@@ -208,7 +208,8 @@ void Middle::sendHandshakeToTarget(UInt8 type) {
 
 	Logs::Dump(packet,6,format("Middle to %s handshaking",_target.address.toString()).c_str(),true);
 
-	RTMFP::Encode(aesEncrypt.next(AESEngine::SYMMETRIC),packet);
+	AESEngine encoder = aesEncrypt.next(AESEngine::SYMMETRIC);
+	RTMFP::Encode(encoder,packet);
 	RTMFP::Pack(packet,0);
 	_socket.sendBytes(packet.begin(),(int)packet.length());
 	writer(); // To delete the handshake response!
@@ -529,7 +530,8 @@ void Middle::manage() {
 
 		// Handshaking
 		if(id==0 || !_pMiddleAesDecrypt) {
-			if(!RTMFP::Decode(aesDecrypt.next(AESEngine::SYMMETRIC),packet)) {
+			AESEngine decoder = aesDecrypt.next(AESEngine::SYMMETRIC);
+			if(!RTMFP::Decode(decoder,packet)) {
 				ERROR("Target handshake decrypt error");
 				return;
 			}

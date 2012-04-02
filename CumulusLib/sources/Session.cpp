@@ -51,7 +51,8 @@ void Session::setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::Soc
 }
 
 void Session::receive(PacketReader& packet) {
-	if(!RTMFP::Decode(decoder(),packet)) {
+	AESEngine aes = decoder();
+	if(!RTMFP::Decode(aes,packet)) {
 		ERROR("Decrypt error on session %u",id);
 		return;
 	}

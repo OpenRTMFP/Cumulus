@@ -40,7 +40,7 @@ private:
 
 	Poco::FastMutex							_mutex;
 	Poco::Event								_pushEvent;
-	std::list<Poco::AutoPtr<SendingUnit>>	_sendings;
+	std::list<Poco::AutoPtr<SendingUnit> >	_sendings;
 	bool									_haveToJoin;
 	bool									_join;
 	Poco::Thread							_thread;
