@@ -6,7 +6,7 @@ INCLUDES=-I/usr/local/include/ -I./../CumulusLib/include/
 LIBDIR=-L/usr/local/lib/ -L./../CumulusLib/
 SOURCES=./sources/
 CFLAGS+=-D CUMULUS_LOGS
-LDFLAGS+="-Wl,-rpath,./../CumulusLib/"
+LDFLAGS+="-Wl,-rpath,./../CumulusLib/,-rpath,/usr/local/lib/"
 LIBS ?= -lCumulus -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lcrypto -lssl -llua5.1
 OBJECT = $(OBJECTS:%=%.o)
 

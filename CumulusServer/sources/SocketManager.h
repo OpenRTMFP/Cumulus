@@ -19,6 +19,7 @@
 
 #include "Startable.h"
 #include "SocketManaged.h"
+#include "Poco/Event.h"
 #include <map>
 
 
@@ -38,4 +39,6 @@ private:
 	std::map<const Poco::Net::Socket,SocketManaged*>::const_iterator	_it;
 	std::map<const Poco::Net::Socket,SocketManaged*>					_sockets;
 	Poco::Timespan														_timeout;
+	Poco::Event															_addEvent;
+	bool																_stop;
 };

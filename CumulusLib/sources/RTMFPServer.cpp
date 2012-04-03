@@ -211,10 +211,8 @@ void RTMFPServer::run(const volatile bool& terminate) {
 			if(_timeLastManage.isElapsed(_freqManage)) {
 				_timeLastManage.update();
 				manage();
-			} else if(_edgesPort>0)
-				_edgesSocket.poll(timeout,Socket::SELECT_READ); // to wait 1 microsecond
-			else
-				_socket.poll(timeout,Socket::SELECT_READ); // to wait 1 microsecond
+			} else
+				Thread::sleep(1);
 		}
 	}
 

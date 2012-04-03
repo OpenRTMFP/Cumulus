@@ -26,14 +26,26 @@ using namespace Poco;
 using namespace Poco::Net;
 
 
-SMTPSession::SMTPSession(const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Startable("SMTPSession"),_host(host),_port(port),_timeout(timeout,0),_opened(false) {
+SMTPSession::SMTPSession(const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Startable("SMTPSession"),_host(host),_port(port),_timeout(timeout*1000),_opened(false) {
 	setPriority(Thread::PRIO_LOWEST);
 }
 
 
 SMTPSession::~SMTPSession() {
+	{
+		ScopedLock<FastMutex> lock(_mutexError);
+		_error = "STMPSession deleting";
+		ScopedLock<FastMutex> lock2(_mutex);
+		_opened=false;
+	}
 	_socket.close();
+	_mailEvent.set();
 	stop();
+	list<MailMessage*>::const_iterator it;
+	for(it=_mails.begin();it!=_mails.end();++it) {
+		onSent();
+		delete *it;
+	}
 }
 
 const char* SMTPSession::error() {
@@ -51,6 +63,7 @@ void SMTPSession::send(const string& sender,const list<string>& recipients,const
 	ScopedLock<FastMutex> lock(_mutex);
 	if(!_opened) {
 		_opened=true;
+		stop();
 		start();
 	}
 	MailMessage* pMail = new MailMessage();
@@ -62,6 +75,7 @@ void SMTPSession::send(const string& sender,const list<string>& recipients,const
 	pMail->setSubject(subject);
 	pMail->setContent(content);
 	_mails.push_back(pMail);
+	_mailEvent.set();
 }
 
 
@@ -70,45 +84,12 @@ void SMTPSession::run(const volatile bool& terminate) {
 		ScopedLock<FastMutex> lock(_mutexError);
 		_error.clear();
 	}
-	bool timeout = false;
+
 	try {
 		_socket.connect(SocketAddress(_host,_port),_timeout);
 		_socket.setReceiveTimeout(_timeout);
 		_socket.setSendTimeout(_timeout);
 		_SMTPClient.login();
-
-		Timestamp idleTime;
-		
-		while(!terminate) {
-			{
-				_mutex.lock();
-				timeout = _mails.empty() && idleTime.isElapsed(_timeout.totalMilliseconds()*1000);
-				if(timeout)
-					break;
-				_mutex.unlock();
-			}
-			MailMessage* pMail = NULL;
-			{
-				ScopedLock<FastMutex> lock(_mutex);
-				if(!_mails.empty()) {
-					pMail = _mails.front();
-					_mails.pop_front();
-				}
-			}
-			if(!pMail) {
-				Thread::sleep(1);
-				continue;
-			}
-			try {
-				_SMTPClient.sendMessage(*pMail);
-			} catch(Exception& ex) {
-				ScopedLock<FastMutex> lock(_mutexError);
-				_error = ex.displayText();
-			}
-			onSent();
-			delete pMail;
-			idleTime.update();
-		}
 	} catch(NetException& ex) {
 		ScopedLock<FastMutex> lock(_mutexError);
 		_error = ex.displayText() + " (check " + _host + ":" + NumberFormatter::format(_port) + " SMTP server configurations)";
@@ -117,28 +98,59 @@ void SMTPSession::run(const volatile bool& terminate) {
 		_error = ex.displayText();
 	}
 
-	try {
-		_SMTPClient.close();
-	} catch(Exception& ex) {
+
+	{
 		ScopedLock<FastMutex> lock(_mutexError);
-		if(_error.empty())
-			_error = ex.displayText();
+		if(!_error.empty()) {
+			ScopedLock<FastMutex> lock(_mutex);
+			_opened=false;
+			list<MailMessage*>::const_iterator it;
+			for(it=_mails.begin();it!=_mails.end();++it) {
+				onSent();
+				delete *it;
+			}
+			return;
+		}
 	}
 
-	if(terminate) {
-		ScopedLock<FastMutex> lock(_mutexError);
-		_error = "STMPSession deleting";
-	}
-	if(!timeout) {
-		ScopedLock<FastMutex> lock(_mutex);
-		_opened=false;
-		list<MailMessage*>::const_iterator it;
-		for(it=_mails.begin();it!=_mails.end();++it) {
-			onSent();
-			delete *it;
+	while(!terminate) {
+
+		MailMessage* pMail;
+		{
+			ScopedLock<FastMutex> lock(_mutex);
+			if(_mails.empty()) {
+				_mutex.unlock();
+				_mailEvent.tryWait(_timeout);
+				_mutex.lock();
+				if(_mails.empty()) {
+					// timeout
+					try {
+						_SMTPClient.close();
+					} catch(Exception& ex) {
+						ScopedLock<FastMutex> lock(_mutexError);
+						if(_error.empty())
+							_error = ex.displayText();
+					}
+					_opened=false;
+					break;
+				}
+			}
+			if(!_opened)
+				break;
+			pMail = _mails.front();
+			_mails.pop_front();
 		}
-	} else {
-		_opened=false;
-		_mutex.unlock();
+
+
+		try {
+			_SMTPClient.sendMessage(*pMail);
+		} catch(Exception& ex) {
+			ScopedLock<FastMutex> lock(_mutexError);
+			if(_error.empty())
+				_error = ex.displayText();
+		}
+		onSent();
+		delete pMail;
 	}
+	
 }

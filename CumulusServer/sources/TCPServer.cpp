@@ -58,10 +58,14 @@ void TCPServer::stop() {
 }
 
 void TCPServer::onReadable(UInt32 available) {
-	StreamSocket ss = _socket.acceptConnection();
-	// enabe nodelay per default: OSX really needs that
-	ss.setNoDelay(true);
-	clientHandler(ss);
+	try {
+		StreamSocket ss = _socket.acceptConnection();
+		// enabe nodelay per default: OSX really needs that
+		ss.setNoDelay(true);
+		clientHandler(ss);
+	} catch(Exception& ex) {
+		WARN("TCPServer socket acceptation: %s",ex.displayText().c_str());
+	}
 }
 
 void TCPServer::onWritable() {
@@ -69,5 +73,5 @@ void TCPServer::onWritable() {
 }
 
 void TCPServer::onError(const std::string& error) {
-	ERROR("TCPServer socket error: %s",error.c_str())
+	ERROR("TCPServer socket: %s",error.c_str())
 }

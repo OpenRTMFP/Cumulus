@@ -23,32 +23,37 @@ using namespace Poco;
 using namespace Poco::Net;
 
 
-SocketManager::SocketManager() : Startable("SocketManager"),_timeout(0,1) {
+SocketManager::SocketManager() : Startable("SocketManager"),_timeout(0,1),_stop(false) {
 	setPriority(Thread::PRIO_HIGHEST);
 	start();
 }
 
 
 SocketManager::~SocketManager() {
+	{
+		ScopedLock<Mutex> lock(_mutex);
+		_stop=true;
+	}
+	_addEvent.set();
 	stop();
 }
 
 void SocketManager::add(SocketManaged& socket) {
 	ScopedLock<Mutex> lock(_mutex);
 	_sockets[socket.socket] = &socket;
+	_addEvent.set();
 }
 
 void SocketManager::remove(SocketManaged& socket) {
 	ScopedLock<Mutex> lock(_mutex);
-	map<const Socket,SocketManaged*>::iterator it = _sockets.find(socket.socket);
-	if(it==_it)
-		++_it;
-	_sockets.erase(it);
+	if(_it!=_sockets.end() && _it->first==socket.socket) {
+		_sockets.erase(_it++);
+		return;
+	}
+	_sockets.erase(socket.socket);
 }
 
 bool SocketManager::realTime() {
-	if(!running())
-		return true;
 	ScopedLock<Mutex> lock(_mutex);
 	_it=_sockets.begin();
 	bool idle=true;
@@ -64,10 +69,6 @@ bool SocketManager::realTime() {
 			}
 			continue;
 		}
-		if(socket.writable) {
-			socket.onWritable();
-			(bool&)socket.writable = false;
-		}
 		if(socket.readable) {
 			UInt32 available = socket.socket.available();
 			socket.onReadable(available);
@@ -75,6 +76,12 @@ bool SocketManager::realTime() {
 			if(available>0) // ==0 means graceful disconnection
 				idle=false;
 		}
+		if(socket.writable) {
+			socket.onWritable();
+			(bool&)socket.writable = false;
+		}
+		if(socket.haveToWrite())
+			idle=false;
 	}
 	return idle;
 }
@@ -93,6 +100,8 @@ void SocketManager::run(const volatile bool& terminate) {
 
 		{
 			ScopedLock<Mutex> lock(_mutex);
+			if(_stop)
+				break;
 			map<const Socket,SocketManaged*>::const_iterator it;
 			for(it = _sockets.begin(); it != _sockets.end(); ++it) {
 				SocketManaged& socket = *it->second;
@@ -107,7 +116,7 @@ void SocketManager::run(const volatile bool& terminate) {
 			}
 		}
 		if(empty) {
-			Thread::sleep(1);
+			_addEvent.wait();
 			continue;
 		}
 

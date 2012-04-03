@@ -18,6 +18,7 @@
 #pragma once
 
 #include "Startable.h"
+#include "Poco/Event.h"
 #include "Poco/Net/SMTPClientSession.h"
 #include "Poco/Net/MailMessage.h"
 #include <list>
@@ -55,7 +56,8 @@ private:
 	
 	bool									_opened;
 
-	Poco::Timespan							_timeout;
+	Poco::UInt32							_timeout;
 	std::string								_host;
 	Poco::UInt16							_port;
+	Poco::Event								_mailEvent;
 };
