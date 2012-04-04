@@ -58,7 +58,7 @@ void SocketManager::remove(const Socket& socket) {
 	_sockets.erase((SocketManaged&)socket);
 }
 
-bool SocketManager::process(Poco::Timespan& timeout) {
+bool SocketManager::process(const Poco::Timespan& timeout) {
 	if(_sockets.empty())
 		return false;;
 

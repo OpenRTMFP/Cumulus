@@ -301,7 +301,8 @@ Session& RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* d
 		if(_pCirrus==pTarget)
 			pSession->pTarget = cookie.pTarget;
 		DEBUG("500ms sleeping to wait cirrus handshaking");
-		sockets.process(Timespan(500000)); // to wait the cirrus handshake
+		Timespan timeout(500000);
+		sockets.process(timeout); // to wait the cirrus handshake
 	} else {
 		pSession = new ServerSession(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this);
 		pSession->pTarget = cookie.pTarget;

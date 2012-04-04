@@ -235,7 +235,8 @@ PacketWriter& Middle::writer() {
 void Middle::packetHandler(PacketReader& packet) {
 	if(!_pMiddleAesEncrypt) {
 		DEBUG("500ms sleeping to wait target handshaking");
-		_invoker.sockets.process(Timespan(500000)); // to wait the target handshake response
+		Timespan timeout(500000);
+		_invoker.sockets.process(timeout); // to wait the target handshake response
 	}
 
 	// Middle to target

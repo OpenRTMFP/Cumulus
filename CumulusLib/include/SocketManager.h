@@ -31,7 +31,7 @@ public:
 
 	void add(const Poco::Net::Socket& socket,SocketHandler& handler);
 	void remove(const Poco::Net::Socket& socket);
-	bool process(Poco::Timespan& timeout);
+	bool process(const Poco::Timespan& timeout);
 
 private:
 	std::set<SocketManaged>			_sockets;
