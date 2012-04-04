@@ -22,9 +22,9 @@
 #include "Poco/Net/ServerSocket.h"
 
 
-class TCPServer : private SocketManaged {
+class TCPServer : private Cumulus::SocketHandler {
 public:
-	TCPServer(SocketManager& manager);
+	TCPServer(Cumulus::SocketManager& manager);
 	virtual ~TCPServer();
 
 	bool			start(Poco::UInt16 port);
@@ -33,24 +33,18 @@ public:
 	void			stop();
 
 protected:
-	SocketManager&	manager;
+	Cumulus::SocketManager&	manager;
 
 private:
 	virtual void	clientHandler(Poco::Net::StreamSocket& socket)=0;
 
 
-	void	onReadable(Poco::UInt32 available);
-	void	onWritable();
-	void	onError(const std::string& error);
-	bool	haveToWrite();
+	void	onReadable(const Poco::Net::Socket& socket);
+	void	onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	Poco::Net::ServerSocket		_socket;
 	Poco::UInt16				_port;
 };
-
-inline bool TCPServer::haveToWrite() {
-	return false;
-}
 
 inline bool	TCPServer::running() {
 	return _port>0;

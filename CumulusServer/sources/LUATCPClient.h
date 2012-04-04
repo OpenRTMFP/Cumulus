@@ -22,23 +22,19 @@
 
 class LUATCPClient : private TCPClient {
 public:
+	LUATCPClient(const Poco::Net::StreamSocket& socket,Cumulus::SocketManager& manager,lua_State* pState);
+	LUATCPClient(Cumulus::SocketManager& manager,lua_State* pState);
+
 	static const char* Name;
 
 	static int Get(lua_State* pState);
 	static int Set(lua_State* pState);
 
 	static void ID(std::string& id){}
-
-	
-	static void	Create(SocketManager& manager,lua_State* pState);
-	static void	Create(const Poco::Net::StreamSocket& socket,SocketManager& manager,lua_State* pState);
-private:
-	LUATCPClient(const Poco::Net::StreamSocket& socket,SocketManager& manager,lua_State* pState);
-	LUATCPClient(SocketManager& manager,lua_State* pState);
-	virtual ~LUATCPClient();
-
 	static int	Destroy(lua_State* pState);
 
+private:
+	virtual ~LUATCPClient();
 	Poco::UInt32	onReception(const Poco::UInt8* data,Poco::UInt32 size);
 	void			onDisconnection();
 

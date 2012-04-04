@@ -19,6 +19,7 @@
 #include "Service.h"
 
 using namespace std;
+using namespace Cumulus;
 using namespace Poco;
 using namespace Poco::Net;
 
@@ -53,21 +54,6 @@ void LUATCPClient::onDisconnection(){
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
 }
-
-void LUATCPClient::Create(SocketManager& manager,lua_State* pState) {
-	SCRIPT_BEGIN(pState)
-		SCRIPT_WRITE_OBJECT(LUATCPClient,LUATCPClient,*(new LUATCPClient(manager,pState)))
-		SCRIPT_ADD_DESTRUCTOR(&LUATCPClient::Destroy);
-	SCRIPT_END
-}
-
-void LUATCPClient::Create(const StreamSocket& socket,SocketManager& manager,lua_State* pState) {
-	SCRIPT_BEGIN(pState)
-		SCRIPT_WRITE_OBJECT(LUATCPClient,LUATCPClient,*(new LUATCPClient(socket,manager,pState)))
-		SCRIPT_ADD_DESTRUCTOR(&LUATCPClient::Destroy);
-	SCRIPT_END
-}
-
 
 int	LUATCPClient::Destroy(lua_State* pState) {
 	SCRIPT_DESTRUCTOR_CALLBACK(LUATCPClient,LUATCPClient,client)

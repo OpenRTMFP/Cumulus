@@ -22,10 +22,10 @@
 #include "Poco/Net/StreamSocket.h"
 
 
-class TCPClient : private SocketManaged {
+class TCPClient : private Cumulus::SocketHandler {
 public:
-	TCPClient(const Poco::Net::StreamSocket& socket,SocketManager& manager);
-	TCPClient(SocketManager& manager);
+	TCPClient(const Poco::Net::StreamSocket& socket,Cumulus::SocketManager& manager);
+	TCPClient(Cumulus::SocketManager& manager);
 	virtual ~TCPClient();
 
 	bool					 connect(const std::string& host,Poco::UInt16 port);
@@ -43,10 +43,10 @@ private:
 	virtual Poco::UInt32		onReception(const Poco::UInt8* data,Poco::UInt32 size)=0;
 	virtual void				onDisconnection(){}
 
-	bool						haveToWrite();
-	void						onReadable(Poco::UInt32 available);
-	void						onWritable();
-	void						onError(const std::string& error);
+	bool						haveToWrite(const Poco::Net::Socket& socket);
+	void						onReadable(const Poco::Net::Socket& socket);
+	void						onWritable(const Poco::Net::Socket& socket);
+	void						onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	void						error(const std::string& error);
 
@@ -58,7 +58,7 @@ private:
 	std::vector<Poco::UInt8>	_sendBuffer;
 	bool						_connected;
 	Poco::UInt32				_available;
-	SocketManager&				_manager;
+	Cumulus::SocketManager&		_manager;
 };
 
 inline Poco::Net::SocketAddress	TCPClient::address() {
@@ -69,11 +69,11 @@ inline Poco::Net::SocketAddress	TCPClient::peerAddress() {
 	return _connected ? _socket.peerAddress() : Poco::Net::SocketAddress();
 }
 
-inline void TCPClient::onError(const std::string& error) {
+inline void TCPClient::onError(const Poco::Net::Socket& socket,const std::string& error) {
 	this->error("TCPClient error, " + error);
 }
 
-inline bool TCPClient::haveToWrite() {
+inline bool TCPClient::haveToWrite(const Poco::Net::Socket& socket) {
 	return !_sendBuffer.empty();
 }
 

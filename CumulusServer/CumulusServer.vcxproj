@@ -36,8 +36,6 @@
     <ClInclude Include="sources\Server.h" />
     <ClInclude Include="sources\Service.h" />
     <ClInclude Include="sources\SMTPSession.h" />
-    <ClInclude Include="sources\SocketManaged.h" />
-    <ClInclude Include="sources\SocketManager.h" />
     <ClInclude Include="sources\TCPClient.h" />
     <ClInclude Include="sources\TCPServer.h" />
   </ItemGroup>
@@ -67,7 +65,6 @@
     <ClCompile Include="sources\Server.cpp" />
     <ClCompile Include="sources\Service.cpp" />
     <ClCompile Include="sources\SMTPSession.cpp" />
-    <ClCompile Include="sources\SocketManager.cpp" />
     <ClCompile Include="sources\TCPClient.cpp" />
     <ClCompile Include="sources\TCPServer.cpp" />
   </ItemGroup>

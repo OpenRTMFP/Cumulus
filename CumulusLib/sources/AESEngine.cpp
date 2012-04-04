@@ -39,6 +39,9 @@ AESEngine::AESEngine(const UInt8* key,Direction direction) : type(key ? DEFAULT 
 AESEngine::AESEngine(const AESEngine& other,Type type) : type(other.type==EMPTY ? EMPTY : type),_key(other._key),_direction(other._direction) {
 }
 
+AESEngine::AESEngine(const AESEngine& other) : type(other.type),_key(other._key),_direction(other._direction) {
+}
+
 
 AESEngine::~AESEngine() {
 }
@@ -51,6 +54,7 @@ void AESEngine::process(const UInt8* in,UInt8* out,UInt32 size) {
 			s_aesDecrypt.process(in,out,size);
 		else
 			s_aesEncrypt.process(in,out,size);
+		return;
 	}
 	UInt8	iv[AES_KEY_SIZE];
 	memset(iv,0,sizeof(iv));

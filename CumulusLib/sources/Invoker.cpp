@@ -56,7 +56,7 @@ Publication& Invoker::publish(const string& name) {
 
 void Invoker::unpublish(const Publication& publication) {
 	if(_publishers.erase(&publication)==0) {
-		ERROR("Impossible to stop publication %s because you have not the handle on",publication.name().c_str())
+		ERROR("Publication %s already closed or you have not the handle on",publication.name().c_str())
 		return;
 	}
 	UInt32 stream = publication.publisherId();

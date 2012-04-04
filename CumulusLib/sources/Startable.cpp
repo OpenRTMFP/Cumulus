@@ -24,7 +24,14 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Startable::Startable(const string& name) : _name(name),_thread(name),_terminate(false),_haveToJoin(false) {
+StartableProcess::StartableProcess(Startable& startable):_startable(startable){
+}
+
+void StartableProcess::run() {
+	_startable.prerun();
+}
+
+Startable::Startable(const string& name) : _name(name),_thread(name),_stop(true),_haveToJoin(false),_process(*this) {
 }
 
 Startable::~Startable() {
@@ -34,39 +41,57 @@ Startable::~Startable() {
 }
 
 void Startable::start() {
-	if(running())
-		return;
-
 	ScopedLock<FastMutex> lock(_mutex);
+	if(!_stop) // if running
+		return;
 	if(_haveToJoin) {
 		_thread.join();
 		_haveToJoin=false;
 	}
-
-	_terminate = false;
 	try {
-		_thread.start(*this);
+		_thread.start(_process);
 		_haveToJoin = true;
+		ScopedLock<FastMutex> lock(_mutexStop);
+		_stop=false;
 	} catch (Poco::Exception& ex) {
 		ERROR("Impossible to start the thread : %s",ex.displayText().c_str());
 	}
 }
 
-bool Startable::prerun() {
-	run(_terminate);
-	return !_terminate;
+void Startable::prerun() {
+	run();
+	ScopedLock<FastMutex> lock(_mutexStop);
+	_stop=true;
+}
+
+Startable::WakeUpType Startable::sleep(UInt32 timeout) {
+	if(_stop)
+		return STOP;
+	 WakeUpType result = WAKEUP;
+	 if(timeout>0) {
+		 if(!_wakeUpEvent.tryWait(timeout))
+			 result = TIMEOUT;
+	 } else
+		 _wakeUpEvent.wait();
+	if(_stop)
+		return STOP;
+	return result;
 }
 
 void Startable::stop() {
 	ScopedLock<FastMutex> lock(_mutex);
-	if(!running()) {
-		if(_haveToJoin) {
-			_thread.join();
-			_haveToJoin=false;
+	{
+		ScopedLock<FastMutex> lock(_mutexStop);
+		if(_stop) {
+			if(_haveToJoin) {
+				_thread.join();
+				_haveToJoin=false;
+			}
+			return;
 		}
-		return;
+		_stop=true;
 	}
-	_terminate = true;
+	_wakeUpEvent.set();
 	// Attendre la fin!
 	_thread.join();
 	_haveToJoin=false;

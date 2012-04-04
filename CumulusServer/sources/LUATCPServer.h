@@ -22,6 +22,8 @@
 
 class LUATCPServer : private TCPServer {
 public:
+	LUATCPServer(Cumulus::SocketManager& manager,lua_State* pState);
+
 	static const char* Name;
 
 	static int Get(lua_State* pState);
@@ -29,13 +31,9 @@ public:
 
 	static void ID(std::string& id){}
 
-	
-	static void	Create(SocketManager& manager,lua_State* pState);
-private:
-	LUATCPServer(SocketManager& manager,lua_State* pState);
-	virtual ~LUATCPServer();
-
 	static int	Destroy(lua_State* pState);
+private:
+	virtual ~LUATCPServer();
 
 	void		clientHandler(Poco::Net::StreamSocket& socket);
 

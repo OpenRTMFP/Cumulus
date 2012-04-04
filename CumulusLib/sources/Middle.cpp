@@ -48,6 +48,7 @@ Middle::Middle(SendingEngine& sendingEngine,
 	// connection to target
 	_socket.setReceiveBufferSize(_invoker.udpBufferSize);_socket.setSendBufferSize(_invoker.udpBufferSize);
 	_socket.connect(target.address);
+	_invoker.sockets.add(_socket,*this);
 
 	INFO("Handshake Target");
 
@@ -87,6 +88,7 @@ Middle::~Middle() {
 		delete _pMiddleAesDecrypt;
 	if(_pMiddleAesEncrypt)
 		delete _pMiddleAesEncrypt;
+	_invoker.sockets.remove(_socket);
 }
 
 PacketWriter& Middle::handshaker() {
@@ -212,6 +214,7 @@ void Middle::sendHandshakeToTarget(UInt8 type) {
 	RTMFP::Encode(encoder,packet);
 	RTMFP::Pack(packet,0);
 	_socket.sendBytes(packet.begin(),(int)packet.length());
+
 	writer(); // To delete the handshake response!
 }
 
@@ -232,8 +235,7 @@ PacketWriter& Middle::writer() {
 void Middle::packetHandler(PacketReader& packet) {
 	if(!_pMiddleAesEncrypt) {
 		DEBUG("500ms sleeping to wait target handshaking");
-		Thread::sleep(500); // to wait the target handshake response
-		manage();
+		_invoker.sockets.process(Timespan(500000)); // to wait the target handshake response
 	}
 
 	// Middle to target
@@ -326,6 +328,7 @@ void Middle::packetHandler(PacketReader& packet) {
 
 		}  else if(type == 0x4C) {
 			 kill();
+			 return;
 		}  else if(type == 0x51) {
 			//printf("%s\n",Util::FormatHex(content.current(),content.available()).c_str());
 		}
@@ -504,66 +507,61 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 
 }
 
-
-void Middle::manage() {
-	if(died)
+void Middle::onReadable(const Socket& socket) {
+	if(died) {
+		_invoker.sockets.remove(_socket);
+		_socket.close();
 		return;
-
-	if(_socket.available()>0) {
-
-		int len = 0;
-		try {
-			len = _socket.receiveBytes(_buffer,sizeof(_buffer));
-		} catch(Exception& ex) {
-			ERROR("Middle socket reception error : %s",ex.displayText().c_str());
-			return;
-		}
-
-		PacketReader packet(_buffer,len);
-
-		if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
-			ERROR("Middle from %s : invalid packet",_target.address.toString().c_str());
-			return;
-		}
-
-		UInt32 id = RTMFP::Unpack(packet);
-
-		// Handshaking
-		if(id==0 || !_pMiddleAesDecrypt) {
-			AESEngine decoder = aesDecrypt.next(AESEngine::SYMMETRIC);
-			if(!RTMFP::Decode(decoder,packet)) {
-				ERROR("Target handshake decrypt error");
-				return;
-			}
-
-			Logs::Dump(packet,format("Middle from %s handshaking",_target.address.toString()).c_str(),true);
-
-			UInt8 marker = packet.read8();
-			if(marker!=0x0B) {
-				ERROR("Target handshake received with a marker different of '0b'");
-				return;
-			}
-
-			packet.read16(); // time
-
-			UInt8 type = packet.read8();
-			UInt16 size = packet.read16();
-			PacketReader content(packet.current(),size);
-			targetHandshakeHandler(type,content);
-			return;
-		}
-
-		if(!RTMFP::Decode(*_pMiddleAesDecrypt,packet)) {
-			ERROR("Target to middle : Decrypt error");
-			return;
-		}
-
-	//	TRACE("Target to middle : session d'identification '%u'",id);
-		Logs::Dump(packet,format("Middle from %s",_target.address.toString()).c_str(),true);
-
-		targetPacketHandler(packet);
 	}
 
+	int len = _socket.receiveBytes(_buffer,sizeof(_buffer));
+
+	PacketReader packet(_buffer,len);
+	if(packet.available()<RTMFP_MIN_PACKET_SIZE) {
+		ERROR("Middle from %s : invalid packet",_target.address.toString().c_str());
+		return;
+	}
+
+	UInt32 id = RTMFP::Unpack(packet);
+
+	// Handshaking
+	if(id==0 || !_pMiddleAesDecrypt) {
+		AESEngine decoder = aesDecrypt.next(AESEngine::SYMMETRIC);
+		if(!RTMFP::Decode(decoder,packet)) {
+			ERROR("Target handshake decrypt error");
+			return;
+		}
+
+		Logs::Dump(packet,format("Middle from %s handshaking",_target.address.toString()).c_str(),true);
+
+		UInt8 marker = packet.read8();
+		if(marker!=0x0B) {
+			ERROR("Target handshake received with a marker different of '0b'");
+			return;
+		}
+
+		packet.read16(); // time
+
+		UInt8 type = packet.read8();
+		UInt16 size = packet.read16();
+		PacketReader content(packet.current(),size);
+		targetHandshakeHandler(type,content);
+		return;
+	}
+
+	if(!RTMFP::Decode(*_pMiddleAesDecrypt,packet)) {
+		ERROR("Target to middle : Decrypt error");
+		return;
+	}
+
+//	TRACE("Target to middle : session d'identification '%u'",id);
+	Logs::Dump(packet,format("Middle from %s",_target.address.toString()).c_str(),true);
+
+	targetPacketHandler(packet);
+}
+
+void Middle::onError(const Socket& socket,const string& error) {
+	ERROR("Middle, %s",error.c_str());
 }
 
 void Middle::failSignal() {

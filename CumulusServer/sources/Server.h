@@ -21,7 +21,6 @@
 #include "ApplicationKiller.h"
 #include "Service.h"
 #include "Blacklist.h"
-#include "SocketManager.h"
 #include "LUAMail.h"
 #include "TCPServer.h"
 
@@ -31,12 +30,10 @@ public:
 	virtual ~Server();
 
 	static const std::string				WWWPath;
-	SocketManager							socketManager;
 	LUAMail									luaMail;
 
 private:
 	void					manage();
-	bool					realTime(bool& terminate);
 	bool					readNextConfig(lua_State* pState,const Poco::Util::AbstractConfiguration& configurations,const std::string& root);
 
 	//events
@@ -65,5 +62,4 @@ private:
 	lua_State*				_pState;
 	ApplicationKiller&		_applicationKiller;
 	Service*				_pService;
-	bool					_hasOnRealTime;
 };

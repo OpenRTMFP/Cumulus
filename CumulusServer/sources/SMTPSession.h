@@ -42,7 +42,7 @@ public:
 private:
 	virtual void	onSent(){};
 
-	void			run(const volatile bool& terminate);
+	void			run();
 
 
 	Poco::FastMutex							_mutex;
@@ -53,8 +53,6 @@ private:
 	
 	Poco::Net::StreamSocket					_socket;
 	Poco::Net::SMTPClientSession			_SMTPClient;
-	
-	bool									_opened;
 
 	Poco::UInt32							_timeout;
 	std::string								_host;

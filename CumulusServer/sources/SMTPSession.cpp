@@ -26,7 +26,7 @@ using namespace Poco;
 using namespace Poco::Net;
 
 
-SMTPSession::SMTPSession(const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Startable("SMTPSession"),_host(host),_port(port),_timeout(timeout*1000),_opened(false) {
+SMTPSession::SMTPSession(const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Startable("SMTPSession"),_host(host),_port(port),_timeout(timeout*1000) {
 	setPriority(Thread::PRIO_LOWEST);
 }
 
@@ -35,11 +35,8 @@ SMTPSession::~SMTPSession() {
 	{
 		ScopedLock<FastMutex> lock(_mutexError);
 		_error = "STMPSession deleting";
-		ScopedLock<FastMutex> lock2(_mutex);
-		_opened=false;
 	}
 	_socket.close();
-	_mailEvent.set();
 	stop();
 	list<MailMessage*>::const_iterator it;
 	for(it=_mails.begin();it!=_mails.end();++it) {
@@ -61,11 +58,8 @@ void SMTPSession::send(const string& sender,const string& recipient,const string
 
 void SMTPSession::send(const string& sender,const list<string>& recipients,const string& subject,const string& content) {
 	ScopedLock<FastMutex> lock(_mutex);
-	if(!_opened) {
-		_opened=true;
-		stop();
+	if(!running())
 		start();
-	}
 	MailMessage* pMail = new MailMessage();
 	pMail->setSender(sender);
 	list<string>::const_iterator it;
@@ -75,11 +69,11 @@ void SMTPSession::send(const string& sender,const list<string>& recipients,const
 	pMail->setSubject(subject);
 	pMail->setContent(content);
 	_mails.push_back(pMail);
-	_mailEvent.set();
+	wakeUp();
 }
 
 
-void SMTPSession::run(const volatile bool& terminate) {
+void SMTPSession::run() {
 	{
 		ScopedLock<FastMutex> lock(_mutexError);
 		_error.clear();
@@ -103,7 +97,6 @@ void SMTPSession::run(const volatile bool& terminate) {
 		ScopedLock<FastMutex> lock(_mutexError);
 		if(!_error.empty()) {
 			ScopedLock<FastMutex> lock(_mutex);
-			_opened=false;
 			list<MailMessage*>::const_iterator it;
 			for(it=_mails.begin();it!=_mails.end();++it) {
 				onSent();
@@ -113,34 +106,25 @@ void SMTPSession::run(const volatile bool& terminate) {
 		}
 	}
 
-	while(!terminate) {
+	while(sleep(_timeout)!=STOP) {
 
 		MailMessage* pMail;
 		{
 			ScopedLock<FastMutex> lock(_mutex);
 			if(_mails.empty()) {
-				_mutex.unlock();
-				_mailEvent.tryWait(_timeout);
-				_mutex.lock();
-				if(_mails.empty()) {
-					// timeout
-					try {
-						_SMTPClient.close();
-					} catch(Exception& ex) {
-						ScopedLock<FastMutex> lock(_mutexError);
-						if(_error.empty())
-							_error = ex.displayText();
-					}
-					_opened=false;
-					break;
+				// timeout
+				try {
+					_SMTPClient.close();
+				} catch(Exception& ex) {
+					ScopedLock<FastMutex> lock(_mutexError);
+					if(_error.empty())
+						_error = ex.displayText();
 				}
-			}
-			if(!_opened)
 				break;
+			}
 			pMail = _mails.front();
 			_mails.pop_front();
 		}
-
 
 		try {
 			_SMTPClient.sendMessage(*pMail);

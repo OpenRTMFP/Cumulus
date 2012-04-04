@@ -24,14 +24,15 @@
 
 using namespace std;
 using namespace Poco;
+using namespace Cumulus;
 using namespace Poco::Net;
 
-TCPClient::TCPClient(const StreamSocket& socket,SocketManager& manager) : _socket(socket),_connected(true),_available(0),SocketManaged(_socket),_manager(manager) {
+TCPClient::TCPClient(const StreamSocket& socket,SocketManager& manager) : _socket(socket),_connected(true),_available(0),_manager(manager) {
 	_socket.setBlocking(false);
-	_manager.add(*this);
+	_manager.add(_socket,*this);
 }
 
-TCPClient::TCPClient(SocketManager& manager) : _connected(false),_available(0),SocketManaged(_socket),_manager(manager) {
+TCPClient::TCPClient(SocketManager& manager) : _connected(false),_available(0),_manager(manager) {
 }
 
 
@@ -44,7 +45,8 @@ void TCPClient::error(const string& error) {
 	disconnect();
 }
 
-void TCPClient::onReadable(UInt32 available) {
+void TCPClient::onReadable(const Socket& socket) {
+	UInt32 available = socket.available();
 	if(available==0) {
 		disconnect();
 		return;
@@ -72,7 +74,7 @@ void TCPClient::onReadable(UInt32 available) {
 	}
 }
 
-void TCPClient::onWritable() {
+void TCPClient::onWritable(const Socket& socket) {
 	if(_sendBuffer.size()==0)
 		return;
 	int sent = sendIntern(&_sendBuffer[0],_sendBuffer.size());
@@ -96,7 +98,7 @@ bool TCPClient::connect(const string& host,UInt16 port) {
 	try {
 		_socket.connectNB(Net::SocketAddress(host,port));
 		_connected = true;
-		_manager.add(*this);
+		_manager.add(_socket,*this);
 	} catch(Exception& ex) {
 		error(format("Impossible to connect to %s:%u, %s",host,port,ex.displayText()));
 	}
@@ -106,7 +108,7 @@ bool TCPClient::connect(const string& host,UInt16 port) {
 void TCPClient::disconnect() {
 	if(!_connected)
 		return;
-	_manager.remove(*this);
+	_manager.remove(_socket);
 	try {_socket.shutdown();} catch(...){}
 	_socket.close();
 	_connected = false;

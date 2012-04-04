@@ -19,11 +19,12 @@
 #include "Logs.h"
 
 using namespace std;
+using namespace Cumulus;
 using namespace Poco;
 using namespace Poco::Net;
 
 
-TCPServer::TCPServer(SocketManager& manager) : SocketManaged(_socket),_port(0),manager(manager) {
+TCPServer::TCPServer(SocketManager& manager) : _port(0),manager(manager) {
 }
 
 
@@ -40,7 +41,7 @@ bool TCPServer::start(UInt16 port) {
 		_socket.bind(port);
 		_socket.setBlocking(false);
 		_socket.listen();
-		manager.add(*this);
+		manager.add(_socket,*this);
 		_port=port;
 	} catch(Exception& ex) {
 		ERROR("TCPServer starting error: %s",ex.displayText().c_str())
@@ -52,12 +53,12 @@ bool TCPServer::start(UInt16 port) {
 void TCPServer::stop() {
 	if(_port==0)
 		return;
-	manager.remove(*this);
+	manager.remove(_socket);
 	_socket.close();
 	_port=0;
 }
 
-void TCPServer::onReadable(UInt32 available) {
+void TCPServer::onReadable(const Socket& socket) {
 	try {
 		StreamSocket ss = _socket.acceptConnection();
 		// enabe nodelay per default: OSX really needs that
@@ -68,10 +69,6 @@ void TCPServer::onReadable(UInt32 available) {
 	}
 }
 
-void TCPServer::onWritable() {
-	ERROR("TCPServer socket writable?")
-}
-
-void TCPServer::onError(const std::string& error) {
+void TCPServer::onError(const Socket& socket,const string& error) {
 	ERROR("TCPServer socket: %s",error.c_str())
 }

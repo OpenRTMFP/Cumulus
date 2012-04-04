@@ -33,7 +33,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_timeout(100000),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -41,7 +41,7 @@ RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(
 	DEBUG("Id of this RTMFP server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
-RTMFPServer::RTMFPServer(const string& name) : Startable(name),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(const string& name) : Startable(name),_timeout(100000),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -111,15 +111,14 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 	Startable::start();
 }
 
-bool RTMFPServer::prerun() {
+void RTMFPServer::prerun() {
 	NOTE("RTMFP server starts on %u port",_port);
 	if(_edgesPort>0)
 		NOTE("RTMFP edges server starts on %u port",_edgesPort);
 
-	bool result=true;
 	try {
 		onStart();
-		result=Startable::prerun();
+		Startable::prerun();
 	} catch(Exception& ex) {
 		FATAL("RTMFPServer : %s",ex.displayText().c_str());
 	} catch (exception& ex) {
@@ -130,104 +129,79 @@ bool RTMFPServer::prerun() {
 	onStop();
 	
 	NOTE("RTMFP server stops");
-	return result;
 }
 
+void RTMFPServer::run() {
+	_socket.bind(SocketAddress("0.0.0.0",_port));
+	sockets.add(_socket,*this);
 
-void RTMFPServer::run(const volatile bool& terminate) {
-	SocketAddress address("0.0.0.0",_port);
-	_socket.bind(address);
+	if(_edgesPort>0) {
+		_edgesSocket.bind(SocketAddress("0.0.0.0",_edgesPort));
+		sockets.add(_edgesSocket,*this);
+	}
 
-	SocketAddress edgesAddress("0.0.0.0",_edgesPort);
-	if(_edgesPort>0) 
-		_edgesSocket.bind(edgesAddress);
-
-	SocketAddress sender;
-	UInt8 buff[PACKETRECV_SIZE];
-	int size = 0;
-	Timespan timeout(0,1);
-	
-
-	while(!terminate) {
-		bool stop=false;
-		bool idle = realTime(stop);
-		if(stop)
-			break;
-
-		_handshake.isEdges=false;
-
-		int edgesAvailable = _edgesPort>0 ? _edgesSocket.available() : 0;
-		DatagramSocket* pSocket = _socket.available()>edgesAvailable ? &_socket : (edgesAvailable>0 ? &_edgesSocket : NULL);
-		if(pSocket) {
-			try {
-				size = pSocket->receiveFrom(buff,sizeof(buff),sender);
-			} catch(Exception& ex) {
-				DEBUG("RTMFPServer socket reception : %s",ex.displayText().c_str());
-				pSocket->close();
-				pSocket->bind(pSocket==&_edgesSocket ? edgesAddress : address);
-				continue;
-			}
-
-			if(pSocket==&_edgesSocket) {
-				_handshake.isEdges=true;
-				Edge* pEdge = edges(sender);
-				if(pEdge)
-					pEdge->update();
-			}
-
-			if(isBanned(sender.host())) {
-				INFO("Data rejected because client %s is banned",sender.host().toString().c_str());
-				continue;
-			}
-
-			if(size<RTMFP_MIN_PACKET_SIZE) {
-				ERROR("Invalid packet");
-				continue;
-			}
-			
-			PacketReader packet(buff,size);
-			Session* pSession=findSession(RTMFP::Unpack(packet));
-			
-			if(!pSession)
-				continue;
-
-			if(!pSession->checked)
-				_handshake.commitCookie(*pSession);
-
-			pSession->setEndPoint(*pSocket,sender);
-			pSession->receive(packet);
-
-			// Just middle session!
-			if(_middle) {
-				Sessions::Iterator it;
-				for(it=_sessions.begin();it!=_sessions.end();++it) {
-					Middle* pMiddle = dynamic_cast<Middle*>(it->second);
-					if(pMiddle)
-						pMiddle->manage();
-				}
-			}
-
-		} else if(idle) {
-			if(_timeLastManage.isElapsed(_freqManage)) {
-				_timeLastManage.update();
-				manage();
-			} else
-				Thread::sleep(1);
+	bool stop=false;
+	_timeLastManage.update();
+	while(running() && !stop) {
+		if (_timeLastManage.isElapsed(_freqManage)) {
+			_timeLastManage.update();
+			manage();
 		}
+		handle(stop);
 	}
 
 	_handshake.clear();
 	_sessions.clear();
 	_sendingEngine.clear();
+	sockets.remove(_socket);
 	_socket.close();
-	if(_edgesPort>0)
+	if(_edgesPort>0) {
+		sockets.remove(_edgesSocket);
 		_edgesSocket.close();
+	}
 
 	if(_pCirrus) {
 		delete _pCirrus;
 		_pCirrus = NULL;
 	}
 }
+
+void RTMFPServer::onReadable(const Poco::Net::Socket& socket) {
+	_handshake.isEdges=false;
+	int size = ((DatagramSocket&)socket).receiveFrom(_buff,sizeof(_buff),_sender);
+	if(socket==_edgesSocket) {
+		_handshake.isEdges=true;
+		Edge* pEdge = edges(_sender);
+		if(pEdge)
+			pEdge->update();
+	}
+	if(isBanned(_sender.host())) {
+		INFO("Data rejected because client %s is banned",_sender.host().toString().c_str());
+		return;
+	}
+
+	if(size<RTMFP_MIN_PACKET_SIZE) {
+		ERROR("Invalid packet");
+		return;
+	}
+		
+	PacketReader packet(_buff,size);
+	Session* pSession=findSession(RTMFP::Unpack(packet));
+	
+	if(!pSession)
+		return;
+
+	if(!pSession->checked)
+		_handshake.commitCookie(*pSession);
+
+	pSession->setEndPoint(((DatagramSocket&)socket),_sender);
+	pSession->receive(packet);
+}
+
+void RTMFPServer::onError(const Poco::Net::Socket& socket,const std::string& error) {
+	ERROR("RTMFPServer, %s",error.c_str());
+}
+
 
 UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const SocketAddress& address,const UInt8* peerIdWanted) {
 
@@ -327,8 +301,7 @@ Session& RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* d
 		if(_pCirrus==pTarget)
 			pSession->pTarget = cookie.pTarget;
 		DEBUG("500ms sleeping to wait cirrus handshaking");
-		Thread::sleep(500); // to wait the cirrus handshake
-		pSession->manage();
+		sockets.process(Timespan(500000)); // to wait the cirrus handshake
 	} else {
 		pSession = new ServerSession(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this);
 		pSession->pTarget = cookie.pTarget;

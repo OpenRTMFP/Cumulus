@@ -19,15 +19,32 @@
 
 #include "Cumulus.h"
 #include "Poco/Thread.h"
+#include "Poco/Event.h"
 
 namespace Cumulus {
 
-class Startable : private Poco::Runnable {
-
+class Startable;
+class StartableProcess : public Poco::Runnable{
 public:
+	StartableProcess(Startable& startable);
+private:
+	void run();
+	Startable& _startable;
+};
+
+class Startable {
+	friend class StartableProcess;
+public:
+	enum WakeUpType {
+		WAKEUP=0,
+		TIMEOUT,
+		STOP
+	};
+
 	void				start();
 	void				stop();
 
+	void				wakeUp();
 	void				setPriority(Poco::Thread::Priority priority);
 
 	bool				running() const;		
@@ -37,30 +54,37 @@ protected:
 	Startable(const std::string& name);
 	virtual ~Startable();
 
-	virtual bool	prerun(); // Retourne true si le process s'est terminé de lui meme (sans un appel à stop())
+	WakeUpType		sleep(Poco::UInt32 timeout=0);
+	virtual void	run()=0;
+	virtual void	prerun();
 
 private:
-	virtual void	run(const volatile bool& terminate) = 0;
-
-	void			run();
 
 	bool					_haveToJoin;
 	Poco::Thread			_thread;
-	Poco::FastMutex			_mutex;
-	volatile bool			_terminate;
+	mutable Poco::FastMutex	_mutex;
+	mutable Poco::FastMutex	_mutexStop;
+	volatile bool			_stop;
+	Poco::Event				_wakeUpEvent;
 	std::string				_name;
+	StartableProcess		_process;
 };
+
+inline bool Startable::running() const {
+	return !_stop;
+}
+
 
 inline void Startable::run() {
 	prerun();
 }
 
-inline void Startable::setPriority(Poco::Thread::Priority priority) {
-	_thread.setPriority(priority);
+inline void Startable::wakeUp() {
+	_wakeUpEvent.set();
 }
 
-inline bool Startable::running() const {
-	return _thread.isRunning();
+inline void Startable::setPriority(Poco::Thread::Priority priority) {
+	_thread.setPriority(priority);
 }
 
 inline const std::string& Startable::name() const {

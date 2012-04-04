@@ -22,6 +22,7 @@
 #include "Streams.h"
 #include "Edges.h"
 #include "Entities.h"
+#include "SocketManager.h"
 
 namespace Cumulus {
 
@@ -31,14 +32,12 @@ class Invoker : public Entity {
 	friend class FlowStream; // FlowStream manage _streams list!
 	friend class FlowConnection; // FlowConnection manage _streams list!
 public:
-	Invoker();
-	virtual ~Invoker();
-
 	// invocations
 	Entities<Client>		clients;
 	Entities<Group>			groups;
 	Edges					edges;
 	Publications			publications;
+	SocketManager			sockets;
 
 
 	Publication&			publish(const std::string& name);
@@ -53,6 +52,11 @@ public:
 	const Poco::UInt32		keepAlivePeer;
 	const Poco::UInt32		keepAliveServer;
 	const Poco::UInt8		edgesAttemptsBeforeFallback;
+
+protected:
+	Invoker();
+	virtual ~Invoker();
+
 private:
 	virtual Peer&													myself()=0;
 	std::map<std::string,Publication*>								_publications;

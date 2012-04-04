@@ -19,14 +19,13 @@
 
 #include "Cumulus.h"
 #include "SendingUnit.h"
-#include "Poco/Thread.h"
+#include "Startable.h"
 #include "Poco/AutoPtr.h"
-#include "Poco/Event.h"
 #include <list>
 
 namespace Cumulus {
 
-class SendingThread : private Poco::Runnable {
+class SendingThread : private Startable {
 public:
 	SendingThread(Poco::UInt32 id);
 	~SendingThread();
@@ -39,11 +38,7 @@ private:
 	void			run();
 
 	Poco::FastMutex							_mutex;
-	Poco::Event								_pushEvent;
 	std::list<Poco::AutoPtr<SendingUnit> >	_sendings;
-	bool									_haveToJoin;
-	bool									_join;
-	Poco::Thread							_thread;
 };
 
 

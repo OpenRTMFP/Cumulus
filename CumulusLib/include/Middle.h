@@ -27,7 +27,7 @@
 namespace Cumulus {
 
 
-class Middle : public ServerSession {
+class Middle : public ServerSession, public SocketHandler {
 public:
 	Middle(SendingEngine& sendingEngine,
 			Poco::UInt32 id,
@@ -62,6 +62,9 @@ private:
 
 	void				failSignal();
 
+	void				onReadable(const Poco::Net::Socket& socket);
+	void				onError(const Poco::Net::Socket& socket,const std::string& error);
+
 	AESEngine*				_pMiddleAesDecrypt;
 	AESEngine*				_pMiddleAesEncrypt;
 	
@@ -82,6 +85,11 @@ private:
 
 	const Sessions&				_sessions;
 };
+
+inline void Middle::manage() {
+	// just to overload the ServerSession version
+}
+
 
 inline const Peer& Middle::middlePeer() {
 	return _middlePeer;

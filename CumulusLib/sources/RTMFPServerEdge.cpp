@@ -24,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServerEdge::RTMFPServerEdge() : RTMFPServer("RTMFPServerEdge"),_serverConnection(_sendingEngine,*this,_handshake),_timeout(0,1) {
+RTMFPServerEdge::RTMFPServerEdge() : RTMFPServer("RTMFPServerEdge"),_serverConnection(_sendingEngine,*this,_handshake) {
 
 }
 
@@ -73,8 +73,10 @@ void RTMFPServerEdge::start(RTMFPServerEdgeParams& params) {
 }
 
 
-void RTMFPServerEdge::run(const volatile bool& terminate) {
+void RTMFPServerEdge::run() {
 	_serverSocket.connect(_serverAddress);
+	sockets.add(_serverSocket,*this);
+
 	_serverConnection.setEndPoint(_serverSocket,_serverAddress);
 
 	NOTE("Wait RTMFP server %s successful connection...",_serverAddress.toString().c_str());
@@ -82,20 +84,19 @@ void RTMFPServerEdge::run(const volatile bool& terminate) {
 	Timestamp connectAttemptTime;	
 	_serverConnection.connect(_publicAddress);
 
-	while(!terminate) {
+	bool terminate=false;
 
-		if(!_serverSocket.poll(_timeout,Socket::SELECT_READ)) {  // sleep 1 microsecond
+	while(running()) {
+		if(!sockets.process(_timeout)) {
 			if(connectAttemptTime.isElapsed(6000000)) {
 				_serverConnection.connect(_publicAddress);
 				connectAttemptTime.update();
 			}
 			continue;
 		}
-		serverHandler();
-
 		if(_serverConnection.connected()) {
 			NOTE("RTMFP server %s successful connection",_serverAddress.toString().c_str());
-			RTMFPServer::run(terminate);
+			RTMFPServer::run();
 			_serverConnection.clear();
 			if(_serverConnection.connected()) {
 				// Exception in RTMFPServer::run OR a volontary stop
@@ -107,7 +108,37 @@ void RTMFPServerEdge::run(const volatile bool& terminate) {
 		}
 	}
 	_sendingEngine.clear();
+	sockets.remove(_serverSocket);
 	_serverSocket.close();
+}
+
+void RTMFPServerEdge::onReadable(const Socket& socket) {
+	if(socket != _serverSocket) {
+		RTMFPServer::onReadable(socket);
+		return;
+	}
+	int size = _serverSocket.receiveBytes(_buff,sizeof(_buff));
+	_timeLastServerReception.update();
+
+	if(size>=RTMFP_MIN_PACKET_SIZE) {
+		PacketReader packet(_buff,size);
+		UInt32 id = RTMFP::Unpack(packet);
+		if(id>0) {
+			EdgeSession* pSession= findEdgeSession(id);
+			if(pSession)
+				pSession->serverPacketHandler(packet);
+		} else
+			_serverConnection.receive(packet);
+	} else
+		ERROR("Invalid packet");
+}
+
+void RTMFPServerEdge::onError(const Socket& socket,const string& error) {
+	if(socket != _serverSocket) {
+		RTMFPServer::onError(socket,error);
+		return;
+	}
+	ERROR("RTMFPServerEdge, %s",error.c_str());
 }
 
 
@@ -121,7 +152,7 @@ Session& RTMFPServerEdge::createSession(UInt32 farId,const Peer& peer,const UInt
 }
 
 void RTMFPServerEdge::destroySession(Session& session) {
-	
+	// overloads RTMFPServer::destroySession code!
 }
 
 void RTMFPServerEdge::repeatCookie(UInt32 farId,Cookie& cookie) {
@@ -135,39 +166,13 @@ UInt8 RTMFPServerEdge::p2pHandshake(const string& tag,PacketWriter& response,con
 	return 0;
 }
 
-bool RTMFPServerEdge::realTime(bool& terminate) {
-	
+void RTMFPServerEdge::handle(bool& terminate) {
 	if(_serverConnection.died) {
 		terminate = true;
 		_serverConnection.disconnect();
-		return false;
+		return;
 	}
-	return !serverHandler();
-}
-
-bool RTMFPServerEdge::serverHandler() {
-	try {
-		if(_serverSocket.available()>0) {
-			int size = _serverSocket.receiveBytes(_buff,sizeof(_buff));
-			_timeLastServerReception.update();
-
-			if(size>=RTMFP_MIN_PACKET_SIZE) {
-				PacketReader packet(_buff,size);
-				UInt32 id = RTMFP::Unpack(packet);
-				if(id>0) {
-					EdgeSession* pSession= findEdgeSession(id);
-					if(pSession)
-						pSession->serverPacketHandler(packet);
-				} else
-					_serverConnection.receive(packet);
-			} else
-				ERROR("Invalid packet");
-			return true;
-		}
-	} catch(Exception& ex) {
-		WARN("Server socket reception error : %s",ex.displayText().c_str());
-	}
-	return false;
+	RTMFPServer::handle(terminate);
 }
 
 void RTMFPServerEdge::manage() {

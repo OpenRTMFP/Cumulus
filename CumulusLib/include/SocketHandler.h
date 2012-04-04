@@ -17,28 +17,18 @@
 
 #pragma once
 
-#include "Startable.h"
-#include "SocketManaged.h"
-#include "Poco/Event.h"
-#include <map>
+#include "Cumulus.h"
+#include "Poco/Net/Socket.h"
 
+namespace Cumulus {
 
-class SocketManager : private Cumulus::Startable, private Poco::Net::SocketImpl {
+class SocketHandler {
 public:
-	SocketManager();
-	virtual ~SocketManager();
-
-	void add(SocketManaged& socket);
-	void remove(SocketManaged& socket);
-	bool realTime();
-
-private:
-	void run(const volatile bool& terminate);
-
-	Poco::Mutex															_mutex;
-	std::map<const Poco::Net::Socket,SocketManaged*>::iterator			_it;
-	std::map<const Poco::Net::Socket,SocketManaged*>					_sockets;
-	Poco::Timespan														_timeout;
-	Poco::Event															_addEvent;
-	bool																_stop;
+	virtual void	onReadable(const Poco::Net::Socket& socket)=0;
+	virtual void	onError(const Poco::Net::Socket& socket,const std::string& error)=0;
+	virtual void	onWritable(const Poco::Net::Socket& socket){}
+	virtual bool	haveToWrite(const Poco::Net::Socket& socket){return false;}
 };
+
+
+} // namespace Cumulus

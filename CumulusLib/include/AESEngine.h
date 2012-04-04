@@ -37,7 +37,8 @@ public:
 		SYMMETRIC
 	};
 	AESEngine(const Poco::UInt8* key,Direction direction);
-	AESEngine(const AESEngine& other,Type type=DEFAULT);
+	AESEngine(const AESEngine& other);
+	AESEngine(const AESEngine& other,Type type);
 	virtual ~AESEngine();
 
 	AESEngine	next(Type type);
@@ -46,12 +47,14 @@ public:
 
 	const Type	type;
 private:
+	static AESEngine	s_aesDecrypt;
+	static AESEngine	s_aesEncrypt;
+
 	Direction	_direction;
 	AES_KEY		_key;
 	
 
-	static AESEngine	s_aesDecrypt;
-	static AESEngine	s_aesEncrypt;
+	
 };
 
 inline AESEngine AESEngine::next() {

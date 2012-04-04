@@ -244,14 +244,6 @@
 				Name="Util"
 				>
 				<File
-					RelativePath=".\sources\Address.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Address.h"
-					>
-				</File>
-				<File
 					RelativePath=".\include\Entities.h"
 					>
 				</File>
@@ -648,6 +640,30 @@
 				</File>
 				<File
 					RelativePath=".\include\Startable.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Net"
+				>
+				<File
+					RelativePath=".\sources\Address.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Address.h"
+					>
+				</File>
+				<File
+					RelativePath=".\include\SocketHandler.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\SocketManager.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\SocketManager.h"
 					>
 				</File>
 			</Filter>

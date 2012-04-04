@@ -124,6 +124,7 @@
     <ClCompile Include="sources\SendingThread.cpp" />
     <ClCompile Include="sources\ServerConnection.cpp" />
     <ClCompile Include="sources\ServerSession.cpp" />
+    <ClCompile Include="sources\SocketManager.cpp" />
     <ClCompile Include="sources\Startable.cpp" />
     <ClCompile Include="sources\Util.cpp" />
     <ClCompile Include="sources\AESEngine.cpp" />
@@ -180,6 +181,8 @@
     <ClInclude Include="include\SendingUnit.h" />
     <ClInclude Include="include\ServerConnection.h" />
     <ClInclude Include="include\ServerSession.h" />
+    <ClInclude Include="include\SocketHandler.h" />
+    <ClInclude Include="include\SocketManager.h" />
     <ClInclude Include="include\Startable.h" />
     <ClInclude Include="include\Util.h" />
     <ClInclude Include="include\AESEngine.h" />

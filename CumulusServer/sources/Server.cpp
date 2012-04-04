@@ -34,7 +34,7 @@ using namespace Cumulus;
 
 const string Server::WWWPath;
 
-Server::Server(const std::string& root,ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : _blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_hasOnRealTime(true),_pService(NULL),
+Server::Server(const std::string& root,ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : _blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_pService(NULL),
 	luaMail(_pState=Script::CreateState(),configurations.getString("smtp.host","localhost"),configurations.getInt("smtp.port",SMTPSession::SMTP_PORT),configurations.getInt("smtp.timeout",60)) {
 	
 	File((string&)WWWPath = root+"www").createDirectory();
@@ -81,7 +81,6 @@ Server::~Server() {
 
 void Server::onStart() {
 	_pService = new Service(_pState,"");
-	_hasOnRealTime=true;
 }
 void Server::onStop() {
 	// delete service
@@ -92,38 +91,15 @@ void Server::onStop() {
 	_applicationKiller.kill();
 }
 
-bool Server::realTime(bool& terminate) {
-	bool idle = RTMFPServer::realTime(terminate);
-	if(_hasOnRealTime) {
-		_hasOnRealTime=false;
-		SCRIPT_BEGIN(_pService->open())
-			SCRIPT_FUNCTION_BEGIN("onRealTime")
-				_hasOnRealTime=true;
-				SCRIPT_FUNCTION_CALL
-				if(SCRIPT_CAN_READ)
-					idle = SCRIPT_READ_BOOL(idle);
-			SCRIPT_FUNCTION_END
-		SCRIPT_END
-	}
-	if(!socketManager.realTime())
-		return false;
-	return idle;
-}
 
 void Server::manage() {
 	RTMFPServer::manage();
 	_pService->refresh();
-	_hasOnRealTime=false;
 	SCRIPT_BEGIN(_pService->open())
 		SCRIPT_FUNCTION_BEGIN("onManage")
 			SCRIPT_FUNCTION_CALL
 		SCRIPT_FUNCTION_END
-		SCRIPT_FUNCTION_BEGIN("onRealTime")
-			_hasOnRealTime=true;
-			SCRIPT_FUNCTION_NULL_CALL
-		SCRIPT_FUNCTION_END
 	SCRIPT_END
-
 }
 
 

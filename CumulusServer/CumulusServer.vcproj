@@ -433,13 +433,6 @@
 				<File
 					RelativePath=".\sources\LUATCPServer.cpp"
 					>
-					<FileConfiguration
-						Name="debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
 				</File>
 				<File
 					RelativePath=".\sources\LUATCPServer.h"
@@ -455,18 +448,6 @@
 				</File>
 				<File
 					RelativePath=".\sources\SMTPSession.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\SocketManaged.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\SocketManager.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\SocketManager.h"
 					>
 				</File>
 				<File

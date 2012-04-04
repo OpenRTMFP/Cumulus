@@ -17,24 +17,26 @@
 
 #pragma once
 
-#include "Poco/Net/Socket.h"
+#include "Cumulus.h"
+#include "SocketHandler.h"
+#include <set>
 
-class SocketManaged {
-	friend class SocketManager;
-protected:
-	SocketManaged(const Poco::Net::Socket& socket):error(false),writable(false),readable(false),socket(socket){}
-	virtual ~SocketManaged(){}
-	
+namespace Cumulus {
+
+class SocketManaged;
+class SocketManager : private Poco::Net::SocketImpl {
+public:
+	SocketManager();
+	virtual ~SocketManager();
+
+	void add(const Poco::Net::Socket& socket,SocketHandler& handler);
+	void remove(const Poco::Net::Socket& socket);
+	bool process(Poco::Timespan& timeout);
+
 private:
-	virtual void	onReadable(Poco::UInt32 available)=0;
-	virtual void	onWritable()=0;
-	virtual void	onError(const std::string& error)=0;
-
-	virtual bool	haveToWrite()=0;
-
-	const bool					error;
-	const bool					writable;
-	const bool					readable;
-
-	const Poco::Net::Socket&	socket;
+	std::set<SocketManaged>			_sockets;
 };
+
+
+
+} // namespace Cumulus

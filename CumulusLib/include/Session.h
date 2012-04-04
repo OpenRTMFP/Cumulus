@@ -72,9 +72,14 @@ private:
 	
 	SendingEngine&				_sendingEngine;
 	Poco::AutoPtr<SendingUnit>	_pSendingUnit;
-	Poco::Net::DatagramSocket*	_pSocket;
+	Poco::Net::DatagramSocket	_socket;
 	SendingThread*				_pSendingThread;
 };
+
+inline void Session::send() {
+	send(farId,_socket,peer.address);
+}
+
 
 inline PacketWriter& Session::writer() {
 	return _pSendingUnit->packet;

@@ -57,13 +57,15 @@ int	LUAInvoker::AbsolutePath(lua_State *pState) {
 
 int	LUAInvoker::CreateTCPClient(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
-		LUATCPClient::Create(((Server&)invoker).socketManager,pState);
+		SCRIPT_WRITE_OBJECT(LUATCPClient,LUATCPClient,*(new LUATCPClient(invoker.sockets,pState)))
+		SCRIPT_ADD_DESTRUCTOR(&LUATCPClient::Destroy);
 	SCRIPT_CALLBACK_RETURN
 }
 
 int	LUAInvoker::CreateTCPServer(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
-		LUATCPServer::Create(((Server&)invoker).socketManager,pState);
+		SCRIPT_WRITE_OBJECT(LUATCPServer,LUATCPServer,*(new LUATCPServer(invoker.sockets,pState)))
+		SCRIPT_ADD_DESTRUCTOR(&LUATCPServer::Destroy);
 	SCRIPT_CALLBACK_RETURN
 }
 

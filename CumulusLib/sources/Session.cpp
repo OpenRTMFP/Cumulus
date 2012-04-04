@@ -31,7 +31,7 @@ Session::Session(SendingEngine& sendingEngine,
 				 const Peer& peer,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey) : 
-		_pSendingThread(NULL),_sendingEngine(sendingEngine),flags(0),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pSocket(NULL),middleDump(false),_pSendingUnit(new SendingUnit()) {
+		_pSendingThread(NULL),_sendingEngine(sendingEngine),flags(0),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),middleDump(false),_pSendingUnit(new SendingUnit()) {
 
 }
 
@@ -45,8 +45,7 @@ void Session::kill() {
 }
 
 void Session::setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address) {
-	if(_pSocket!=&socket)
-		_pSocket=&socket;
+	_socket=socket;
 	(SocketAddress&)peer.address = address;
 }
 
@@ -59,14 +58,6 @@ void Session::receive(PacketReader& packet) {
 
 	Logs::Dump(packet,format("Request from %s",peer.address.toString()).c_str(),middleDump);
 	packetHandler(packet);
-}
-
-void Session::send() {
-	if(!_pSocket) {
-		ERROR("Impossible to send on a null socket for session %u",id);
-		return;
-	}
-	send(farId,*_pSocket,peer.address);
 }
 
 void Session::send(UInt32 farId,DatagramSocket& socket,const SocketAddress& receiver) {

@@ -20,6 +20,7 @@
 #include "Service.h"
 
 using namespace std;
+using namespace Cumulus;
 using namespace Poco;
 using namespace Poco::Net;
 
@@ -35,19 +36,12 @@ LUATCPServer::~LUATCPServer() {
 void LUATCPServer::clientHandler(StreamSocket& socket){
 	SCRIPT_BEGIN(_pState)
 		SCRIPT_MEMBER_FUNCTION_BEGIN(LUATCPServer,LUATCPServer,*this,"clientHandler")
-			LUATCPClient::Create(socket,manager,_pState);
+			SCRIPT_WRITE_OBJECT(LUATCPClient,LUATCPClient,*(new LUATCPClient(socket,manager,_pState)))
+			SCRIPT_ADD_DESTRUCTOR(&LUATCPClient::Destroy);
 			SCRIPT_FUNCTION_CALL
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
 }
-
-void LUATCPServer::Create(SocketManager& manager,lua_State* pState) {
-	SCRIPT_BEGIN(pState)
-		SCRIPT_WRITE_OBJECT(LUATCPServer,LUATCPServer,*(new LUATCPServer(manager,pState)))
-		SCRIPT_ADD_DESTRUCTOR(&LUATCPServer::Destroy);
-	SCRIPT_END
-}
-
 
 int	LUATCPServer::Destroy(lua_State* pState) {
 	SCRIPT_DESTRUCTOR_CALLBACK(LUATCPServer,LUATCPServer,server)

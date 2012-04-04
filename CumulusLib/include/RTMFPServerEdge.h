@@ -26,7 +26,7 @@ namespace Cumulus {
 
 class RTMFPServerEdgeParams {
 public:
-	RTMFPServerEdgeParams() : port(RTMFP_DEFAULT_PORT*10),udpBufferSize(0),threadPriority(Poco::Thread::PRIO_HIGH),serverAddress("127.0.0.1",RTMFP_DEFAULT_PORT+1) {
+	RTMFPServerEdgeParams() : port(RTMFP_DEFAULT_PORT*10),udpBufferSize(0),threadPriority(Poco::Thread::PRIO_HIGHEST),serverAddress("127.0.0.1",RTMFP_DEFAULT_PORT+1) {
 	}
 	Poco::UInt16				port;
 	Poco::UInt32				udpBufferSize;
@@ -35,7 +35,7 @@ public:
 	Poco::Thread::Priority		threadPriority;
 };
 
-class RTMFPServerEdge : private RTMFPServer {
+class RTMFPServerEdge : private RTMFPServer  {
 public:
 	RTMFPServerEdge();
 	virtual ~RTMFPServerEdge();
@@ -46,15 +46,17 @@ public:
 	bool running();
 
 private:
-	bool			serverHandler();
-	bool			realTime(bool& terminate);
+	void			handle(bool& terminate);
 	void			manage();
 	EdgeSession*	findEdgeSession(Poco::UInt32 id);
 	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);
 	Session&		createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie);
 	void			destroySession(Session& session);
 	void			repeatCookie(Poco::UInt32 farId,Cookie& cookie);
-	void			run(const volatile bool& terminate);
+	void			run();
+
+	void			onReadable(const Poco::Net::Socket& socket);
+	void			onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	ServerConnection					_serverConnection;
 
@@ -63,7 +65,6 @@ private:
 	Poco::Net::SocketAddress			_serverAddress;
 	Poco::Net::SocketAddress			_publicAddress;
 	Poco::UInt8							_buff[PACKETRECV_SIZE];
-	Poco::Timespan						_timeout;
 };
 
 inline bool RTMFPServerEdge::running() {
