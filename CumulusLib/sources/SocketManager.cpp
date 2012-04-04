@@ -25,6 +25,10 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
+class SocketPublic : public Socket {
+public:
+	SocketPublic(SocketImpl* pImpl):Socket(pImpl){}
+};
 
 class SocketManagedImpl : public SocketImpl {
 public:
@@ -38,7 +42,7 @@ class SocketManaged : public Socket {
 public:
 	SocketManaged(const Socket& socket,SocketHandler& handler):Socket(socket),socket(new SocketManagedImpl(socket,handler)),handler(handler) {}
 	SocketHandler&				handler;
-	Socket						socket;
+	SocketPublic				socket;
 };
 
 
@@ -58,7 +62,7 @@ void SocketManager::remove(const Socket& socket) {
 	_sockets.erase((SocketManaged&)socket);
 }
 
-bool SocketManager::process(Poco::Timespan& timeout) {
+bool SocketManager::process(const Poco::Timespan& timeout) {
 	if(_sockets.empty())
 		return false;;
 
