@@ -23,6 +23,9 @@
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
+#if defined(POCO_OS_FAMILY_UNIX)
+#include <signal.h>
+#endif
 
 #define LOG_SIZE 1000000
 
@@ -42,11 +45,11 @@ public:
 	virtual void kill()=0;
 };
 
-class CumulusServerEdge : public RTMFPServerEdge {
+class ServerEdge : public RTMFPServerEdge {
 public:
-	CumulusServerEdge(ApplicationKiller& applicationKiller) : _applicationKiller(applicationKiller) {
+	ServerEdge(ApplicationKiller& applicationKiller) : _applicationKiller(applicationKiller) {
 	}
-	~CumulusServerEdge() {
+	~ServerEdge() {
 	}
 	void onStop() {
 		_applicationKiller.kill();
@@ -199,7 +202,7 @@ private:
 				sigprocmask(SIG_BLOCK, &sset, NULL);
 #endif
 
-				CumulusServerEdge edge(*this);
+				ServerEdge edge(*this);
 				edge.start(params);
 
 				// wait for CTRL-C or kill
