@@ -103,7 +103,7 @@ inline bool RTMFPServer::running() {
 }
 
 inline void RTMFPServer::stop() {
-	return Startable::stop();
+	Startable::stop();
 }
 
 

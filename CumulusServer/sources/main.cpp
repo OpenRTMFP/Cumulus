@@ -24,6 +24,9 @@
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/Util/HelpFormatter.h"
 #include "Poco/Util/ServerApplication.h"
+#if defined(POCO_OS_FAMILY_UNIX)
+#include <signal.h>
+#endif
 
 #define LOG_SIZE 1000000
 
@@ -205,11 +208,29 @@ private:
 				params.keepAliveServer = config().getInt("keepAliveServer",params.keepAliveServer);
 				params.keepAlivePeer = config().getInt("keepAlivePeer",params.keepAlivePeer);
 				params.edgesAttemptsBeforeFallback = config().getInt("edges.attemptsBeforeFallback",params.edgesAttemptsBeforeFallback);
+
+
+#if defined(POCO_OS_FAMILY_UNIX)
+				sigset_t sset;
+				sigemptyset(&sset);
+				if (!getenv("POCO_ENABLE_DEBUGGER"))
+					sigaddset(&sset, SIGINT);
+				sigaddset(&sset, SIGQUIT);
+				sigaddset(&sset, SIGTERM);
+				sigprocmask(SIG_BLOCK, &sset, NULL);
+#endif
+
 				Server server(config().getString("application.dir","./"),*this,config());
 				server.start(params);
 
 				// wait for CTRL-C or kill
+#if defined(POCO_OS_FAMILY_UNIX)
+				int sig;
+				sigwait(&sset, &sig);
+#else
 				waitForTerminationRequest();
+#endif
+				
 				// Stop the server
 				server.stop();
 			} catch(Exception& ex) {

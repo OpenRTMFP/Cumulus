@@ -182,18 +182,35 @@ private:
 			try {
 				// starts the server
 				RTMFPServerEdgeParams params;
-				CumulusServerEdge edge(*this);
 				params.port = config().getInt("port", params.port);
 				params.udpBufferSize = config().getInt("udpBufferSize",params.udpBufferSize);
 				if(config().hasOption("serverAddress"))
 					params.serverAddress = SocketAddress(config().getString("serverAddress"));
 				if(config().hasOption("publicAddress"))
 					params.publicAddress = SocketAddress(config().getString("publicAddress"));
+					
+#if defined(POCO_OS_FAMILY_UNIX)
+				sigset_t sset;
+				sigemptyset(&sset);
+				if (!getenv("POCO_ENABLE_DEBUGGER"))
+					sigaddset(&sset, SIGINT);
+				sigaddset(&sset, SIGQUIT);
+				sigaddset(&sset, SIGTERM);
+				sigprocmask(SIG_BLOCK, &sset, NULL);
+#endif
+
+				CumulusServerEdge edge(*this);
 				edge.start(params);
 
 				// wait for CTRL-C or kill
+#if defined(POCO_OS_FAMILY_UNIX)
+				int sig;
+				sigwait(&sset, &sig);
+#else
 				waitForTerminationRequest();
-				// Stop the bridge
+#endif
+
+				// Stop the edge
 				edge.stop();
 			} catch(Exception& ex) {
 				FATAL("Configuration problem : %s",ex.displayText().c_str());
