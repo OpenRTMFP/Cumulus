@@ -23,6 +23,7 @@
 #include "LUAGroups.h"
 #include "LUATCPClient.h"
 #include "LUATCPServer.h"
+#include "LUAMail.h"
 #include "Server.h"
 #include "Poco/Net/StreamSocket.h"
 #include "math.h"
@@ -107,6 +108,23 @@ int	LUAInvoker::FromAMF(lua_State *pState) {
 	SCRIPT_CALLBACK_RETURN
 }
 
+int	LUAInvoker::SendMail(lua_State* pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		string sender = SCRIPT_READ_STRING("");
+		string subject = SCRIPT_READ_STRING("");
+		string content = SCRIPT_READ_STRING("");
+		list<string> recipients;
+		while(SCRIPT_CAN_READ)
+			recipients.push_back(SCRIPT_READ_STRING(""));
+
+		LUAMail* pMail = new LUAMail(pState);
+		((Server&)invoker).mails.send(sender,recipients,subject,content,pMail);
+
+		SCRIPT_WRITE_PERSISTENT_OBJECT(LUAMail,LUAMail,*pMail)
+
+	SCRIPT_CALLBACK_RETURN
+}
+
 
 int LUAInvoker::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
@@ -137,8 +155,8 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPServer)
 		} else if(name=="configs") {
 			lua_getglobal(pState,"cumulus.configs");
-		} else if(name=="mail") {
-			SCRIPT_WRITE_PERSISTENT_OBJECT(LUAMail,LUAMail,((Server&)invoker).luaMail)
+		} else if(name=="sendMail") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::SendMail)
 		}
 	SCRIPT_CALLBACK_RETURN
 }

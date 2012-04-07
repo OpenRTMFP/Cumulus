@@ -21,7 +21,7 @@
 #include "ApplicationKiller.h"
 #include "Service.h"
 #include "Blacklist.h"
-#include "LUAMail.h"
+#include "SMTPSession.h"
 #include "TCPServer.h"
 
 class Server : public Cumulus::RTMFPServer {
@@ -30,9 +30,10 @@ public:
 	virtual ~Server();
 
 	static const std::string				WWWPath;
-	LUAMail									luaMail;
+	SMTPSession								mails;
 
 private:
+	void					handle(bool& terminate);
 	void					manage();
 	bool					readNextConfig(lua_State* pState,const Poco::Util::AbstractConfiguration& configurations,const std::string& root);
 

@@ -34,8 +34,8 @@ using namespace Cumulus;
 
 const string Server::WWWPath;
 
-Server::Server(const std::string& root,ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : _blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_pService(NULL),
-	luaMail(_pState=Script::CreateState(),configurations.getString("smtp.host","localhost"),configurations.getInt("smtp.port",SMTPSession::SMTP_PORT),configurations.getInt("smtp.timeout",60)) {
+Server::Server(const std::string& root,ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : _pState(Script::CreateState()),_blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_pService(NULL),
+	mails(configurations.getString("smtp.host","localhost"),configurations.getInt("smtp.port",SMTPSession::SMTP_PORT),configurations.getInt("smtp.timeout",60)) {
 	
 	File((string&)WWWPath = root+"www").createDirectory();
 	Service::InitGlobalTable(_pState);
@@ -75,7 +75,7 @@ bool Server::readNextConfig(lua_State* pState,const Util::AbstractConfiguration&
 
 
 Server::~Server() {
-	Script::ClearPersistentObject<LUAMail,LUAMail>(_pState,luaMail);
+	mails.clear();
 	Script::CloseState(_pState);
 }
 
@@ -91,6 +91,10 @@ void Server::onStop() {
 	_applicationKiller.kill();
 }
 
+void Server::handle(bool& terminate) {
+	RTMFPServer::handle(terminate);
+	mails.fill();
+}
 
 void Server::manage() {
 	RTMFPServer::manage();

@@ -58,7 +58,7 @@ extern "C" {
 #define SCRIPT_DEBUG(FMT, ...)		SCRIPT_LOG(Cumulus::Logger::PRIO_DEBUG,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
 #define SCRIPT_TRACE(FMT, ...)		SCRIPT_LOG(Cumulus::Logger::PRIO_TRACE,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
 
-#define SCRIPT_CALLBACK(TYPE,LUATYPE,OBJ)						{int __args=1;lua_State* __pState = pState; bool __destructor=false; bool __thisIsConst=false; TYPE* pObj = Script::Callback<TYPE,LUATYPE>(__pState,__thisIsConst,false);if(!pObj) return 0; TYPE& OBJ = *pObj;int __results=lua_gettop(__pState);
+#define SCRIPT_CALLBACK(TYPE,LUATYPE,OBJ)						{int __args=1;lua_State* __pState = pState; bool __destructor=false; bool __thisIsConst=false; TYPE* pObj = Script::Callback<TYPE,LUATYPE>(__pState,__thisIsConst);if(!pObj) return 0; TYPE& OBJ = *pObj;int __results=lua_gettop(__pState);
 #define SCRIPT_DESTRUCTOR_CALLBACK(TYPE,LUATYPE,OBJ)			{int __args=1;lua_State* __pState = pState; bool __destructor=true; TYPE* pObj = Script::DestructorCallback<TYPE,LUATYPE>(__pState);if(!pObj) return 0;TYPE& OBJ = *pObj;int __results=lua_gettop(__pState);
 
 #define SCRIPT_CALLBACK_NOTCONST_CHECK							if(__thisIsConst) {SCRIPT_ERROR("const object can't call this method") return 0;}
@@ -143,6 +143,8 @@ public:
 		if(!lua_isnil(pState,-1)) {
 			lua_pop(pState,1);
 			lua_pushnil(pState);
+			lua_setmetatable(pState,-2);
+			lua_pushnil(pState);
 			lua_setfield(pState,-2,idc);
 		} else
 			lua_pop(pState,1);
@@ -222,11 +224,11 @@ public:
 		}
 
 		bool isConst;
-		return Callback<Type,LUAType>(pState,isConst,true);
+		return Callback<Type,LUAType>(pState,isConst);
 	}
 
 	template<class Type,class LUAType>
-	static Type* Callback(lua_State *pState,bool& isConst,bool desctructorCallback) {
+	static Type* Callback(lua_State *pState,bool& isConst) {
 		if(lua_gettop(pState)==0) {
 			SCRIPT_BEGIN(pState)
 				SCRIPT_ERROR("'this' argument not present, call method with ':' colon operator")
@@ -264,27 +266,6 @@ public:
 
 		Type* pThis = (Type*) lua_touserdata(pState, -1);
 		lua_pop(pState,1);
-
-		// persistent checking!
-		lua_getfield(pState,-1,"//running");
-		if(!lua_isnil(pState,-1) && lua_getmetatable(pState,LUA_GLOBALSINDEX)!=0) {
-			std::string id;
-			GetObjectID<Type,LUAType>(*pThis,id);
-			const char* idc = id.c_str();
-			lua_getfield(pState,-1,idc);
-			if(lua_isnil(pState,-1)) {
-				if(!desctructorCallback) {
-					SCRIPT_BEGIN(pState)
-						SCRIPT_ERROR("this persistent object has been deleted, it can not be used anymore")
-					SCRIPT_END
-				}
-				lua_pop(pState,4);
-				return NULL;
-			}
-			lua_pop(pState,2);
-		}
-		lua_pop(pState,1);
-
 
 		// isConst?
 		lua_getfield(pState,-1,"__var");

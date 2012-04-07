@@ -24,43 +24,29 @@ using namespace Poco;
 
 const char*		LUAMail::Name="LUAMail";
 
-LUAMail::LUAMail(lua_State* pState,const string& host,UInt16 port,UInt16 timeout) : _pState(pState),SMTPSession(host,port,timeout) {
+LUAMail::LUAMail(lua_State* pState) : _pState(pState) {
 }
 
 LUAMail::~LUAMail() {
 }
 
-void LUAMail::onSent(){
+void LUAMail::onSent(const char* error){
 	SCRIPT_BEGIN(_pState)
 		SCRIPT_MEMBER_FUNCTION_BEGIN(LUAMail,LUAMail,*this,"onSent")
+			if(error)
+				SCRIPT_WRITE_STRING(error)
+			else
+				SCRIPT_WRITE_NIL
 			SCRIPT_FUNCTION_CALL
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
-}
-
-int	LUAMail::Send(lua_State* pState) {
-	SCRIPT_CALLBACK(LUAMail,LUAMail,mail)
-		string sender = SCRIPT_READ_STRING("");
-		string subject = SCRIPT_READ_STRING("");
-		string content = SCRIPT_READ_STRING("");
-		list<string> recipients;
-		while(SCRIPT_CAN_READ)
-			recipients.push_back(SCRIPT_READ_STRING(""));
-		mail.send(sender,recipients,subject,content);
-	SCRIPT_CALLBACK_RETURN
+	Script::ClearPersistentObject<LUAMail,LUAMail>(_pState,*this);
+	delete this;
 }
 
 int LUAMail::Get(lua_State* pState) {
 	SCRIPT_CALLBACK(LUAMail,LUAMail,mail)
 		string name = SCRIPT_READ_STRING("");
-		if(name=="send") {
-			SCRIPT_WRITE_FUNCTION(&LUAMail::Send)
-		} else if(name=="error") {
-			if(mail.error())
-				SCRIPT_WRITE_STRING(mail.error())
-			else
-				SCRIPT_WRITE_NIL
-		}
 	SCRIPT_CALLBACK_RETURN
 }
 

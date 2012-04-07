@@ -18,12 +18,14 @@
 #pragma once
 
 #include "Startable.h"
+#include "MailHandler.h"
 #include "Poco/Event.h"
 #include "Poco/Net/SMTPClientSession.h"
 #include "Poco/Net/MailMessage.h"
 #include <list>
 
 
+class Mail;
 class SMTPSession : private Cumulus::Startable {
 public:
 	enum
@@ -31,22 +33,25 @@ public:
 		SMTP_PORT = 25
 	};
 
+
 	SMTPSession(const std::string& host,Poco::UInt16 port = SMTP_PORT,Poco::UInt16 timeout=60);
 	virtual ~SMTPSession();
 
-	const char*		error();
+	const char*		lastError();
+	void			fill();
+	void			clear();
 
-	void			send(const std::string& sender,const std::string& recipient,const std::string& subject,const std::string& content);
-	void			send(const std::string& sender,const std::list<std::string>& recipients,const std::string& subject,const std::string& content);
+	void			send(const std::string& sender,const std::string& recipient,const std::string& subject,const std::string& content,MailHandler* pMailHandler=NULL);
+	void			send(const std::string& sender,const std::list<std::string>& recipients,const std::string& subject,const std::string& content,MailHandler* pMailHandler=NULL);
 
 private:
-	virtual void	onSent(){};
-
 	void			run();
 
 
 	Poco::FastMutex							_mutex;
-	std::list<Poco::Net::MailMessage*>		_mails;
+	Poco::FastMutex							_mutexSent;
+	std::list<Mail*>						_mails;
+	std::list<Mail*>						_mailsSent;
 
 	Poco::FastMutex							_mutexError;
 	std::string								_error;

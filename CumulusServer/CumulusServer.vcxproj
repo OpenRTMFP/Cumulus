@@ -32,6 +32,7 @@
     <ClInclude Include="sources\LUAQualityOfService.h" />
     <ClInclude Include="sources\LUATCPClient.h" />
     <ClInclude Include="sources\LUATCPServer.h" />
+    <ClInclude Include="sources\MailHandler.h" />
     <ClInclude Include="sources\Script.h" />
     <ClInclude Include="sources\Server.h" />
     <ClInclude Include="sources\Service.h" />

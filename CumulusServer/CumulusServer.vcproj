@@ -443,6 +443,10 @@
 				Name="Net"
 				>
 				<File
+					RelativePath=".\sources\MailHandler.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\SMTPSession.cpp"
 					>
 				</File>

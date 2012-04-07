@@ -26,41 +26,70 @@ using namespace Poco;
 using namespace Poco::Net;
 
 
+class Mail : public MailMessage {
+public:
+	Mail(MailHandler* pHandler) : pHandler(pHandler) {
+	}
+	virtual ~Mail() {
+		if(pHandler)
+			pHandler->onSent(error.empty() ? NULL : error.c_str());
+	}
+	string		 error;
+	MailHandler* pHandler;
+};
+
+
 SMTPSession::SMTPSession(const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Startable("SMTPSession"),_host(host),_port(port),_timeout(timeout*1000) {
 	setPriority(Thread::PRIO_LOWEST);
 }
 
 
 SMTPSession::~SMTPSession() {
+	clear();
+}
+
+void SMTPSession::clear() {
 	{
 		ScopedLock<FastMutex> lock(_mutexError);
-		_error = "STMPSession deleting";
+		_error = "STMPSession clearing";
 	}
 	_socket.close();
 	stop();
-	list<MailMessage*>::const_iterator it;
+	list<Mail*>::const_iterator it;
+	for(it=_mailsSent.begin();it!=_mailsSent.end();++it)
+		delete *it;
+	_mailsSent.clear();
 	for(it=_mails.begin();it!=_mails.end();++it) {
-		onSent();
+		(*it)->error = _error;
 		delete *it;
 	}
+	_mails.clear();
 }
 
-const char* SMTPSession::error() {
+void SMTPSession::fill() {
+	ScopedLock<FastMutex> lock(_mutexSent);
+	list<Mail*>::const_iterator it;
+	for(it=_mailsSent.begin();it!=_mailsSent.end();++it)
+		delete *it;
+	_mailsSent.clear();
+}
+
+const char* SMTPSession::lastError() {
 	ScopedLock<FastMutex> lock(_mutexError);
 	return _error.empty() ? NULL : _error.c_str();
 }
 
-void SMTPSession::send(const string& sender,const string& recipient,const string& subject,const string& content) {
+void SMTPSession::send(const string& sender,const string& recipient,const string& subject,const string& content,MailHandler* pMailHandler) {
 	list<string> recipients;
 	recipients.push_back(recipient);
-	send(sender,recipients,subject,content);
+	send(sender,recipients,subject,content,pMailHandler);
 }
 
-void SMTPSession::send(const string& sender,const list<string>& recipients,const string& subject,const string& content) {
+void SMTPSession::send(const string& sender,const list<string>& recipients,const string& subject,const string& content,MailHandler* pMailHandler) {
 	ScopedLock<FastMutex> lock(_mutex);
 	if(!running())
 		start();
-	MailMessage* pMail = new MailMessage();
+	Mail* pMail = new Mail(pMailHandler);
 	pMail->setSender(sender);
 	list<string>::const_iterator it;
 	for(it=recipients.begin();it!=recipients.end();++it) {
@@ -97,18 +126,24 @@ void SMTPSession::run() {
 		ScopedLock<FastMutex> lock(_mutexError);
 		if(!_error.empty()) {
 			ScopedLock<FastMutex> lock(_mutex);
-			list<MailMessage*>::const_iterator it;
+			list<Mail*>::const_iterator it;
 			for(it=_mails.begin();it!=_mails.end();++it) {
-				onSent();
-				delete *it;
+				Mail* pMail = *it;
+				if(pMail->pHandler) {
+					pMail->error = _error;
+					ScopedLock<FastMutex> lock2(_mutexSent);
+					_mailsSent.push_back(pMail);
+				} else
+					delete pMail;
 			}
+			_mails.clear();
 			return;
 		}
 	}
 
 	while(sleep(_timeout)!=STOP) {
 
-		MailMessage* pMail;
+		Mail* pMail;
 		{
 			ScopedLock<FastMutex> lock(_mutex);
 			if(_mails.empty()) {
@@ -133,8 +168,14 @@ void SMTPSession::run() {
 			if(_error.empty())
 				_error = ex.displayText();
 		}
-		onSent();
-		delete pMail;
+
+		if(!pMail->pHandler) {
+			delete pMail;
+		} else {
+			pMail->error = _error;
+			ScopedLock<FastMutex> lock2(_mutexSent);
+			_mailsSent.push_back(pMail);
+		}
 	}
 	
 }

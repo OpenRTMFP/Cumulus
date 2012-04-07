@@ -18,11 +18,11 @@
 #pragma once
 
 #include "Script.h"
-#include "SMTPSession.h"
+#include "MailHandler.h"
 
-class LUAMail : private SMTPSession {
+class LUAMail : public MailHandler {
 public:
-	LUAMail(lua_State* pState,const std::string& host,Poco::UInt16 port,Poco::UInt16 timeout);
+	LUAMail(lua_State* pState);
 	virtual ~LUAMail();
 
 	static const char* Name;
@@ -32,7 +32,6 @@ public:
 
 	static void ID(std::string& id){}
 private:
-	void		onSent();
-	static int	Send(lua_State* pState);
+	void		onSent(const char* error);
 	lua_State*			_pState;
 };

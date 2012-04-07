@@ -17,32 +17,7 @@
 
 #pragma once
 
-#include "Script.h"
-#include "Peer.h"
-
-class LUAInvoker {
+class MailHandler {
 public:
-	static const char* Name;
-
-	static void ID(std::string& id);
-
-	static int Get(lua_State *pState);
-	static int Set(lua_State *pState);
-
-private:
-	static int	ToAMF(lua_State *pState);
-	static int	ToAMF0(lua_State *pState);
-	static int	FromAMF(lua_State *pState);
-	static int	SendMail(lua_State *pState);
-
-	static int	CreateTCPServer(lua_State *pState);
-	static int	CreateTCPClient(lua_State *pState);
-	static int	Publish(lua_State *pState);
-	static int	AbsolutePath(lua_State *pState);
+	virtual void onSent(const char* error)=0;
 };
-
-inline void LUAInvoker::ID(std::string& id) {
-	id = "cumulus";
-}
-
-
