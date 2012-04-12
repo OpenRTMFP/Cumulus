@@ -27,12 +27,12 @@ using namespace Poco;
 using namespace Cumulus;
 using namespace Poco::Net;
 
-TCPClient::TCPClient(const StreamSocket& socket,SocketManager& manager) : _socket(socket),_connected(true),_available(0),_manager(manager) {
+TCPClient::TCPClient(const StreamSocket& socket,SocketManager& manager) : _socket(socket),_connected(true),_manager(manager) {
 	_socket.setBlocking(false);
 	_manager.add(_socket,*this);
 }
 
-TCPClient::TCPClient(SocketManager& manager) : _connected(false),_available(0),_manager(manager) {
+TCPClient::TCPClient(SocketManager& manager) : _connected(false),_manager(manager) {
 }
 
 
@@ -52,24 +52,24 @@ void TCPClient::onReadable(const Socket& socket) {
 		return;
 	}
 
-	if(available>(_recvBuffer.size()-_available))
-		_recvBuffer.resize(available+_available);
+	UInt32 size = _recvBuffer.size();
+	_recvBuffer.resize(size+available);
 
 	try {
-		int received = _socket.receiveBytes(&_recvBuffer[_available],available);
+		int received = _socket.receiveBytes(&_recvBuffer[size],available);
 		if(received<=0) {
-			error(""); // Graceful disconnection
+			disconnect(); // Graceful disconnection
 			return;
 		}
-		_available += received;
 
-		UInt32 gotten = _available-onReception(&_recvBuffer[0],_available);
-		if(gotten>_available) {
-			WARN("TCPClient : onReception has returned a 'rest' value more important than the available value (%u>%u)",gotten,_available);
-			gotten=_available;
+		available = size+received;
+
+		UInt32 rest = onReception(&_recvBuffer[0],available);
+		if(rest>available) {
+			WARN("TCPClient : onReception has returned a 'rest' value more important than the available value (%u>%u)",rest,available);
+			rest=available;
 		}
-		_available -= gotten;
-		_recvBuffer.erase(_recvBuffer.begin(),_recvBuffer.begin()+gotten);
+		_recvBuffer.resize(rest);
 	} catch (...) {
 	}
 }
@@ -114,7 +114,6 @@ void TCPClient::disconnect() {
 	_connected = false;
 	_recvBuffer.clear();
 	_sendBuffer.clear();
-	_available=0;
 	onDisconnection();
 }
 

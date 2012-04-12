@@ -57,7 +57,6 @@ private:
 	std::vector<Poco::UInt8>	_recvBuffer;
 	std::vector<Poco::UInt8>	_sendBuffer;
 	bool						_connected;
-	Poco::UInt32				_available;
 	Cumulus::SocketManager&		_manager;
 };
 

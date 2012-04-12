@@ -39,11 +39,11 @@ extern "C" {
 												if(lua_getstack(__pState,1,&Script::LuaDebug)==1) lua_getinfo(__pState, "Sl", &Script::LuaDebug); \
 												if(!SCRIPT_LOG_NAME_DISABLED && Script::LuaDebug.name) { \
 													if(Script::LuaDebug.namewhat) { \
-														LOG(PRIO,SCRIPT_FILE(FILE),SCRIPT_LINE(LINE),"LUAScript (%s '%s'): "FMT,Script::LuaDebug.namewhat,Script::LuaDebug.name,## __VA_ARGS__) \
+														LOG(PRIO,SCRIPT_FILE(FILE),SCRIPT_LINE(LINE),"(%s '%s') "FMT,Script::LuaDebug.namewhat,Script::LuaDebug.name,## __VA_ARGS__) \
 													} else { \
-														LOG(PRIO,SCRIPT_FILE(FILE),SCRIPT_LINE(LINE),"LUAScript ('%s'): "FMT,Script::LuaDebug.name,## __VA_ARGS__)} \
+														LOG(PRIO,SCRIPT_FILE(FILE),SCRIPT_LINE(LINE),"('%s') "FMT,Script::LuaDebug.name,## __VA_ARGS__)} \
 												} else \
-													LOG(PRIO,SCRIPT_FILE(FILE),SCRIPT_LINE(LINE),"LUAScript: "FMT,## __VA_ARGS__) \
+													LOG(PRIO,SCRIPT_FILE(FILE),SCRIPT_LINE(LINE),FMT,## __VA_ARGS__) \
 												Script::LuaDebug.name = Script::LuaDebug.namewhat = NULL; \
 												if(Script::LuaDebug.short_src) Script::LuaDebug.short_src[0]='\0'; \
 												Script::LuaDebug.currentline=0;}

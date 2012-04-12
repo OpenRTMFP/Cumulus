@@ -155,12 +155,16 @@ private:
 		ScopedLock<FastMutex> lock(_logMutex);
 
 		Path path(filePath);
-		string file;
-		if(path.getExtension() == "lua")
-			file += path.directory(path.depth()-1) + "/";
+		string file,shortName;
+		if(path.getExtension() == "lua") {
+			file.assign(path.directory(path.depth()-1) + "/");
+			shortName.assign(file + path.getFileName());
+		} else
+			shortName.assign(path.getBaseName());
 
 		if(_isInteractive)
-			printf("%s  %s[%ld] %s\n",g_logPriorities[priority-1],(file + path.getBaseName()).c_str(),line,text);
+			printf("%s  %s[%ld] %s\n",g_logPriorities[priority-1],shortName.c_str(),line,text);
+
 		_logStream << DateTimeFormatter::format(LocalDateTime(),"%d/%m %H:%M:%S.%c  ")
 				<< g_logPriorities[priority-1] << '\t' << threadName << '(' << threadId << ")\t"
 				<< (file + path.getFileName()) << '[' << line << "]  " << text << std::endl;
