@@ -28,10 +28,10 @@ namespace Cumulus {
 class SocketManagedImpl : public SocketImpl {
 public:
 	SocketManagedImpl(const Socket& socket,SocketHandler& handler):SocketImpl(socket.impl()->sockfd()),pHandler(&handler) {}
-	SocketHandler*		pHandler;
-private:
-	void close() {
+	virtual ~SocketManagedImpl(){
+		reset(); // to avoid the "close" on destruction!
 	}
+	SocketHandler*		pHandler;
 };
 
 
