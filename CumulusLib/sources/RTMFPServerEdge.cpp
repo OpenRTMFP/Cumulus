@@ -79,7 +79,7 @@ void RTMFPServerEdge::run() {
 
 	_serverConnection.setEndPoint(_serverSocket,_serverAddress);
 
-	NOTE("Wait RTMFP server %s successful connection...",_serverAddress.toString().c_str());
+	NOTE("Wait RTMFP server %s connection...",_serverAddress.toString().c_str());
 
 	Timestamp connectAttemptTime;	
 	_serverConnection.connect(_publicAddress);

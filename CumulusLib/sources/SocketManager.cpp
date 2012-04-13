@@ -27,11 +27,12 @@ namespace Cumulus {
 
 class SocketManagedImpl : public SocketImpl {
 public:
-	SocketManagedImpl(const Socket& socket,SocketHandler& handler):SocketImpl(socket.impl()->sockfd()),pHandler(&handler) {}
+	SocketManagedImpl(const Socket& socket,SocketHandler& handler):socket(socket),SocketImpl(socket.impl()->sockfd()),pHandler(&handler) {}
 	virtual ~SocketManagedImpl(){
 		reset(); // to avoid the "close" on destruction!
 	}
 	SocketHandler*		pHandler;
+	const Socket&		socket;
 };
 
 
@@ -93,24 +94,25 @@ bool SocketManager::process(const Poco::Timespan& timeout) {
 		if (Socket::select(_readables, _writables, _errors, timeout)==0)
 			return false;
 		Socket::SocketList::iterator it;
+		SocketManagedImpl* pSocketManagedImpl;
 		for (it = _readables.begin(); it != _readables.end(); ++it) {
-			SocketHandler* pHandler = ((SocketManagedImpl*)it->impl())->pHandler;
-			if(pHandler)
-				pHandler->onReadable(*it);
+			pSocketManagedImpl = (SocketManagedImpl*)it->impl();
+			if(pSocketManagedImpl->pHandler)
+				pSocketManagedImpl->pHandler->onReadable(pSocketManagedImpl->socket);
 		}
 		for (it = _writables.begin(); it != _writables.end(); ++it) {
-			SocketHandler* pHandler = ((SocketManagedImpl*)it->impl())->pHandler;
-			if(pHandler)
-				pHandler->onWritable(*it);
+			pSocketManagedImpl = (SocketManagedImpl*)it->impl();
+			if(pSocketManagedImpl->pHandler)
+				pSocketManagedImpl->pHandler->onWritable(pSocketManagedImpl->socket);
 		}	
 		for (it = _errors.begin(); it != _errors.end(); ++it) {
-			SocketHandler* pHandler = ((SocketManagedImpl*)it->impl())->pHandler;
-			if(!pHandler)
+			pSocketManagedImpl = (SocketManagedImpl*)it->impl();
+			if(!pSocketManagedImpl->pHandler)
 				continue;
 			try {
-				error((*it).impl()->socketError());
+				error(pSocketManagedImpl->socketError());
 			} catch(Exception& ex) {
-				pHandler->onError(*it,ex.displayText().c_str());
+				pSocketManagedImpl->pHandler->onError(pSocketManagedImpl->socket,ex.displayText().c_str());
 			}		
 		}
 	} catch(Exception& ex) {
