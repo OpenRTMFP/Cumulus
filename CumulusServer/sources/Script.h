@@ -267,6 +267,21 @@ public:
 		Type* pThis = (Type*) lua_touserdata(pState, -1);
 		lua_pop(pState,1);
 
+		// persistent checking to avoid to use a Cumulus object deleted!
+		lua_getfield(pState,-1,"//running");
+		if(!lua_isnil(pState,-1) && lua_getmetatable(pState,LUA_GLOBALSINDEX)!=0) {
+			std::string id;
+			GetObjectID<Type,LUAType>(*pThis,id);
+			const char* idc = id.c_str();
+			lua_getfield(pState,-1,idc);
+			if(lua_isnil(pState,-1)) {
+				lua_pop(pState,4);
+				return NULL;
+			}
+			lua_pop(pState,2);
+		}
+		lua_pop(pState,1);
+
 		// isConst?
 		lua_getfield(pState,-1,"__var");
 		if(lua_isnil(pState,-1))
