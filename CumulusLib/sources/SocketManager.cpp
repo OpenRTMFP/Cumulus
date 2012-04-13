@@ -25,7 +25,6 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-
 class SocketManagedImpl : public SocketImpl {
 public:
 	SocketManagedImpl(const Socket& socket,SocketHandler& handler):SocketImpl(socket.impl()->sockfd()),pHandler(&handler) {}
@@ -35,11 +34,17 @@ private:
 	}
 };
 
+
+class PublicSocket : public Socket {
+public:
+	PublicSocket(SocketImpl* pImpl):Socket(pImpl) {}
+};
+
 class SocketManaged : public Socket {
 public:
 	SocketManaged(const Socket& socket,SocketHandler& handler):Socket(socket),socket(new SocketManagedImpl(socket,handler)),handler(handler) {}
 	SocketHandler&				handler;
-	Socket						socket;
+	PublicSocket				socket;
 };
 
 
