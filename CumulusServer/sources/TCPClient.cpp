@@ -61,17 +61,17 @@ void TCPClient::onReadable(const Socket& socket) {
 			disconnect(); // Graceful disconnection
 			return;
 		}
-
 		available = size+received;
-
-		UInt32 rest = onReception(&_recvBuffer[0],available);
-		if(rest>available) {
-			WARN("TCPClient : onReception has returned a 'rest' value more important than the available value (%u>%u)",rest,available);
-			rest=available;
-		}
-		_recvBuffer.resize(rest);
 	} catch (...) {
+		return;
 	}
+
+	UInt32 rest = onReception(&_recvBuffer[0],available);
+	if(rest>available) {
+		WARN("TCPClient : onReception has returned a 'rest' value more important than the available value (%u>%u)",rest,available);
+		rest=available;
+	}
+	_recvBuffer.resize(rest);
 }
 
 void TCPClient::onWritable(const Socket& socket) {
@@ -100,7 +100,7 @@ bool TCPClient::connect(const string& host,UInt16 port) {
 		_connected = true;
 		_manager.add(_socket,*this);
 	} catch(Exception& ex) {
-		error(format("Impossible to connect to %s:%u, %s",host,port,ex.displayText()));
+		error(format("Impossible to connect to %s:%hu, %s",host,port,ex.displayText()));
 	}
 	return _connected;
 }

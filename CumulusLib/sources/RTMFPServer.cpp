@@ -120,11 +120,11 @@ void RTMFPServer::prerun() {
 		onStart();
 		Startable::prerun();
 	} catch(Exception& ex) {
-		FATAL("RTMFPServer : %s",ex.displayText().c_str());
+		FATAL("RTMFPServer, %s",ex.displayText().c_str());
 	} catch (exception& ex) {
-		FATAL("RTMFPServer : %s",ex.what());
+		FATAL("RTMFPServer, %s",ex.what());
 	} catch (...) {
-		FATAL("RTMFPServer unknown error");
+		FATAL("RTMFPServer, unknown error");
 	}
 	onStop();
 	

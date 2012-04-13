@@ -25,24 +25,21 @@ using namespace Poco::Net;
 namespace Cumulus {
 
 
-class SocketPublic : public Socket {
-public:
-	SocketPublic(SocketImpl* pImpl):Socket(pImpl){}
-};
 
 class SocketManagedImpl : public SocketImpl {
 public:
-	SocketManagedImpl(const Socket& socket,SocketHandler& handler):socket(socket),SocketImpl(socket.impl()->sockfd()),handler(handler) {}
-	virtual ~SocketManagedImpl() {}
-	SocketHandler&				handler;
-	const Socket&				socket;
+	SocketManagedImpl(const Socket& socket,SocketHandler& handler):SocketImpl(socket.impl()->sockfd()),pHandler(&handler) {}
+	SocketHandler*		pHandler;
+private:
+	void close() {
+	}
 };
 
 class SocketManaged : public Socket {
 public:
 	SocketManaged(const Socket& socket,SocketHandler& handler):Socket(socket),socket(new SocketManagedImpl(socket,handler)),handler(handler) {}
 	SocketHandler&				handler;
-	SocketPublic				socket;
+	Socket						socket;
 };
 
 
@@ -59,44 +56,58 @@ void SocketManager::add(const Socket& socket,SocketHandler& handler) {
 }
 
 void SocketManager::remove(const Socket& socket) {
-	_sockets.erase((SocketManaged&)socket);
+	set<SocketManaged>::iterator it = _sockets.find((SocketManaged&)socket);
+	if(it == _sockets.end())
+		return;
+	((SocketManagedImpl*)it->socket.impl())->pHandler = NULL;
+	_sockets.erase(it);
 }
 
 bool SocketManager::process(const Poco::Timespan& timeout) {
 	if(_sockets.empty())
 		return false;;
 
-	Socket::SocketList readables(_sockets.size());
-	Socket::SocketList writables;
-	Socket::SocketList errors(_sockets.size());
+	if(_readables.size()!=_sockets.size())
+		_readables.resize(_sockets.size());
+	if(_errors.size()!=_sockets.size())
+		_errors.resize(_sockets.size());
+	_writables.clear();
 
 	int i=0;
 	set<SocketManaged>::iterator it;
 	for(it = _sockets.begin(); it != _sockets.end(); ++it) {
 		const SocketManaged& socket   = *it;
-		readables[i] = socket.socket;
+		_readables[i] = socket.socket;
 		if(socket.handler.haveToWrite(socket))
-			writables.push_back(socket.socket);
-		errors[i] = socket.socket;
+			_writables.push_back(socket.socket);
+		_errors[i] = socket.socket;
 		++i;
 	}
 
 	try {
-		if (Socket::select(readables, writables, errors, timeout)==0)
+		if (Socket::select(_readables, _writables, _errors, timeout)==0)
 			return false;
 		Socket::SocketList::iterator it;
-		for (it = readables.begin(); it != readables.end(); ++it)
-			((SocketManagedImpl*)it->impl())->handler.onReadable(((SocketManagedImpl*)it->impl())->socket);
-		for (it = writables.begin(); it != writables.end(); ++it)
-			((SocketManagedImpl*)it->impl())->handler.onWritable(((SocketManagedImpl*)it->impl())->socket);	
-		for (it = errors.begin(); it != errors.end(); ++it) {
+		for (it = _readables.begin(); it != _readables.end(); ++it) {
+			SocketHandler* pHandler = ((SocketManagedImpl*)it->impl())->pHandler;
+			if(pHandler)
+				pHandler->onReadable(*it);
+		}
+		for (it = _writables.begin(); it != _writables.end(); ++it) {
+			SocketHandler* pHandler = ((SocketManagedImpl*)it->impl())->pHandler;
+			if(pHandler)
+				pHandler->onWritable(*it);
+		}	
+		for (it = _errors.begin(); it != _errors.end(); ++it) {
+			SocketHandler* pHandler = ((SocketManagedImpl*)it->impl())->pHandler;
+			if(!pHandler)
+				continue;
 			try {
 				error((*it).impl()->socketError());
 			} catch(Exception& ex) {
-				((SocketManagedImpl*)it->impl())->handler.onError(((SocketManagedImpl*)it->impl())->socket,ex.displayText().c_str());
+				pHandler->onError(*it,ex.displayText().c_str());
 			}		
 		}
-	//} catch(IOException&) {
 	} catch(Exception& ex) {
 		WARN("Socket error, %s",ex.displayText().c_str())
 	}

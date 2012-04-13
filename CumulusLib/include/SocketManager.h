@@ -35,6 +35,9 @@ public:
 
 private:
 	std::set<SocketManaged>			_sockets;
+	Poco::Net::Socket::SocketList	_readables;
+	Poco::Net::Socket::SocketList	_writables;
+	Poco::Net::Socket::SocketList	_errors;
 };
 
 
