@@ -1,9 +1,6 @@
 CumulusServer is a complete open source and cross-platform RTMFP server extensible by way of scripting.
 
 CumulusServer has been developed under [GPL license] in keeping in mind the 5 following notions: *speed*, *power*, *light weight*, *cross-platform*, and *elegant code*.
-CumulusServer motto if exists could be:
-
-> For every complicated problem exists an elegant solution.
 
 Even though there is no versioning released yet, code pushed on github is done only when CumulusServer has been tested and approved.
 
