@@ -34,10 +34,10 @@ using namespace Cumulus;
 
 const string Server::WWWPath;
 
-Server::Server(const std::string& root,ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : _pState(Script::CreateState()),_blacklist(root+"blacklist",*this),_applicationKiller(applicationKiller),_pService(NULL),
+Server::Server(ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : RTMFPServer(configurations.getInt("threads",0)),_pState(Script::CreateState()),_blacklist(configurations.getString("application.dir","./")+"blacklist",*this),_applicationKiller(applicationKiller),_pService(NULL),
 	mails(configurations.getString("smtp.host","localhost"),configurations.getInt("smtp.port",SMTPSession::SMTP_PORT),configurations.getInt("smtp.timeout",60)) {
 	
-	File((string&)WWWPath = root+"www").createDirectory();
+	File((string&)WWWPath = configurations.getString("application.dir","./")+"www").createDirectory();
 	Service::InitGlobalTable(_pState);
 	SCRIPT_BEGIN(_pState)
 		SCRIPT_CREATE_PERSISTENT_OBJECT(Invoker,LUAInvoker,*this)

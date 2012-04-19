@@ -26,7 +26,7 @@
 
 class Server : public Cumulus::RTMFPServer {
 public:
-	Server(const std::string& root,ApplicationKiller& applicationKiller,const Poco::Util::AbstractConfiguration& configurations);
+	Server(ApplicationKiller& applicationKiller,const Poco::Util::AbstractConfiguration& configurations);
 	virtual ~Server();
 
 	static const std::string				WWWPath;

@@ -22,6 +22,7 @@
 #include "PacketWriter.h"
 #include "Util.h"
 #include "Logs.h"
+#include "Poco/Environment.h"
 #include "Poco/Format.h"
 #include "string.h"
 
@@ -33,7 +34,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_timeout(100000),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(UInt32 numberOfThreads) : Startable("RTMFPServer"),_sendingEngine(numberOfThreads==0 ? Environment::processorCount() : numberOfThreads),_timeout(100000),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -41,7 +42,7 @@ RTMFPServer::RTMFPServer() : Startable("RTMFPServer"),_timeout(100000),_pCirrus(
 	DEBUG("Id of this RTMFP server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
-RTMFPServer::RTMFPServer(const string& name) : Startable(name),_timeout(100000),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(const string& name,UInt32 numberOfThreads) : Startable(name),_sendingEngine(numberOfThreads==0 ? Environment::processorCount() : numberOfThreads),_timeout(100000),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));

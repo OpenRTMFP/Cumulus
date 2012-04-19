@@ -26,7 +26,7 @@ namespace Cumulus {
 
 class SendingEngine {
 public:
-	SendingEngine();
+	SendingEngine(Poco::UInt32 numberOfThreads);
 	virtual ~SendingEngine();
 
 	SendingThread*					enqueue(Poco::AutoPtr<SendingUnit>& pSending,SendingThread* pThread=NULL);

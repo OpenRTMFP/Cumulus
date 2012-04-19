@@ -17,7 +17,6 @@
 
 #include "SendingEngine.h"
 #include "Logs.h"
-#include "Poco/Environment.h"
 
 using namespace std;
 using namespace Poco;
@@ -25,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-SendingEngine::SendingEngine():_threads(Environment::processorCount())  {
+SendingEngine::SendingEngine(UInt32 numberOfThreads):_threads(numberOfThreads)  {
 	vector<SendingThread*>::iterator it;
 	for(UInt16 i=0;i<_threads.size();++i)
 		_threads[i] = new SendingThread(i);

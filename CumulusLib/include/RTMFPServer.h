@@ -48,7 +48,7 @@ public:
 class RTMFPServer : private Gateway,protected Handler,private Startable,private SocketHandler {
 	friend class RTMFPServerEdge;
 public:
-	RTMFPServer();
+	RTMFPServer(Poco::UInt32 numberOfThreads=0);
 	virtual ~RTMFPServer();
 
 	void start();
@@ -61,7 +61,7 @@ protected:
 	virtual void    manage();
 
 private:
-	RTMFPServer(const std::string& name);
+	RTMFPServer(const std::string& name,Poco::UInt32 numberOfThreads=0);
 	virtual void    onStart(){}
 	virtual void    onStop(){}
 		 

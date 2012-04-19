@@ -24,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServerEdge::RTMFPServerEdge() : RTMFPServer("RTMFPServerEdge"),_serverConnection(_sendingEngine,*this,_handshake) {
+RTMFPServerEdge::RTMFPServerEdge(UInt32 numberOfThreads) : RTMFPServer("RTMFPServerEdge",numberOfThreads),_serverConnection(_sendingEngine,*this,_handshake) {
 
 }
 

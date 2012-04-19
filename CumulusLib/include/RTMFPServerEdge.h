@@ -37,7 +37,7 @@ public:
 
 class RTMFPServerEdge : private RTMFPServer  {
 public:
-	RTMFPServerEdge();
+	RTMFPServerEdge(Poco::UInt32 numberOfThreads);
 	virtual ~RTMFPServerEdge();
 
 	void start();

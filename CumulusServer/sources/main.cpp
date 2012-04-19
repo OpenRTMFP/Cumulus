@@ -224,7 +224,7 @@ private:
 				sigprocmask(SIG_BLOCK, &sset, NULL);
 #endif
 
-				Server server(config().getString("application.dir","./"),*this,config());
+				Server server(*this,config());
 				server.start(params);
 
 				// wait for CTRL-C or kill
