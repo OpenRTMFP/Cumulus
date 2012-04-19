@@ -271,6 +271,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 			if(addr == address)
 				WARN("A client tries to connect to himself (same %s address)",address.toString().c_str());
 			response.writeAddress(addr,first);
+			DEBUG("P2P address initiator exchange, %s:%u",Util::FormatHex(&addr.host[0],addr.host.size()).c_str(),addr.port);
 			first=false;
 		}
 
@@ -300,9 +301,8 @@ Session& RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* d
 		pSession = new Middle(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this,_sessions,*pTarget);
 		if(_pCirrus==pTarget)
 			pSession->pTarget = cookie.pTarget;
-		DEBUG("500ms sleeping to wait cirrus handshaking");
-		Timespan timeout(500000);
-		sockets.process(timeout); // to wait the cirrus handshake
+		DEBUG("Wait cirrus handshaking");
+		pSession->manage(); // to wait the cirrus handshake
 	} else {
 		pSession = new ServerSession(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this);
 		pSession->pTarget = cookie.pTarget;

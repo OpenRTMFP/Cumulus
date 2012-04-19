@@ -33,7 +33,7 @@ FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(fals
 }
 
 FlowWriter::FlowWriter(FlowWriter& flowWriter) :
-		id(flowWriter.id),critical(flowWriter.critical),
+		id(flowWriter.id),critical(false),
 		_stage(flowWriter._stage),_stageAck(flowWriter._stageAck),
 		_ackCount(flowWriter._ackCount),_lostCount(flowWriter._lostCount),
 		_closed(false),_callbackHandle(0),_resetCount(0),

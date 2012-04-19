@@ -248,10 +248,13 @@ void ServerSession::p2pHandshake(const SocketAddress& address,const std::string&
 	writer.write8(0x0F);
 	writer.writeRaw(peer.id,ID_SIZE);
 	
-	if(pAddress)
+	if(pAddress) {
 		writer.writeAddress(*pAddress,index==0);
-	else
+		DEBUG("P2P address destinator exchange, %s:%u",Util::FormatHex(&pAddress->host[0],pAddress->host.size()).c_str(),pAddress->port);
+	} else {
 		writer.writeAddress(address,true);
+		DEBUG("P2P address destinator exchange, %s",address.toString().c_str());
+	}
 
 	writer.writeRaw(tag);
 
@@ -332,7 +335,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 	if(died)
 		return;
 
-	if(!_failed && peer.closed())
+	if(peer.closed())
 		fail("");
 
 	if(peer.addresses.size()==0) {

@@ -86,10 +86,6 @@ private:
 	const Sessions&				_sessions;
 };
 
-inline void Middle::manage() {
-	// just to overload the ServerSession version
-}
-
 
 inline const Peer& Middle::middlePeer() {
 	return _middlePeer;

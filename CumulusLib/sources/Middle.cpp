@@ -233,11 +233,8 @@ PacketWriter& Middle::writer() {
 }
 
 void Middle::packetHandler(PacketReader& packet) {
-	if(!_pMiddleAesEncrypt) {
-		DEBUG("500ms sleeping to wait target handshaking");
-		Timespan timeout(500000);
-		_invoker.sockets.process(timeout); // to wait the target handshake response
-	}
+	if(!_pMiddleAesEncrypt)
+		manage(); // to wait the target handshake response
 
 	// Middle to target
 	PacketWriter& request = requester();
@@ -506,6 +503,17 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 	if(packetOut.length()>pos)
 		flush();
 
+}
+
+void Middle::manage() {
+	if(_pMiddleAesEncrypt)
+		return;
+	INFO("Wait target handshaking");
+	try {
+		onReadable(_socket);
+	} catch(Exception& ex) {
+		ERROR("Target handshaking failed: %s",ex.displayText().c_str());
+	}
 }
 
 void Middle::onReadable(const Socket& socket) {
