@@ -33,13 +33,13 @@ public:
 			_threads[i] = new PoolThread<RunnableType>();
 	}
 
-	PoolThreads::~PoolThreads() {
+	~PoolThreads() {
 		std::vector<PoolThread<RunnableType>* >::iterator it;
 		for(it=_threads.begin();it!=_threads.end();++it)
 			delete *it;
 	}
 
-	void PoolThreads::clear() {
+	void clear() {
 		std::vector<PoolThread<RunnableType>* >::iterator it;
 		for(it=_threads.begin();it!=_threads.end();++it)
 			(*it)->clear();

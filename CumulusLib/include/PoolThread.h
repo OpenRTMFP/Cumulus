@@ -28,7 +28,7 @@ namespace Cumulus {
 template <class RunnableType>
 class PoolThread : private Startable {
 public:
-	PoolThread() : Startable("PoolThread"+NumberFormatter::format(++_Id))  {
+	PoolThread() : Startable("PoolThread"+Poco::NumberFormatter::format(++_Id))  {
 	}
 	~PoolThread() {
 		clear();
