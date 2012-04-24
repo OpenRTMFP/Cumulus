@@ -31,7 +31,7 @@ namespace Cumulus {
 
 class RTMFPServerParams {
 public:
-	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),edgesAttemptsBeforeFallback(2),udpBufferSize(0),edgesPort(0),threadPriority(Poco::Thread::PRIO_HIGHEST),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15) {
+	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),edgesAttemptsBeforeFallback(2),udpBufferSize(0),edgesPort(0),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15) {
 	}
 	Poco::UInt16				port;
 	Poco::UInt32				udpBufferSize;
@@ -45,10 +45,21 @@ public:
 	Poco::UInt16				keepAliveServer;
 };
 
+class MainSockets : public SocketManager,private TaskHandler {
+public:
+	MainSockets():SocketManager((TaskHandler&)*this,"MainSockets") {}
+	virtual ~MainSockets(){}
+private:
+	void requestHandle(){giveHandle();}
+	
+};
+
 class RTMFPServer : private Gateway,protected Handler,private Startable,private SocketHandler {
 	friend class RTMFPServerEdge;
+	friend class RTMFPManager;
+	friend class RTMFPReceiving;
 public:
-	RTMFPServer(Poco::UInt32 numberOfThreads=0);
+	RTMFPServer(Poco::UInt32 cores=0);
 	virtual ~RTMFPServer();
 
 	void start();
@@ -57,26 +68,28 @@ public:
 	bool running();
 
 protected:
-	virtual void	handle(bool& terminate);
 	virtual void    manage();
 
 private:
-	RTMFPServer(const std::string& name,Poco::UInt32 numberOfThreads=0);
+	RTMFPServer(const std::string& name,Poco::UInt32 cores);
 	virtual void    onStart(){}
 	virtual void    onStop(){}
-		 
-	Session*		findSession(Poco::UInt32 id);
+	void			requestHandle();
+	virtual void	handle(bool& terminate);
+
+	void			receive(RTMFPReceiving& rtmfpReceiving);
 	void			prerun();
 	void			run();
 	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);
 	Session&		createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie);
 	void			destroySession(Session& session);
 
-	void			onReadable(const Poco::Net::Socket& socket);
+	void			onReadable(Poco::Net::Socket& socket);
 	void			onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	Handshake					_handshake;
 	SendingEngine				_sendingEngine;
+	ReceivingEngine				_receivingEngine;
 
 	Poco::UInt16				_port;
 	Poco::Net::DatagramSocket	_socket;
@@ -87,15 +100,15 @@ private:
 	bool							_middle;
 	Target*							_pCirrus;
 	Sessions						_sessions;
-	Poco::Timestamp					_timeLastManage;
-	Poco::UInt32					_freqManage;
-	Poco::UInt8						_buff[PACKETRECV_SIZE];
-	Poco::Net::SocketAddress		_sender;
-	Poco::Timespan					_timeout;
+
+	MainSockets						_mainSockets;
+	Poco::AutoPtr<RTMFPReceiving>	_pRTMFPReceiving;
+	Poco::AutoPtr<RTMFPReceiving>	_pRTMFPReceived;
+	Poco::FastMutex					_mutex;
 };
 
-inline void RTMFPServer::handle(bool& terminate){
-	sockets.process(_timeout);
+inline void	RTMFPServer::requestHandle() {
+	wakeUp();
 }
 
 inline bool RTMFPServer::running() {

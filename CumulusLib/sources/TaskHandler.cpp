@@ -15,30 +15,39 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "TaskHandler.h"
 
-#include "Cumulus.h"
-#include "PacketWriter.h"
-#include "AESEngine.h"
+using namespace std;
+using namespace Poco;
 
 namespace Cumulus {
 
-class FlowWriter;
-class BandWriter {
-public:
-	BandWriter() {}
-	virtual ~BandWriter() {}
+TaskHandler::TaskHandler():_pTask(NULL) {
+}
+TaskHandler::~TaskHandler() {
+}
 
-	virtual void			initFlowWriter(FlowWriter& flowWriter)=0;
-	virtual void			resetFlowWriter(FlowWriter& flowWriter)=0;
+void TaskHandler::waitHandle(Task& task) {
+	ScopedLock<FastMutex> lockWait(_mutexWait);
+	{
+		ScopedLock<FastMutex> lock(_mutex);
+		_pTask = &task;
+	}
+	requestHandle();
+	_pTask->sleep();
 
-	virtual bool			failed() const = 0;
-	virtual bool			canWriteFollowing(FlowWriter& flowWriter)=0;
-	virtual PacketWriter&	writer()=0;
-	virtual PacketWriter&	writeMessage(Poco::UInt8 type,Poco::UInt16 length,FlowWriter* pFlowWriter=NULL)=0;
-	virtual void			flush(bool echoTime=true,AESEngine::Type type=AESEngine::DEFAULT)=0;
-	
-};
+	ScopedLock<FastMutex> lock(_mutex);
+	_pTask=NULL;
+}
+
+void TaskHandler::giveHandle() {
+	ScopedLock<FastMutex> lock(_mutex);
+	if(!_pTask)
+		return;
+	_pTask->handle();
+	_pTask->wakeUp();
+
+}
 
 
 } // namespace Cumulus

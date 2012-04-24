@@ -24,9 +24,9 @@ namespace Cumulus {
 
 class SocketHandler {
 public:
-	virtual void	onReadable(const Poco::Net::Socket& socket)=0;
+	virtual void	onReadable(Poco::Net::Socket& socket)=0;
 	virtual void	onError(const Poco::Net::Socket& socket,const std::string& error)=0;
-	virtual void	onWritable(const Poco::Net::Socket& socket){}
+	virtual void	onWritable(Poco::Net::Socket& socket){}
 	virtual bool	haveToWrite(const Poco::Net::Socket& socket){return false;}
 };
 

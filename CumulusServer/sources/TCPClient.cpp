@@ -45,7 +45,7 @@ void TCPClient::error(const string& error) {
 	disconnect();
 }
 
-void TCPClient::onReadable(const Socket& socket) {
+void TCPClient::onReadable(Socket& socket) {
 	UInt32 available = socket.available();
 	if(available==0) {
 		disconnect();
@@ -74,7 +74,7 @@ void TCPClient::onReadable(const Socket& socket) {
 	_recvBuffer.resize(rest);
 }
 
-void TCPClient::onWritable(const Socket& socket) {
+void TCPClient::onWritable(Socket& socket) {
 	if(_sendBuffer.size()==0)
 		return;
 	int sent = sendIntern(&_sendBuffer[0],_sendBuffer.size());

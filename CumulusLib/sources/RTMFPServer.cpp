@@ -22,7 +22,6 @@
 #include "PacketWriter.h"
 #include "Util.h"
 #include "Logs.h"
-#include "Poco/Environment.h"
 #include "Poco/Format.h"
 #include "string.h"
 
@@ -34,7 +33,28 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServer::RTMFPServer(UInt32 numberOfThreads) : Startable("RTMFPServer"),_sendingEngine(numberOfThreads==0 ? Environment::processorCount() : numberOfThreads),_timeout(100000),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+class RTMFPManager : private Task {
+public:
+	RTMFPManager(RTMFPServer& server):_server(server),Task(server,"RTMFPManager")  {
+		setPriority(Thread::PRIO_LOW);
+		start();
+	}
+	virtual ~RTMFPManager() {
+		stop();
+	}
+	void run() {
+		while(sleep(2000)!=STOP)
+			waitHandle();
+	}
+private:
+	void handle() {
+		_server.manage();
+	}
+	RTMFPServer& _server;
+};
+
+
+RTMFPServer::RTMFPServer(UInt32 cores) : Startable("RTMFPServer"),_pRTMFPReceived(NULL),_pRTMFPReceiving(new RTMFPReceiving(*this)),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -42,7 +62,7 @@ RTMFPServer::RTMFPServer(UInt32 numberOfThreads) : Startable("RTMFPServer"),_sen
 	DEBUG("Id of this RTMFP server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
-RTMFPServer::RTMFPServer(const string& name,UInt32 numberOfThreads) : Startable(name),_sendingEngine(numberOfThreads==0 ? Environment::processorCount() : numberOfThreads),_timeout(100000),_pCirrus(NULL),_handshake(_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(const string& name,UInt32 cores) : Startable(name),_pRTMFPReceived(NULL),_pRTMFPReceiving(new RTMFPReceiving(*this)),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -52,21 +72,6 @@ RTMFPServer::RTMFPServer(const string& name,UInt32 numberOfThreads) : Startable(
 
 RTMFPServer::~RTMFPServer() {
 	stop();
-}
-
-Session* RTMFPServer::findSession(UInt32 id) {
- 
-	// Id session can't be egal to 0 (it's reserved to Handshake)
-	if(id==0) {
-		DEBUG("Handshaking");
-		return &_handshake;
-	}
-	Session* pSession = _sessions.find(id);
-	if(pSession)
-		return pSession;
-
-	WARN("Unknown session %u",id);
-	return NULL;
 }
 
 void RTMFPServer::start() {
@@ -89,10 +94,8 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 		ERROR("RTMFPServer port must different than RTMFPServer edges.port");
 		return;
 	}
-	_freqManage = 2000000; // 2 sec by default
 	if(params.pCirrus) {
 		_pCirrus = new Target(*params.pCirrus);
-		_freqManage = 0; // no waiting, direct process in the middle case!
 		NOTE("RTMFPServer started in man-in-the-middle mode with server %s (unstable debug mode)",_pCirrus->address.toString().c_str());
 	}
 	_middle = params.middle;
@@ -134,30 +137,28 @@ void RTMFPServer::prerun() {
 
 void RTMFPServer::run() {
 	_socket.bind(SocketAddress("0.0.0.0",_port));
-	sockets.add(_socket,*this);
+	_mainSockets.add(_socket,*this);
 
 	if(_edgesPort>0) {
 		_edgesSocket.bind(SocketAddress("0.0.0.0",_edgesPort));
-		sockets.add(_edgesSocket,*this);
+		_mainSockets.add(_edgesSocket,*this);
 	}
 
-	bool stop=false;
-	_timeLastManage.update();
-	while(running() && !stop) {
-		if (_timeLastManage.isElapsed(_freqManage)) {
-			_timeLastManage.update();
-			manage();
-		}
-		handle(stop);
+	{
+		RTMFPManager manager(*this);
+		bool terminate=false;
+		while(!terminate)
+			handle(terminate);
 	}
 
 	_handshake.clear();
 	_sessions.clear();
 	_sendingEngine.clear();
-	sockets.remove(_socket);
+	_mainSockets.remove(_socket);
 	_socket.close();
+	_receivingEngine.clear();
 	if(_edgesPort>0) {
-		sockets.remove(_edgesSocket);
+		_mainSockets.remove(_edgesSocket);
 		_edgesSocket.close();
 	}
 
@@ -167,42 +168,75 @@ void RTMFPServer::run() {
 	}
 }
 
-void RTMFPServer::onReadable(const Poco::Net::Socket& socket) {
-	_handshake.isEdges=false;
-	int size = ((DatagramSocket&)socket).receiveFrom(_buff,sizeof(_buff),_sender);
-	if(socket==_edgesSocket) {
-		_handshake.isEdges=true;
-		Edge* pEdge = edges(_sender);
-		if(pEdge)
-			pEdge->update();
-	}
-	if(isBanned(_sender.host())) {
-		INFO("Data rejected because client %s is banned",_sender.host().toString().c_str());
-		return;
-	}
-
-	if(size<RTMFP_MIN_PACKET_SIZE) {
-		ERROR("Invalid packet");
-		return;
-	}
-		
-	PacketReader packet(_buff,size);
-	Session* pSession=findSession(RTMFP::Unpack(packet));
-	
-	if(!pSession)
-		return;
-
-	if(!pSession->checked)
-		_handshake.commitCookie(*pSession);
-
-	pSession->setEndPoint(((DatagramSocket&)socket),_sender);
-	pSession->receive(packet);
-}
 
 void RTMFPServer::onError(const Poco::Net::Socket& socket,const std::string& error) {
 	ERROR("RTMFPServer, %s",error.c_str());
 }
 
+void RTMFPServer::onReadable(Socket& socket) {
+	PacketReader* pPacket = _pRTMFPReceiving->receive((DatagramSocket&)socket);
+	if(!pPacket)
+		return;
+
+	_pRTMFPReceiving->id = RTMFP::Unpack(*pPacket);
+	if(_pRTMFPReceiving->id==0) {
+		_handshake.decode(_pRTMFPReceiving,socket==_edgesSocket ? AESEngine::EMPTY : AESEngine::DEFAULT);
+		_pRTMFPReceiving = new RTMFPReceiving(*this);
+		return;
+	}
+	ScopedLock<Mutex>  lock(_sessions.mutex);
+	Session* pSession = _sessions.find(_pRTMFPReceiving->id);
+	if(!pSession) {
+		WARN("Unknown session %u",_pRTMFPReceiving->id);
+		return;
+	}
+	pSession->decode(_pRTMFPReceiving);
+	_pRTMFPReceiving = new RTMFPReceiving(*this);
+}
+
+void RTMFPServer::handle(bool& terminate){
+	if(sleep()!=STOP) {
+		// Process task
+		giveHandle();
+
+		ScopedLock<FastMutex> lock(_mutex);
+		if(_pRTMFPReceived.isNull())
+			return;
+		// Process packet
+		bool isEdges = _pRTMFPReceived->socket==_edgesSocket;
+		if(isEdges) {
+			Edge* pEdge = edges(_pRTMFPReceived->address);
+			if(pEdge)
+				pEdge->update();
+		}
+
+		if(_pRTMFPReceived->id==0) {
+			DEBUG("Handshaking");
+			_handshake.setEndPoint(_pRTMFPReceived->socket,_pRTMFPReceived->address);
+			if(isEdges)
+				_handshake.nextDumpAreMiddle=true;
+			_handshake.receive(*_pRTMFPReceived->pPacket);
+		} else {
+			Session* pSession = _sessions.find(_pRTMFPReceived->id);
+			if(pSession) {
+				if(!pSession->checked)
+					_handshake.commitCookie(*pSession);
+				pSession->setEndPoint(_pRTMFPReceived->socket,_pRTMFPReceived->address);
+				pSession->receive(*_pRTMFPReceived->pPacket);
+			}
+		}
+
+		_pRTMFPReceived = NULL;
+
+	} else
+		terminate = true;
+}
+
+void RTMFPServer::receive(RTMFPReceiving& rtmfpReceiving) {
+	ScopedLock<FastMutex> lock(_mutex);
+	_pRTMFPReceived.assign(&rtmfpReceiving,true);
+	wakeUp();
+}
 
 UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const SocketAddress& address,const UInt8* peerIdWanted) {
 
@@ -299,13 +333,13 @@ Session& RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* d
 
 	ServerSession* pSession;
 	if(pTarget) {
-		pSession = new Middle(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this,_sessions,*pTarget);
+		pSession = new Middle(_receivingEngine,_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this,_sessions,*pTarget);
 		if(_pCirrus==pTarget)
 			pSession->pTarget = cookie.pTarget;
 		DEBUG("Wait cirrus handshaking");
 		pSession->manage(); // to wait the cirrus handshake
 	} else {
-		pSession = new ServerSession(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this);
+		pSession = new ServerSession(_receivingEngine,_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this);
 		pSession->pTarget = cookie.pTarget;
 	}
 
@@ -325,8 +359,6 @@ void RTMFPServer::destroySession(Session& session) {
 void RTMFPServer::manage() {
 	_handshake.manage();
 	_sessions.manage();
-	if(!_middle && !_pCirrus && _timeLastManage.isElapsed(20000))
-		WARN("Process management has lasted more than 20ms : %ums",UInt32(_timeLastManage.elapsed()/1000));
 }
 
 

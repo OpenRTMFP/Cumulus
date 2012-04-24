@@ -41,7 +41,7 @@ private:
 
 class ServerConnection : public Session {
 public:
-	ServerConnection(SendingEngine& sendingEngine,Handler& handler,Session& handshake);
+	ServerConnection(ReceivingEngine& receivingEngine,SendingEngine& sendingEngine,Handler& handler,Session& handshake);
 	~ServerConnection();
 
 	bool	connected();
@@ -53,7 +53,7 @@ public:
 
 	void	createSession(EdgeSession& session,const std::string& url);
 	void	sendP2PHandshake(const std::string& tag,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);
-
+	void    send();
 private:
 	void	packetHandler(PacketReader& packet);
 
@@ -62,6 +62,11 @@ private:
 	std::map<std::string,P2PHandshakerAddress>		_p2pHandshakers;
 
 };
+
+inline void ServerConnection::send() {
+	nextDumpAreMiddle=true;
+	Session::send();
+}
 
 inline void ServerConnection::clear() {
 	_p2pHandshakers.clear();

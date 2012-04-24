@@ -26,7 +26,7 @@ namespace Cumulus {
 
 class RTMFPServerEdgeParams {
 public:
-	RTMFPServerEdgeParams() : port(RTMFP_DEFAULT_PORT*10),udpBufferSize(0),threadPriority(Poco::Thread::PRIO_HIGHEST),serverAddress("127.0.0.1",RTMFP_DEFAULT_PORT+1) {
+	RTMFPServerEdgeParams() : port(RTMFP_DEFAULT_PORT*10),udpBufferSize(0),threadPriority(Poco::Thread::PRIO_HIGH),serverAddress("127.0.0.1",RTMFP_DEFAULT_PORT+1) {
 	}
 	Poco::UInt16				port;
 	Poco::UInt32				udpBufferSize;
@@ -37,7 +37,7 @@ public:
 
 class RTMFPServerEdge : private RTMFPServer  {
 public:
-	RTMFPServerEdge(Poco::UInt32 numberOfThreads);
+	RTMFPServerEdge(Poco::UInt32 cores=0);
 	virtual ~RTMFPServerEdge();
 
 	void start();
@@ -55,7 +55,7 @@ private:
 	void			repeatCookie(Poco::UInt32 farId,Cookie& cookie);
 	void			run();
 
-	void			onReadable(const Poco::Net::Socket& socket);
+	void			onReadable(Poco::Net::Socket& socket);
 	void			onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	ServerConnection					_serverConnection;

@@ -27,12 +27,11 @@ namespace Cumulus {
 
 class SocketManagedImpl : public SocketImpl {
 public:
-	SocketManagedImpl(const Socket& socket,SocketHandler& handler):socket(socket),SocketImpl(socket.impl()->sockfd()),pHandler(&handler) {}
+	SocketManagedImpl(poco_socket_t sockfd,SocketManaged& socketManaged):SocketImpl(sockfd),pSocketManaged(&socketManaged) {}
 	virtual ~SocketManagedImpl(){
 		reset(); // to avoid the "close" on destruction!
 	}
-	SocketHandler*		pHandler;
-	const Socket&		socket;
+	SocketManaged*		pSocketManaged;
 };
 
 
@@ -41,84 +40,128 @@ public:
 	PublicSocket(SocketImpl* pImpl):Socket(pImpl) {}
 };
 
+
 class SocketManaged : public Socket {
 public:
-	SocketManaged(const Socket& socket,SocketHandler& handler):Socket(socket),socket(new SocketManagedImpl(socket,handler)),handler(handler) {}
+	SocketManaged(const Socket& socket,SocketHandler& handler):Socket(socket),socketSelectable(new SocketManagedImpl(socket.impl()->sockfd(),*this)),handler(handler) {}
 	SocketHandler&				handler;
-	PublicSocket				socket;
+	PublicSocket				socketSelectable;
 };
 
 
 
-SocketManager::SocketManager() {
+SocketManager::SocketManager(TaskHandler& handler,const string& name) : Task(handler,name) {
+	start();
 }
 
 
 SocketManager::~SocketManager() {
+	stop();
+	map<const Socket*,SocketManaged*>::iterator it;
+	for(it=_sockets.begin();it!= _sockets.end();++it)
+		delete it->second;
 }
 
 void SocketManager::add(const Socket& socket,SocketHandler& handler) {
-	_sockets.insert(SocketManaged(socket,handler));
+	ScopedLock<Mutex> lock(_mutex);
+	map<const Socket*,SocketManaged*>::iterator it = _sockets.lower_bound(&socket);
+	if(it!=_sockets.end() && it->first==&socket)
+		return;
+	if(it!=_sockets.begin())
+		--it;
+	_sockets.insert(it,pair<const Socket*,SocketManaged*>(&socket,new SocketManaged(socket,handler)));
 }
 
 void SocketManager::remove(const Socket& socket) {
-	set<SocketManaged>::iterator it = _sockets.find((SocketManaged&)socket);
+	ScopedLock<Mutex> lock(_mutex);
+	map<const Socket*,SocketManaged*>::iterator it = _sockets.find(&socket);
 	if(it == _sockets.end())
 		return;
-	((SocketManagedImpl*)it->socket.impl())->pHandler = NULL;
+	((SocketManagedImpl*)it->second->socketSelectable.impl())->pSocketManaged = NULL;
+	delete it->second;
 	_sockets.erase(it);
 }
 
-bool SocketManager::process(const Poco::Timespan& timeout) {
-	if(_sockets.empty())
-		return false;;
-
-	if(_readables.size()!=_sockets.size())
-		_readables.resize(_sockets.size());
-	if(_errors.size()!=_sockets.size())
-		_errors.resize(_sockets.size());
-	_writables.clear();
-
-	int i=0;
-	set<SocketManaged>::iterator it;
-	for(it = _sockets.begin(); it != _sockets.end(); ++it) {
-		const SocketManaged& socket   = *it;
-		_readables[i] = socket.socket;
-		if(socket.handler.haveToWrite(socket))
-			_writables.push_back(socket.socket);
-		_errors[i] = socket.socket;
-		++i;
-	}
-
-	try {
-		if (Socket::select(_readables, _writables, _errors, timeout)==0)
-			return false;
-		Socket::SocketList::iterator it;
-		SocketManagedImpl* pSocketManagedImpl;
-		for (it = _readables.begin(); it != _readables.end(); ++it) {
-			pSocketManagedImpl = (SocketManagedImpl*)it->impl();
-			if(pSocketManagedImpl->pHandler)
-				pSocketManagedImpl->pHandler->onReadable(pSocketManagedImpl->socket);
-		}
-		for (it = _writables.begin(); it != _writables.end(); ++it) {
-			pSocketManagedImpl = (SocketManagedImpl*)it->impl();
-			if(pSocketManagedImpl->pHandler)
-				pSocketManagedImpl->pHandler->onWritable(pSocketManagedImpl->socket);
-		}	
-		for (it = _errors.begin(); it != _errors.end(); ++it) {
-			pSocketManagedImpl = (SocketManagedImpl*)it->impl();
-			if(!pSocketManagedImpl->pHandler)
-				continue;
+void SocketManager::handle() {
+	Socket::SocketList::iterator it;
+	SocketManaged*		pSocketManaged;
+	for (it = _readables.begin(); it != _readables.end(); ++it) {
+		ScopedLock<Mutex> lock(_mutex);
+		pSocketManaged = ((SocketManagedImpl*)it->impl())->pSocketManaged;
+		if(pSocketManaged) {
 			try {
-				error(pSocketManagedImpl->socketError());
+				pSocketManaged->handler.onReadable(*pSocketManaged);
 			} catch(Exception& ex) {
-				pSocketManagedImpl->pHandler->onError(pSocketManagedImpl->socket,ex.displayText().c_str());
-			}		
+				pSocketManaged->handler.onError(*pSocketManaged,ex.displayText().c_str());
+			}
 		}
-	} catch(Exception& ex) {
-		WARN("Socket error, %s",ex.displayText().c_str())
 	}
-	return true;
+	for (it = _writables.begin(); it != _writables.end(); ++it) {
+		ScopedLock<Mutex> lock(_mutex);
+		pSocketManaged = ((SocketManagedImpl*)it->impl())->pSocketManaged;
+		if(pSocketManaged) {
+			try {
+				pSocketManaged->handler.onWritable(*pSocketManaged);
+			} catch(Exception& ex) {
+				pSocketManaged->handler.onError(*pSocketManaged,ex.displayText().c_str());
+			}
+		}
+	}	
+	for (it = _errors.begin(); it != _errors.end(); ++it) {
+		ScopedLock<Mutex> lock(_mutex);
+		pSocketManaged = ((SocketManagedImpl*)it->impl())->pSocketManaged;
+		if(pSocketManaged) {
+			try {
+				error(pSocketManaged->impl()->socketError());
+			} catch(Exception& ex) {
+				pSocketManaged->handler.onError(*pSocketManaged,ex.displayText().c_str());
+			}
+		}
+	}
+}
+
+
+void SocketManager::run() {
+
+	
+	Timespan			timeout(50000);
+	
+	while(running()) {
+
+		bool empty=true;
+		{
+			ScopedLock<Mutex> lock(_mutex);
+			_readables.resize(_sockets.size());
+			_errors.resize(_sockets.size());
+			_writables.clear();
+
+			int i=0;
+			map<const Socket*,SocketManaged*>::iterator it;
+			for(it = _sockets.begin(); it != _sockets.end(); ++it) {
+				empty=false;
+				SocketManaged& socket = *it->second;
+				_readables[i] = socket.socketSelectable;
+				if(socket.handler.haveToWrite(socket))
+					_writables.push_back(socket.socketSelectable);
+				_errors[i] = socket.socketSelectable;
+				++i;
+			}
+		}
+		if(empty) {
+			sleep(timeout.milliseconds());
+			continue;
+		}
+
+		try {
+			if (Socket::select(_readables, _writables, _errors, timeout)==0)
+				continue;
+		} catch(Exception& ex) {
+			WARN("Socket error, %s",ex.displayText().c_str())
+		}
+		waitHandle();
+	}
+
+	
 }
 
 

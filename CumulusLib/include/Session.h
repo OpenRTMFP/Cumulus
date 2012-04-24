@@ -23,15 +23,21 @@
 #include "AESEngine.h"
 #include "RTMFP.h"
 #include "Peer.h"
-#include "SendingEngine.h"
+#include "RTMFPSending.h"
+#include "RTMFPReceiving.h"
+#include "PoolThreads.h"
 #include "Poco/Net/DatagramSocket.h"
 
 namespace Cumulus {
 
+typedef PoolThreads<RTMFPReceiving>	ReceivingEngine;
+typedef PoolThreads<RTMFPSending>	SendingEngine;
+
 class Session {
 public:
 
-	Session(SendingEngine&	sendingEngine,
+	Session(ReceivingEngine& receivingEngine,
+		    SendingEngine&	 sendingEngine,
 			Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
@@ -46,51 +52,54 @@ public:
 	const bool			checked;
 	const bool			died;
 
+	bool				nextDumpAreMiddle;
 	Poco::UInt8			flags; // Allow to children class to save some flags (see ServerSession and SESSION_BY_EDGE)
-
-	bool				middleDump;
 
 	virtual void		manage(){}
 
 	void				setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address);
+	void				decode(Poco::AutoPtr<RTMFPReceiving>& pRTMFPSending);
+	void				decode(Poco::AutoPtr<RTMFPReceiving>& pRTMFPSending,AESEngine::Type type);
 	void				receive(PacketReader& packet);
 	void				send();
+	void				send(AESEngine::Type type);
 	PacketWriter&		writer();
 	virtual void		kill();
-
 protected:
-	void				send(Poco::UInt32 farId,Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& receiver);
+	void				send(Poco::UInt32 farId,Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& receiver,AESEngine::Type type=AESEngine::DEFAULT);
 
 	AESEngine			aesDecrypt;
 	AESEngine			aesEncrypt;
+	AESEngine::Type		prevAESType;
 
 private:
-	virtual AESEngine	decoder();
-	virtual AESEngine	encoder();
-
 	virtual void	packetHandler(PacketReader& packet)=0;
 	
-	SendingEngine&				_sendingEngine;
-	Poco::AutoPtr<SendingUnit>	_pSendingUnit;
+	SendingEngine&				    _sendingEngine;
+	Poco::AutoPtr<RTMFPSending>	    _pRTMFPSending;
+	PoolThread<RTMFPSending>*	    _pSendingThread;
+
+	ReceivingEngine&				_receivingEngine;
+	PoolThread<RTMFPReceiving>*		_pReceivingThread;
+
 	Poco::Net::DatagramSocket	_socket;
-	SendingThread*				_pSendingThread;
 };
 
+inline void Session::decode(Poco::AutoPtr<RTMFPReceiving>& pRTMFPSending) {
+	decode(pRTMFPSending,farId==0 ? AESEngine::SYMMETRIC : AESEngine::DEFAULT);
+}
+
 inline void Session::send() {
-	send(farId,_socket,peer.address);
+	send(farId,_socket,peer.address,prevAESType);
+}
+
+inline void Session::send(AESEngine::Type type) {
+	send(farId,_socket,peer.address,type);
 }
 
 
 inline PacketWriter& Session::writer() {
-	return _pSendingUnit->packet;
-}
-
-inline AESEngine Session::decoder() {
-	return aesDecrypt.next();
-}
-
-inline AESEngine Session::encoder() {
-	return aesEncrypt.next();
+	return _pRTMFPSending->packet;
 }
 
 

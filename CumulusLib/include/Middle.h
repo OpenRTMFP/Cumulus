@@ -29,7 +29,8 @@ namespace Cumulus {
 
 class Middle : public ServerSession, public SocketHandler {
 public:
-	Middle(SendingEngine& sendingEngine,
+	Middle(ReceivingEngine& receivingEngine,
+		   SendingEngine& sendingEngine,
 			Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
@@ -50,9 +51,6 @@ public:
 	void				manage();
 	
 private:
-	AESEngine	decoder();
-	AESEngine	encoder();
-
 	PacketWriter&		writer();
 
 	void				targetHandshakeHandler(Poco::UInt8 type,PacketReader& packet);
@@ -62,7 +60,7 @@ private:
 
 	void				failSignal();
 
-	void				onReadable(const Poco::Net::Socket& socket);
+	void				onReadable(Poco::Net::Socket& socket);
 	void				onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	AESEngine*				_pMiddleAesDecrypt;
@@ -91,13 +89,6 @@ inline const Peer& Middle::middlePeer() {
 	return _middlePeer;
 }
 
-inline AESEngine Middle::decoder() {
-	return aesDecrypt.next(farId==0 ? AESEngine::SYMMETRIC : AESEngine::DEFAULT);
-}
-
-inline AESEngine Middle::encoder() {
-	return aesEncrypt.next(farId==0 ? AESEngine::SYMMETRIC : AESEngine::DEFAULT);
-}
 
 
 } // namespace Cumulus

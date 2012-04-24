@@ -44,6 +44,7 @@ public:
 	void				start();
 	void				stop();
 
+	WakeUpType			sleep(Poco::UInt32 timeout=0);
 	void				wakeUp();
 	void				setPriority(Poco::Thread::Priority priority);
 
@@ -54,7 +55,6 @@ protected:
 	Startable(const std::string& name);
 	virtual ~Startable();
 
-	WakeUpType		sleep(Poco::UInt32 timeout=0);
 	virtual void	run()=0;
 	virtual void	prerun();
 

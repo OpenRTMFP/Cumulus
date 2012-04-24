@@ -19,25 +19,30 @@
 
 #include "Cumulus.h"
 #include "SocketHandler.h"
-#include <set>
+#include "Task.h"
+#include <map>
 
 namespace Cumulus {
 
 class SocketManaged;
-class SocketManager : private Poco::Net::SocketImpl {
+class SocketManager : private Poco::Net::SocketImpl, private Task {
 public:
-	SocketManager();
+	SocketManager(TaskHandler& handler,const std::string& name="SocketManager");
 	virtual ~SocketManager();
 
 	void add(const Poco::Net::Socket& socket,SocketHandler& handler);
 	void remove(const Poco::Net::Socket& socket);
-	bool process(const Poco::Timespan& timeout);
 
 private:
-	std::set<SocketManaged>			_sockets;
-	Poco::Net::Socket::SocketList	_readables;
-	Poco::Net::Socket::SocketList	_writables;
-	Poco::Net::Socket::SocketList	_errors;
+	void					run();
+	void					handle();
+
+	Poco::Mutex											_mutex;
+	std::map<const Poco::Net::Socket*,SocketManaged*>	_sockets;
+
+	Poco::Net::Socket::SocketList						_readables;
+	Poco::Net::Socket::SocketList						_writables;
+	Poco::Net::Socket::SocketList						_errors;
 };
 
 

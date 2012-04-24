@@ -44,8 +44,8 @@ private:
 	virtual void				onDisconnection(){}
 
 	bool						haveToWrite(const Poco::Net::Socket& socket);
-	void						onReadable(const Poco::Net::Socket& socket);
-	void						onWritable(const Poco::Net::Socket& socket);
+	void						onReadable(Poco::Net::Socket& socket);
+	void						onWritable(Poco::Net::Socket& socket);
 	void						onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	void						error(const std::string& error);

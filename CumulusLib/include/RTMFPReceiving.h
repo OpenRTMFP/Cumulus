@@ -18,27 +18,30 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketWriter.h"
 #include "AESEngine.h"
+#include "PacketReader.h"
+#include "Poco/Net/DatagramSocket.h"
+#include "Poco/RefCountedObject.h"
 
 namespace Cumulus {
 
-class FlowWriter;
-class BandWriter {
+class RTMFPServer;
+class RTMFPReceiving : public Poco::RefCountedObject {
 public:
-	BandWriter() {}
-	virtual ~BandWriter() {}
+	RTMFPReceiving(RTMFPServer& server);
+	~RTMFPReceiving();
 
-	virtual void			initFlowWriter(FlowWriter& flowWriter)=0;
-	virtual void			resetFlowWriter(FlowWriter& flowWriter)=0;
+	Poco::UInt32				id;
+	AESEngine					decoder;
+	Poco::Net::SocketAddress	address;
+	Poco::Net::DatagramSocket	socket;
+	PacketReader*				pPacket;
 
-	virtual bool			failed() const = 0;
-	virtual bool			canWriteFollowing(FlowWriter& flowWriter)=0;
-	virtual PacketWriter&	writer()=0;
-	virtual PacketWriter&	writeMessage(Poco::UInt8 type,Poco::UInt16 length,FlowWriter* pFlowWriter=NULL)=0;
-	virtual void			flush(bool echoTime=true,AESEngine::Type type=AESEngine::DEFAULT)=0;
-	
+	void						run();
+	PacketReader*				receive(Poco::Net::DatagramSocket& socket);
+private:
+	RTMFPServer&				_server;
+	Poco::UInt8					_buff[PACKETRECV_SIZE];
 };
-
 
 } // namespace Cumulus

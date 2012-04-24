@@ -32,6 +32,7 @@ Sessions::~Sessions() {
 }
 
 void Sessions::clear() {
+	ScopedLock<Mutex>	lock(mutex);
 	// delete sessions
 	if(!_sessions.empty())
 		WARN("sessions are deleting");
@@ -42,7 +43,7 @@ void Sessions::clear() {
 }
 
 Session* Sessions::add(Session* pSession) {
-
+	ScopedLock<Mutex>	lock(mutex);
 	if(pSession->id!=_nextId) {
 		ERROR("Session can not be inserted, its id %u not egal to nextId %u",pSession->id,_nextId);
 		return NULL;
@@ -59,6 +60,7 @@ Session* Sessions::add(Session* pSession) {
 }
 
 void Sessions::remove(map<UInt32,Session*>::iterator it) {
+	ScopedLock<Mutex>	lock(mutex);
 	DEBUG("Session %u died",it->second->id);
 	_gateway.destroySession(*it->second);
 	delete it->second;
@@ -67,6 +69,7 @@ void Sessions::remove(map<UInt32,Session*>::iterator it) {
 
 
 Session* Sessions::find(const Poco::UInt8* peerId) {
+	ScopedLock<Mutex>	lock(mutex);
 	map<UInt32,Session*>::iterator it;
 	for(it=_sessions.begin();it!=_sessions.end();++it) {
 		if(it->second->peer == peerId) {
@@ -80,20 +83,16 @@ Session* Sessions::find(const Poco::UInt8* peerId) {
 	return NULL;
 }
 
+
 Session* Sessions::find(UInt32 id) {
 	map<UInt32,Session*>::iterator it = _sessions.find(id);
 	if(it==_sessions.end())
 		return NULL;
-	if(it->second->died) {
-		remove(it);
-		return NULL;
-	}
 	return it->second;
 }
 
-
-
 void Sessions::manage() {
+	ScopedLock<Mutex>	lock(mutex);
 	map<UInt32,Session*>::iterator it= _sessions.begin();
 	while(it!=end()) {
 		it->second->manage();

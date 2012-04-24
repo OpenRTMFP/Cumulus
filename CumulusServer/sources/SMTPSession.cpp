@@ -22,6 +22,7 @@
 #include "Poco/Net/NetException.h"
 
 using namespace std;
+using namespace Cumulus;
 using namespace Poco;
 using namespace Poco::Net;
 
@@ -39,7 +40,7 @@ public:
 };
 
 
-SMTPSession::SMTPSession(const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Startable("SMTPSession"),_host(host),_port(port),_timeout(timeout*1000) {
+SMTPSession::SMTPSession(TaskHandler& handler,const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Task(handler,"SMTPSession"),_host(host),_port(port),_timeout(timeout*1000) {
 	setPriority(Thread::PRIO_LOWEST);
 }
 
@@ -66,8 +67,7 @@ void SMTPSession::clear() {
 	_mails.clear();
 }
 
-void SMTPSession::fill() {
-	ScopedLock<FastMutex> lock(_mutexSent);
+void SMTPSession::handle() {
 	list<Mail*>::const_iterator it;
 	for(it=_mailsSent.begin();it!=_mailsSent.end();++it)
 		delete *it;
@@ -131,7 +131,6 @@ void SMTPSession::run() {
 				Mail* pMail = *it;
 				if(pMail->pHandler) {
 					pMail->error = _error;
-					ScopedLock<FastMutex> lock2(_mutexSent);
 					_mailsSent.push_back(pMail);
 				} else
 					delete pMail;
@@ -140,6 +139,9 @@ void SMTPSession::run() {
 			return;
 		}
 	}
+
+	if(_mailsSent.size()>0)
+		waitHandle();
 
 	while(sleep(_timeout)!=STOP) {
 
@@ -173,8 +175,8 @@ void SMTPSession::run() {
 			delete pMail;
 		} else {
 			pMail->error = _error;
-			ScopedLock<FastMutex> lock2(_mutexSent);
 			_mailsSent.push_back(pMail);
+			waitHandle();
 		}
 	}
 	

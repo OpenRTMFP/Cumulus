@@ -28,8 +28,8 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(SendingEngine& sendingEngine,Gateway& gateway,DatagramSocket& edgesSocket,Handler& handler,Entity& entity) : ServerSession(sendingEngine,0,0,Peer(handler),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,(Invoker&)handler),
-	_gateway(gateway),_edgesSocket(edgesSocket),isEdges(false) {
+Handshake::Handshake(ReceivingEngine& receivingEngine,SendingEngine& sendingEngine,Gateway& gateway,DatagramSocket& edgesSocket,Handler& handler,Entity& entity) : ServerSession(receivingEngine,sendingEngine,0,0,Peer(handler),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,(Invoker&)handler),
+	_gateway(gateway),_edgesSocket(edgesSocket) {
 	(bool&)checked=true;
 
 	memcpy(_certificat,"\x01\x0A\x41\x0E",4);
@@ -60,7 +60,6 @@ void Handshake::manage() {
 	}
 
 	// keepalive edges
-	isEdges=true;
 	map<string,Edge*>::iterator it2=edges().begin();
 	while(it2!=edges().end()) {
 		if(it2->second->obsolete()) {
@@ -76,7 +75,8 @@ void Handshake::manage() {
 			packet.write8(0x40);
 			packet.write16(0);
 			setEndPoint(_edgesSocket,SocketAddress(it2->first));
-			flush();
+			nextDumpAreMiddle=true;
+			flush(AESEngine::EMPTY);
 			INFO("Keepalive RTMFP server edge %s",it2->first.c_str());
 		}
 		++it2;
@@ -108,14 +108,14 @@ void Handshake::clear() {
 	}
 	_cookies.clear();
 	// clear edges and warn them on server death
-	isEdges=true;
 	map<string,Edge*>::iterator it2;
 	for(it2=edges().begin();it2!=edges().end();++it2) {
 		PacketWriter& packet(writer());
 		packet.write8(0x45);
 		packet.write16(0);
 		setEndPoint(_edgesSocket,SocketAddress(it2->first));
-		flush();
+		nextDumpAreMiddle=true;
+		flush(AESEngine::EMPTY);
 		delete it2->second;
 	}
 	edges().clear();
@@ -339,12 +339,14 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			return cookie.response;
 		}
 		case 0x41: {
+			nextDumpAreMiddle=true;
 			// EDGE HELLO Message
 			if(updateEdge(request))
 				return 0x40; // If new edge, we answer with the keepalive message
 			break;
 		}
 		case 0x45: {
+			nextDumpAreMiddle=true;
 			string address = peer.address.toString();
 			// EDGE DEATH Message
 			map<string,Edge*>::iterator it = edges().find(address);

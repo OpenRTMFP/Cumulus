@@ -320,6 +320,22 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\RTMFPReceiving.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\RTMFPReceiving.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\RTMFPSending.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\RTMFPSending.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\RTMFPServer.cpp"
 					>
 				</File>
@@ -615,23 +631,11 @@
 				Name="Threading"
 				>
 				<File
-					RelativePath=".\sources\SendingEngine.cpp"
+					RelativePath=".\include\PoolThread.h"
 					>
 				</File>
 				<File
-					RelativePath=".\include\SendingEngine.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\SendingThread.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\SendingThread.h"
-					>
-				</File>
-				<File
-					RelativePath=".\include\SendingUnit.h"
+					RelativePath=".\include\PoolThreads.h"
 					>
 				</File>
 				<File
@@ -640,6 +644,22 @@
 				</File>
 				<File
 					RelativePath=".\include\Startable.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Task.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\Task.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\TaskHandler.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\TaskHandler.h"
 					>
 				</File>
 			</Filter>

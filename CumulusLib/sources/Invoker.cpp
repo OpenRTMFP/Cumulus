@@ -24,7 +24,7 @@ using namespace Poco;
 namespace Cumulus {
 
 
-Invoker::Invoker() : edges(_edges),clients(_clients),groups(_groups),edgesAttemptsBeforeFallback(0),udpBufferSize(0),_streams(_publications),publications(_publications),
+Invoker::Invoker() : sockets(*this),edges(_edges),clients(_clients),groups(_groups),edgesAttemptsBeforeFallback(0),udpBufferSize(0),_streams(_publications),publications(_publications),
 	keepAliveServer(0),keepAlivePeer(0) {
 
 }

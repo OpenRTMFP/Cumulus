@@ -36,11 +36,13 @@ public:
 		EMPTY,
 		SYMMETRIC
 	};
+	AESEngine();
 	AESEngine(const Poco::UInt8* key,Direction direction);
 	AESEngine(const AESEngine& other);
 	AESEngine(const AESEngine& other,Type type);
 	virtual ~AESEngine();
 
+	AESEngine&  operator=(const AESEngine& other);
 	AESEngine	next(Type type);
 	AESEngine	next();
 	void		process(const Poco::UInt8* in,Poco::UInt8* out,Poco::UInt32 size);

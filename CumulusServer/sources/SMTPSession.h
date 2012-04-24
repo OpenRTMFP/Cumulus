@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "Startable.h"
+#include "Task.h"
 #include "MailHandler.h"
 #include "Poco/Event.h"
 #include "Poco/Net/SMTPClientSession.h"
@@ -26,7 +26,7 @@
 
 
 class Mail;
-class SMTPSession : private Cumulus::Startable {
+class SMTPSession : private Cumulus::Task {
 public:
 	enum
 	{
@@ -34,22 +34,20 @@ public:
 	};
 
 
-	SMTPSession(const std::string& host,Poco::UInt16 port = SMTP_PORT,Poco::UInt16 timeout=60);
+	SMTPSession(Cumulus::TaskHandler& handler,const std::string& host,Poco::UInt16 port = SMTP_PORT,Poco::UInt16 timeout=60);
 	virtual ~SMTPSession();
 
 	const char*		lastError();
-	void			fill();
 	void			clear();
 
 	void			send(const std::string& sender,const std::string& recipient,const std::string& subject,const std::string& content,MailHandler* pMailHandler=NULL);
 	void			send(const std::string& sender,const std::list<std::string>& recipients,const std::string& subject,const std::string& content,MailHandler* pMailHandler=NULL);
 
 private:
+	void			handle();
 	void			run();
 
-
 	Poco::FastMutex							_mutex;
-	Poco::FastMutex							_mutexSent;
 	std::list<Mail*>						_mails;
 	std::list<Mail*>						_mailsSent;
 

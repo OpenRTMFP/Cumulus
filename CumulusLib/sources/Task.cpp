@@ -15,30 +15,19 @@
 	This file is a part of Cumulus.
 */
 
-#pragma once
+#include "Task.h"
+#include "TaskHandler.h"
 
-#include "Cumulus.h"
-#include "PacketWriter.h"
-#include "AESEngine.h"
+using namespace std;
 
 namespace Cumulus {
 
-class FlowWriter;
-class BandWriter {
-public:
-	BandWriter() {}
-	virtual ~BandWriter() {}
 
-	virtual void			initFlowWriter(FlowWriter& flowWriter)=0;
-	virtual void			resetFlowWriter(FlowWriter& flowWriter)=0;
+Task::Task(TaskHandler& handler,const string& name) : Startable(name),_handler(handler)  {
+}
 
-	virtual bool			failed() const = 0;
-	virtual bool			canWriteFollowing(FlowWriter& flowWriter)=0;
-	virtual PacketWriter&	writer()=0;
-	virtual PacketWriter&	writeMessage(Poco::UInt8 type,Poco::UInt16 length,FlowWriter* pFlowWriter=NULL)=0;
-	virtual void			flush(bool echoTime=true,AESEngine::Type type=AESEngine::DEFAULT)=0;
-	
-};
-
+void Task::waitHandle() {
+	_handler.waitHandle(*this);
+}
 
 } // namespace Cumulus

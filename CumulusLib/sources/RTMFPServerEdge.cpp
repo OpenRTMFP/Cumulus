@@ -24,7 +24,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPServerEdge::RTMFPServerEdge(UInt32 numberOfThreads) : RTMFPServer("RTMFPServerEdge",numberOfThreads),_serverConnection(_sendingEngine,*this,_handshake) {
+RTMFPServerEdge::RTMFPServerEdge(UInt32 cores) : RTMFPServer("RTMFPServerEdge",cores),_serverConnection(_receivingEngine,_sendingEngine,*this,_handshake) {
 
 }
 
@@ -32,9 +32,8 @@ RTMFPServerEdge::~RTMFPServerEdge() {
 
 }
 
-
 EdgeSession* RTMFPServerEdge::findEdgeSession(UInt32 id) {
-	EdgeSession* pSession= dynamic_cast<EdgeSession*>(findSession(id));
+	EdgeSession* pSession= dynamic_cast<EdgeSession*>(_sessions.find(id));
 	if(pSession)
 		return pSession;
 	DEBUG("Unknown edge session %u",id);
@@ -75,25 +74,25 @@ void RTMFPServerEdge::start(RTMFPServerEdgeParams& params) {
 
 void RTMFPServerEdge::run() {
 	_serverSocket.connect(_serverAddress);
-	sockets.add(_serverSocket,*this);
+	_mainSockets.add(_serverSocket,*this);
 
 	_serverConnection.setEndPoint(_serverSocket,_serverAddress);
 
 	NOTE("Wait RTMFP server %s connection...",_serverAddress.toString().c_str());
 
-	Timestamp connectAttemptTime;	
 	_serverConnection.connect(_publicAddress);
 
-	bool terminate=false;
+	WakeUpType type;
 
-	while(running()) {
-		if(!sockets.process(_timeout)) {
-			if(connectAttemptTime.isElapsed(6000000)) {
-				_serverConnection.connect(_publicAddress);
-				connectAttemptTime.update();
-			}
+	while((type = sleep(10000))!=STOP) {
+
+		if(type == TIMEOUT) {
+			_serverConnection.connect(_publicAddress);
 			continue;
 		}
+
+		TaskHandler::giveHandle();
+		
 		if(_serverConnection.connected()) {
 			NOTE("RTMFP server %s successful connection",_serverAddress.toString().c_str());
 			RTMFPServer::run();
@@ -108,29 +107,39 @@ void RTMFPServerEdge::run() {
 		}
 	}
 	_sendingEngine.clear();
-	sockets.remove(_serverSocket);
+	_mainSockets.remove(_serverSocket);
 	_serverSocket.close();
 }
 
-void RTMFPServerEdge::onReadable(const Socket& socket) {
+void RTMFPServerEdge::onReadable(Socket& socket) {
 	if(socket != _serverSocket) {
 		RTMFPServer::onReadable(socket);
 		return;
 	}
+	NOTE("before")
 	int size = _serverSocket.receiveBytes(_buff,sizeof(_buff));
+	NOTE("after")
 	_timeLastServerReception.update();
 
-	if(size>=RTMFP_MIN_PACKET_SIZE) {
-		PacketReader packet(_buff,size);
-		UInt32 id = RTMFP::Unpack(packet);
-		if(id>0) {
-			EdgeSession* pSession= findEdgeSession(id);
-			if(pSession)
-				pSession->serverPacketHandler(packet);
-		} else
-			_serverConnection.receive(packet);
-	} else
-		ERROR("Invalid packet");
+	if(size<RTMFP_MIN_PACKET_SIZE) {
+		ERROR("Invalid server packet");
+		return;
+	}
+	PacketReader packet(_buff,size);
+	UInt32 id = RTMFP::Unpack(packet);
+	if(!RTMFP::ReadCRC(packet)) {
+		ERROR("CRC error on session %u",id);
+		return;
+	}
+	if(id>0) {
+		EdgeSession* pSession= findEdgeSession(id);
+		if(pSession)
+			pSession->serverPacketHandler(packet);
+	} else {
+		_serverConnection.nextDumpAreMiddle=true;
+		_serverConnection.receive(packet);
+	}
+
 }
 
 void RTMFPServerEdge::onError(const Socket& socket,const string& error) {
@@ -143,7 +152,7 @@ void RTMFPServerEdge::onError(const Socket& socket,const string& error) {
 
 
 Session& RTMFPServerEdge::createSession(UInt32 farId,const Peer& peer,const UInt8* decryptKey,const UInt8* encryptKey,Cookie& cookie) {
-	EdgeSession* pSession = new EdgeSession(_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,_serverSocket,cookie);
+	EdgeSession* pSession = new EdgeSession(_receivingEngine,_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,_serverSocket,cookie);
 	pSession->setEndPoint(_socket,peer.address);
 	_serverConnection.createSession(*pSession,cookie.queryUrl);
 	_sessions.add(pSession);

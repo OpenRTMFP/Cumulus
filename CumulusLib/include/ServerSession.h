@@ -47,7 +47,8 @@ private:
 class ServerSession : public BandWriter,public Session {
 public:
 
-	ServerSession(SendingEngine& sendingEngine,
+	ServerSession(ReceivingEngine& receivingEngine,
+		     SendingEngine& sendingEngine,
 			Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
@@ -87,7 +88,9 @@ protected:
 	void			fail(const std::string& fail);
 
 	void			flush(bool echoTime=true);
+	void			flush(bool echoTime,AESEngine::Type type);
 	void			flush(Poco::UInt8 marker,bool echoTime);
+	void			flush(Poco::UInt8 marker,bool echoTime,AESEngine::Type type);
 
 	Invoker&					_invoker; // Protected for Middle session
 	Poco::Timestamp				_recvTimestamp; // Protected for Middle session
@@ -126,8 +129,16 @@ inline Poco::UInt32	ServerSession::helloAttempt(const std::string& tag) {
 	return (helloAttempt<Attempt>(tag)).count;
 }
 
+inline void ServerSession::flush(Poco::UInt8 marker,bool echoTime) {
+	flush(marker,echoTime,prevAESType);
+}
+
+inline void ServerSession::flush(bool echoTime,AESEngine::Type type) {
+	flush(0x4a,echoTime,type);
+}
+
 inline void ServerSession::flush(bool echoTime) {
-	flush(0x4a,echoTime);
+	flush(0x4a,echoTime,prevAESType);
 }
 
 inline bool ServerSession::canWriteFollowing(FlowWriter& flowWriter) {

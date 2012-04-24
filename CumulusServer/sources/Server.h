@@ -33,7 +33,6 @@ public:
 	SMTPSession								mails;
 
 private:
-	void					handle(bool& terminate);
 	void					manage();
 	bool					readNextConfig(lua_State* pState,const Poco::Util::AbstractConfiguration& configurations,const std::string& root);
 

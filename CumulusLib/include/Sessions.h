@@ -43,10 +43,13 @@ public:
 	Iterator begin() const;
 	Iterator end() const;
 	
-	void	manage();
-	void	clear();
+	void		manage();
+	void		clear();
+
+	Poco::Mutex	mutex;
 private:
 	void    remove(std::map<Poco::UInt32,Session*>::iterator it);
+
 	Poco::UInt32					_nextId;
 	std::map<Poco::UInt32,Session*>	_sessions;
 	Gateway&						_gateway;

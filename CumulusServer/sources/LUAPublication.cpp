@@ -83,6 +83,7 @@ int	LUAPublication::PushDataPacket(lua_State *pState) {
 		SCRIPT_READ_BINARY(pData,size)
 		if(pData) {
 			PacketReader reader(pData,size);
+			reader.next(SCRIPT_READ_UINT(0)); // offset
 			publication.pushDataPacket(name,reader);
 		}
 	SCRIPT_CALLBACK_RETURN

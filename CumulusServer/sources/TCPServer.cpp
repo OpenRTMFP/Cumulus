@@ -58,7 +58,7 @@ void TCPServer::stop() {
 	_port=0;
 }
 
-void TCPServer::onReadable(const Socket& socket) {
+void TCPServer::onReadable(Socket& socket) {
 	try {
 		StreamSocket ss = _socket.acceptConnection();
 		// enabe nodelay per default: OSX really needs that

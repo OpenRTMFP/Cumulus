@@ -18,26 +18,25 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "PacketWriter.h"
-#include "AESEngine.h"
+#include "Task.h"
 
 namespace Cumulus {
 
-class FlowWriter;
-class BandWriter {
+class TaskHandler {
 public:
-	BandWriter() {}
-	virtual ~BandWriter() {}
+	TaskHandler();
+	~TaskHandler();
 
-	virtual void			initFlowWriter(FlowWriter& flowWriter)=0;
-	virtual void			resetFlowWriter(FlowWriter& flowWriter)=0;
+	void waitHandle(Task& task);
 
-	virtual bool			failed() const = 0;
-	virtual bool			canWriteFollowing(FlowWriter& flowWriter)=0;
-	virtual PacketWriter&	writer()=0;
-	virtual PacketWriter&	writeMessage(Poco::UInt8 type,Poco::UInt16 length,FlowWriter* pFlowWriter=NULL)=0;
-	virtual void			flush(bool echoTime=true,AESEngine::Type type=AESEngine::DEFAULT)=0;
-	
+protected:
+	void giveHandle();
+private:
+	virtual void requestHandle()=0;
+
+	Poco::FastMutex			_mutex;
+	Poco::FastMutex			_mutexWait;
+	Task*					_pTask;
 };
 
 

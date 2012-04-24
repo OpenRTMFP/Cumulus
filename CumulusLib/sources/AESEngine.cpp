@@ -27,6 +27,9 @@ namespace Cumulus {
 AESEngine AESEngine::s_aesDecrypt(RTMFP_SYMETRIC_KEY,AESEngine::DECRYPT);
 AESEngine AESEngine::s_aesEncrypt(RTMFP_SYMETRIC_KEY,AESEngine::ENCRYPT);
 
+AESEngine::AESEngine() : type(EMPTY),_direction(DECRYPT) {
+}
+
 AESEngine::AESEngine(const UInt8* key,Direction direction) : type(key ? DEFAULT : EMPTY),_direction(direction) {
 	if(!key)
 		return;
@@ -40,6 +43,13 @@ AESEngine::AESEngine(const AESEngine& other,Type type) : type(other.type==EMPTY 
 }
 
 AESEngine::AESEngine(const AESEngine& other) : type(other.type),_key(other._key),_direction(other._direction) {
+}
+
+AESEngine& AESEngine::operator=(const AESEngine& other) {
+	(Type&)type = other.type;
+	_key = other._key;
+	_direction = other._direction;
+	return *this;
 }
 
 

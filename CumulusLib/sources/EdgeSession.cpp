@@ -26,14 +26,15 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-EdgeSession::EdgeSession(SendingEngine& sendingEngine,
+EdgeSession::EdgeSession(ReceivingEngine& receivingEngine,
+				SendingEngine& sendingEngine,
 				UInt32 id,
 				UInt32 farId,
 				const Peer& peer,
 				const UInt8* decryptKey,
 				const UInt8* encryptKey,
 				DatagramSocket& serverSocket,
-				Cookie& cookie) : Session(sendingEngine,id,farId,peer,decryptKey,encryptKey),_serverSocket(serverSocket),farServerId(0),_handshaking(false),_pCookie(&cookie) {
+				Cookie& cookie) : Session(receivingEngine,sendingEngine,id,farId,peer,decryptKey,encryptKey),_serverSocket(serverSocket),farServerId(0),_pCookie(&cookie) {
 		
 }
 
@@ -67,9 +68,8 @@ void EdgeSession::packetHandler(PacketReader& packet) {
 		string address = peer.address.toString();
 		writer().write16(address.size() + Util::Get7BitValueSize(address.size()));
 		writer() << address;
-		middleDump=true;
-		send(farServerId,_serverSocket,_serverSocket.peerAddress());
-		middleDump=false;
+		nextDumpAreMiddle=true;
+		send(farServerId,_serverSocket,_serverSocket.peerAddress(),AESEngine::EMPTY);
 	}
 	
 	// echo time
@@ -89,9 +89,8 @@ void EdgeSession::packetHandler(PacketReader& packet) {
 	writer().clear();
 	writer().writeRaw(packet.current(),packet.available());
 
-	middleDump=true;
-	send(farServerId,_serverSocket,_serverSocket.peerAddress());
-	middleDump=false;
+	nextDumpAreMiddle=true;
+	send(farServerId,_serverSocket,_serverSocket.peerAddress(),AESEngine::EMPTY);
 }
 
 void EdgeSession::serverPacketHandler(PacketReader& packet) {
@@ -103,7 +102,6 @@ void EdgeSession::serverPacketHandler(PacketReader& packet) {
 
 	UInt8 marker = packet.read8();
 	if(_pCookie && marker==0x0b) {
-		_handshaking=true;
 		packet.next(5);
 		(UInt32&)farServerId = packet.read32();
 		(UInt8&)_pCookie->response = 0x78;
@@ -116,9 +114,7 @@ void EdgeSession::serverPacketHandler(PacketReader& packet) {
 		writer().reset(10);
 		writer().write16(size);
 		_pCookie=NULL;
-		send();
-		
-		_handshaking=false;
+		send(AESEngine::SYMMETRIC);
 		return;
 	} else if((marker|0x0F) == 0x4F) {
 		// echo time?

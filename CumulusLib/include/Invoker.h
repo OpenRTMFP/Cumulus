@@ -23,10 +23,11 @@
 #include "Edges.h"
 #include "Entities.h"
 #include "SocketManager.h"
+#include "TaskHandler.h"
 
 namespace Cumulus {
 
-class Invoker : public Entity {
+class Invoker : public Entity,protected TaskHandler {
 	friend class Peer; // Peer manage _clients and _groups list!
 	friend class Handshake; // Peer manage _edges list!
 	friend class FlowStream; // FlowStream manage _streams list!

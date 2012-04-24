@@ -36,7 +36,7 @@ public:
 	bool			canWriteFollowing(FlowWriter& flowWriter){return false;}
 	PacketWriter&	writer(){return WriterNull;}
 	PacketWriter&	writeMessage(Poco::UInt8 type,Poco::UInt16 length,FlowWriter* pFlowWriter=NULL){return WriterNull;}
-	void			flush(bool echoTime=true){}
+	void			flush(bool echoTime=true,AESEngine::Type type=AESEngine::DEFAULT){}
 private:
 	static PacketWriter WriterNull;
 	

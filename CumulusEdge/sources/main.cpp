@@ -47,7 +47,7 @@ public:
 
 class ServerEdge : public RTMFPServerEdge {
 public:
-	ServerEdge(ApplicationKiller& applicationKiller,UInt32 numberOfThreads) : RTMFPServerEdge(numberOfThreads),_applicationKiller(applicationKiller) {
+	ServerEdge(ApplicationKiller& applicationKiller,UInt32 cores) : RTMFPServerEdge(cores),_applicationKiller(applicationKiller) {
 	}
 	~ServerEdge() {
 	}
@@ -202,7 +202,7 @@ private:
 				sigprocmask(SIG_BLOCK, &sset, NULL);
 #endif
 
-				ServerEdge edge(*this,config().getInt("threads",0));
+				ServerEdge edge(*this,config().getInt("cores",0));
 				edge.start(params);
 
 				// wait for CTRL-C or kill

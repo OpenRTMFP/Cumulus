@@ -32,7 +32,8 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Middle::Middle(SendingEngine& sendingEngine,
+Middle::Middle(ReceivingEngine& receivingEngine,
+			   SendingEngine& sendingEngine,
 			    UInt32 id,
 				UInt32 farId,
 				const Peer& peer,
@@ -40,7 +41,7 @@ Middle::Middle(SendingEngine& sendingEngine,
 				const UInt8* encryptKey,
 				Handler& handler,
 				const Sessions&	sessions,
-				Target& target) : ServerSession(sendingEngine,id,farId,peer,decryptKey,encryptKey,(Invoker&)handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
+				Target& target) : ServerSession(receivingEngine,sendingEngine,id,farId,peer,decryptKey,encryptKey,(Invoker&)handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
 					_middleId(0),_sessions(sessions),_firstResponse(false),_queryUrl("rtmfp://"+target.address.toString()+peer.path),_middlePeer(peer),_target(target) {
 
 	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.properties);
@@ -150,10 +151,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 				response.writeRaw(packet.current(),packet.available());
 
 				// to send in handshake mode!
-				UInt32 oldFarId = farId;
-				(UInt32&)farId = 0;
-				flush(0x0b,false);
-				(UInt32&)farId = oldFarId;
+				flush(0x0b,false,AESEngine::SYMMETRIC);
 
 			}  else {
 				// redirection request
@@ -293,32 +291,19 @@ void Middle::packetHandler(PacketReader& packet) {
 					out.writeRaw(content.current(),3);content.next(3);
 					UInt16 netGroupHeader = content.read16();out.write16(netGroupHeader);
 					if(netGroupHeader==0x4752) {
-						out.writeRaw(content.current(),71);content.next(71);
-						
-						Entities<Group>::Iterator it;
-						for(it = _invoker.groups.begin();it!=_invoker.groups.end();++it) {
-	
-							Group& group = *it->second;						
-			
-							Group::Iterator itP;
-							for(itP=group.begin();itP!=group.end();++itP) {
-								if((**itP)==_target.id) {
-									UInt8 result1[AES_KEY_SIZE];
-									UInt8 result2[AES_KEY_SIZE];
-									HMAC(EVP_sha256(),_sharedSecret,KEY_SIZE,&_targetNonce[0],_targetNonce.size(),result1,NULL);
-									HMAC(EVP_sha256(),group.id,ID_SIZE,result1,AES_KEY_SIZE,result2,NULL);
-									out.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
-									out.writeRaw(content.current(),4);content.next(4);
-									out.writeRaw(_target.peerId,ID_SIZE);content.next(ID_SIZE);
-									break;
-								}
-							}
-							if(itP!=group.end())
-								break;
 
-						}
-						if(it==_invoker.groups.end())
-							ERROR("Handshake NetGroup packet between peers without corresponding Group");
+						map<string,string>::const_iterator it = peer.properties.find("groupspec");
+						if(it!=peer.properties.end()) {
+							out.writeRaw(content.current(),71);content.next(71);
+							UInt8 result1[AES_KEY_SIZE];
+							UInt8 result2[AES_KEY_SIZE];
+							HMAC(EVP_sha256(),_sharedSecret,KEY_SIZE,&_targetNonce[0],_targetNonce.size(),result1,NULL);
+							HMAC(EVP_sha256(),it->second.c_str(),it->second.size(),result1,AES_KEY_SIZE,result2,NULL);
+							out.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
+							out.writeRaw(content.current(),4);content.next(4);
+							out.writeRaw(_target.peerId,ID_SIZE);content.next(ID_SIZE);
+						} else
+							WARN("No groupspec client property indicated to make working the 'man-in-the-middle' mode between peers in a NetGroup case");
 						
 					}
 				}
@@ -449,33 +434,18 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 
 				} else if(flagType == 0x01) {
 
-					packetOut.writeRaw(content.current(),68);content.next(68);
-					
-					Entities<Group>::Iterator it;
-					for(it = _invoker.groups.begin();it!=_invoker.groups.end();++it) {
-
-						Group& group = *it->second;						
-			
-						Group::Iterator itP;
-						for(itP=group.begin();itP!=group.end();++itP) {
-							if((**itP)==_target.id) {
-								UInt8 result1[AES_KEY_SIZE];
-								UInt8 result2[AES_KEY_SIZE];
-								HMAC(EVP_sha256(),_target.sharedSecret,KEY_SIZE,&_target.initiatorNonce[0],_target.initiatorNonce.size(),result1,NULL);
-								HMAC(EVP_sha256(),group.id,ID_SIZE,result1,AES_KEY_SIZE,result2,NULL);
-								packetOut.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
-								packetOut.writeRaw(content.current(),4);content.next(4);
-								packetOut.writeRaw(peer.id,ID_SIZE);content.next(ID_SIZE);
-								break;
-							}
-						}
-						if(itP!=group.end())
-							break;
-
-					}
-				
-					if(it==_invoker.groups.end())
-						ERROR("Handshake NetGroup packet between peers without corresponding Group");
+					map<string,string>::const_iterator it = peer.properties.find("groupspec");
+					if(it!=peer.properties.end()) {
+						packetOut.writeRaw(content.current(),68);content.next(68);
+						UInt8 result1[AES_KEY_SIZE];
+						UInt8 result2[AES_KEY_SIZE];
+						HMAC(EVP_sha256(),_target.sharedSecret,KEY_SIZE,&_target.initiatorNonce[0],_target.initiatorNonce.size(),result1,NULL);
+						HMAC(EVP_sha256(),it->second.c_str(),it->second.size(),result1,AES_KEY_SIZE,result2,NULL);
+						packetOut.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
+						packetOut.writeRaw(content.current(),4);content.next(4);
+						packetOut.writeRaw(peer.id,ID_SIZE);content.next(ID_SIZE);
+					} else
+						WARN("No groupspec client property indicated to make working the 'man-in-the-middle' mode between peers in a NetGroup case");
 
 				}
 			}
@@ -516,7 +486,7 @@ void Middle::manage() {
 	}
 }
 
-void Middle::onReadable(const Socket& socket) {
+void Middle::onReadable(Socket& socket) {
 	if(died) {
 		_invoker.sockets.remove(_socket);
 		_socket.close();

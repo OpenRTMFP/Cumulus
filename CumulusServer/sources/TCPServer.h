@@ -39,7 +39,7 @@ private:
 	virtual void	clientHandler(Poco::Net::StreamSocket& socket)=0;
 
 
-	void	onReadable(const Poco::Net::Socket& socket);
+	void	onReadable(Poco::Net::Socket& socket);
 	void	onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	Poco::Net::ServerSocket		_socket;

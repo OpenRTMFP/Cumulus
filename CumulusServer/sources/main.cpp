@@ -41,13 +41,13 @@ const char * g_logPriorities[] = { "FATAL","CRITIC" ,"ERROR","WARN","NOTE","INFO
 
 class CumulusServer: public ServerApplication , private Cumulus::Logger, private ApplicationKiller  {
 public:
-	CumulusServer(): _helpRequested(false),_pCirrus(NULL),_middle(false),_isInteractive(true),_pLogFile(NULL) {
+	CumulusServer(): _helpRequested(false),_isInteractive(true),_pLogFile(NULL) {
 		
 	}
 	
 	~CumulusServer() {
-		if(_pCirrus)
-			delete _pCirrus;
+		if(_params.pCirrus)
+			delete _params.pCirrus;
 		if(_pLogFile)
 			delete _pLogFile;
 	}
@@ -118,7 +118,7 @@ private:
 		else if (name == "cirrus") {
 			try {
 				URI uri("rtmfp://"+value);
-				_pCirrus = new SocketAddress(uri.getHost(),uri.getPort());
+				_params.pCirrus = new SocketAddress(uri.getHost(),uri.getPort());
 				NOTE("Mode 'man in the middle' : the exchange will bypass to '%s'",value.c_str());
 			} catch(Exception& ex) {
 				ERROR("Mode 'man in the middle' error : %s",ex.message().c_str());
@@ -131,7 +131,7 @@ private:
 			else
 				Logs::SetDump(Logs::EXTERNAL);
 		} else if (name == "middle")
-			_middle = true;
+			_params.middle = true;
 		else if (name == "log")
 			Logs::SetLevel(atoi(value.c_str()));
 	}
@@ -198,20 +198,18 @@ private:
 		else {
 			try {
 				// starts the server
-				RTMFPServerParams params;
-				params.port = config().getInt("port", params.port);
+				_params.port = config().getInt("port", _params.port);
 				UInt16 edgesPort = config().getInt("edges.port",RTMFP_DEFAULT_PORT+1);
 				if(config().getBool("edges.activated",false)) {
 					if(edgesPort==0)
 						WARN("edges.port must have a positive value if edges.activated is true. Server edges is disactivated.");
-					params.edgesPort=edgesPort;
+					_params.edgesPort=edgesPort;
 				}
-				params.pCirrus = _pCirrus;
-				params.middle = _middle;
-				params.udpBufferSize = config().getInt("udpBufferSize",params.udpBufferSize);
-				params.keepAliveServer = config().getInt("keepAliveServer",params.keepAliveServer);
-				params.keepAlivePeer = config().getInt("keepAlivePeer",params.keepAlivePeer);
-				params.edgesAttemptsBeforeFallback = config().getInt("edges.attemptsBeforeFallback",params.edgesAttemptsBeforeFallback);
+				
+				_params.udpBufferSize = config().getInt("udpBufferSize",_params.udpBufferSize);
+				_params.keepAliveServer = config().getInt("keepAliveServer",_params.keepAliveServer);
+				_params.keepAlivePeer = config().getInt("keepAlivePeer",_params.keepAlivePeer);
+				_params.edgesAttemptsBeforeFallback = config().getInt("edges.attemptsBeforeFallback",_params.edgesAttemptsBeforeFallback);
 
 
 #if defined(POCO_OS_FAMILY_UNIX)
@@ -225,7 +223,7 @@ private:
 #endif
 
 				Server server(*this,config());
-				server.start(params);
+				server.start(_params);
 
 				// wait for CTRL-C or kill
 #if defined(POCO_OS_FAMILY_UNIX)
@@ -250,8 +248,7 @@ private:
 	
 	bool									_isInteractive;
 	bool									_helpRequested;
-	SocketAddress*							_pCirrus;
-	bool									_middle;
+	RTMFPServerParams						_params;
 	string									_logPath;
 	File*									_pLogFile;
 	FileOutputStream						_logStream;

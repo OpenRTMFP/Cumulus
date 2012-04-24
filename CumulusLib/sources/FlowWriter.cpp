@@ -295,14 +295,14 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 }
 
 void FlowWriter::manage(Invoker& invoker) {
-	if(consumed() || _band.failed())
-		return;
-	try {
-		if(_trigger.raise())
-			raiseMessage();
-	} catch(...) {
-		fail("FlowWriter can't deliver its data");
-		throw;
+	if(!consumed() & !_band.failed()) {
+		try {
+			if(_trigger.raise())
+				raiseMessage();
+		} catch(Exception& ex) {
+			fail("FlowWriter can't deliver its data, "+ex.displayText());
+			throw;
+		}
 	}
 	if(critical && _closed)
 		throw Exception("Critical flow writer closed, session must be closed");
