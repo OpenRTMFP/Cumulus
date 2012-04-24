@@ -28,19 +28,19 @@ template <class RunnableType>
 class PoolThreads {
 public:
 	PoolThreads(Poco::UInt32 numberOfThreads=0):_threads(numberOfThreads==0 ? Poco::Environment::processorCount() : numberOfThreads)  {
-		std::vector<PoolThread<RunnableType>* >::iterator it;
+		typename std::vector<PoolThread<RunnableType>* >::iterator it;
 		for(Poco::UInt16 i=0;i<_threads.size();++i)
 			_threads[i] = new PoolThread<RunnableType>();
 	}
 
-	PoolThreads::~PoolThreads() {
-		std::vector<PoolThread<RunnableType>* >::iterator it;
+	~PoolThreads() {
+		typename std::vector<PoolThread<RunnableType>* >::iterator it;
 		for(it=_threads.begin();it!=_threads.end();++it)
 			delete *it;
 	}
 
-	void PoolThreads::clear() {
-		std::vector<PoolThread<RunnableType>* >::iterator it;
+	void clear() {
+		typename std::vector<PoolThread<RunnableType>* >::iterator it;
 		for(it=_threads.begin();it!=_threads.end();++it)
 			(*it)->clear();
 	}
@@ -48,7 +48,7 @@ public:
 	PoolThread<RunnableType>* enqueue(Poco::AutoPtr<RunnableType>& pRunnable,PoolThread<RunnableType>* pThread) {
 
 		if(!pThread) {
-			vector<PoolThread<RunnableType>* >::const_iterator it;
+			typename std::vector<PoolThread<RunnableType>* >::const_iterator it;
 			for(it=_threads.begin();it!=_threads.end();++it) {
 				if(!pThread || pThread->queue()<(*it)->queue()) {
 					pThread = *it;
