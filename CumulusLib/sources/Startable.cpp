@@ -42,9 +42,9 @@ Startable::~Startable() {
 }
 
 void Startable::start() {
-	ScopedLock<FastMutex> lock(_mutex);
 	if(!_stop) // if running
 		return;
+	ScopedLock<FastMutex> lock(_mutex);
 	if(_haveToJoin) {
 		_thread.join();
 		_haveToJoin=false;

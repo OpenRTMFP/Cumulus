@@ -19,6 +19,7 @@
 
 #include "Cumulus.h"
 #include "Startable.h"
+#include "Poco/AtomicCounter.h"
 #include "Poco/AutoPtr.h"
 #include "Poco/NumberFormatter.h"
 #include <list>
@@ -38,15 +39,15 @@ public:
 		stop();
 	}
 	void push(Poco::AutoPtr<RunnableType>& pRunnable) {
+		++_queue;
 		Poco::ScopedLock<Poco::FastMutex> lock(_mutex);
 		_runnables.push_back(pRunnable);
 		start();
 		wakeUp();
 	}
 
-	Poco::UInt32	queue() const {
-		Poco::ScopedLock<Poco::FastMutex> lock(_mutex);
-		return _runnables.size();
+	int queue() const {
+		return _queue.value();
 	}
 
 private:
@@ -61,8 +62,11 @@ private:
 				{
 					Poco::ScopedLock<Poco::FastMutex> lock(_mutex);
 					if(_runnables.empty()) {
-						if(wakeUpType!=WAKEUP) // STOP or TIMEOUT
+						if(wakeUpType!=WAKEUP) { // STOP or TIMEOUT
+							if(wakeUpType==TIMEOUT)
+								stop();
 							return;
+						}
 						break;
 					}
 					pRunnable = _runnables.front();
@@ -70,16 +74,19 @@ private:
 
 				pRunnable->run();
 				
-				Poco::ScopedLock<Poco::FastMutex> lock(_mutex);
-				_runnables.pop_front();
+				{
+					Poco::ScopedLock<Poco::FastMutex> lock(_mutex);
+					_runnables.pop_front();
+				}
+				--_queue;
 			}
 		}
 	}
 
 	mutable Poco::FastMutex					_mutex;
 	std::list<Poco::AutoPtr<RunnableType> >	_runnables;
-	Poco::UInt32							_id;
-
+	Poco::AtomicCounter						_queue;
+	
 	static Poco::UInt32						_Id;
 };
 

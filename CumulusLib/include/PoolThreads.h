@@ -47,18 +47,20 @@ public:
 
 	PoolThread<RunnableType>* enqueue(Poco::AutoPtr<RunnableType>& pRunnable,PoolThread<RunnableType>* pThread) {
 
+		UInt32 queue=0;
 		if(!pThread) {
 			typename std::vector<PoolThread<RunnableType>* >::const_iterator it;
 			for(it=_threads.begin();it!=_threads.end();++it) {
-				if(!pThread || pThread->queue()<(*it)->queue()) {
+				UInt32 newQueue = (*it)->queue();
+				if(!pThread || newQueue<=queue) {
 					pThread = *it;
-					if(pThread->queue()==0)
+					if((queue=newQueue)==0)
 						break;
 				}
 			}
 		}
 
-		if (pThread->queue() >= 10000)
+		if (queue >= 10000)
 			throw Poco::Exception("PoolThreads 10000 limit runnable entries for every thread reached");
 
 		pThread->push(pRunnable);
