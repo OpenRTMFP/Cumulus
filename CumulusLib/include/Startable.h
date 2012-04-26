@@ -59,7 +59,6 @@ protected:
 	virtual void	prerun();
 
 private:
-
 	bool					_haveToJoin;
 	Poco::Thread			_thread;
 	mutable Poco::FastMutex	_mutex;

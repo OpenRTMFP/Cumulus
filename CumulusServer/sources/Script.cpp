@@ -587,12 +587,12 @@ void Script::AddObjectDestructor(lua_State *pState,lua_CFunction destructor) {
 	lua_newuserdata(pState,sizeof(void*));
 
 	lua_pushvalue(pState,-2); // metatable
-	lua_setmetatable(pState,-2);
+	lua_setmetatable(pState,-2); // metatable of user data
 
 	lua_pushcfunction(pState,destructor);
 	lua_setfield(pState,-3,"__gc"); // function in metatable
 
-	lua_setfield(pState, -2, "__gcThis"); // userdata in object
+	lua_setfield(pState, -2, "__gcThis"); // userdata in metatable
 
 	lua_pop(pState,1);
 }

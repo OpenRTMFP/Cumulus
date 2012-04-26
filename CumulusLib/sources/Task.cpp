@@ -23,8 +23,9 @@ using namespace std;
 namespace Cumulus {
 
 
-Task::Task(TaskHandler& handler,const string& name) : Startable(name),_handler(handler)  {
+Task::Task(TaskHandler& handler) : _handler(handler)  {
 }
+
 
 void Task::waitHandle() {
 	_handler.waitHandle(*this);

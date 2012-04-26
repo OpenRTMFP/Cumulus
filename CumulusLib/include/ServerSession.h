@@ -130,7 +130,7 @@ inline Poco::UInt32	ServerSession::helloAttempt(const std::string& tag) {
 }
 
 inline void ServerSession::flush(Poco::UInt8 marker,bool echoTime) {
-	flush(marker,echoTime,prevAESType);
+	flush(marker,echoTime,prevAESType());
 }
 
 inline void ServerSession::flush(bool echoTime,AESEngine::Type type) {
@@ -138,7 +138,7 @@ inline void ServerSession::flush(bool echoTime,AESEngine::Type type) {
 }
 
 inline void ServerSession::flush(bool echoTime) {
-	flush(0x4a,echoTime,prevAESType);
+	flush(0x4a,echoTime,prevAESType());
 }
 
 inline bool ServerSession::canWriteFollowing(FlowWriter& flowWriter) {

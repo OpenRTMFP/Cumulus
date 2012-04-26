@@ -34,10 +34,6 @@ Blacklist::~Blacklist() {
 	clear();
 }
 
-void Blacklist::clear() {
-	_invoker.clearBannedList();
-}
-
 
 void Blacklist::load() {
 

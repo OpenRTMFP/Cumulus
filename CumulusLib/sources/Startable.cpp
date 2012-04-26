@@ -32,6 +32,7 @@ void StartableProcess::run() {
 }
 
 Startable::Startable(const string& name) : _name(name),_thread(name),_stop(true),_haveToJoin(false),_process(*this) {
+
 }
 
 Startable::~Startable() {
@@ -90,11 +91,15 @@ void Startable::stop() {
 			return;
 		}
 		_stop=true;
+		Thread* pThread = Thread::current();
+		if(pThread && pThread->id() == _thread.id())
+			return;
 	}
 	_wakeUpEvent.set();
 	// Attendre la fin!
 	_thread.join();
 	_haveToJoin=false;
 }
+
 
 } // namespace Cumulus

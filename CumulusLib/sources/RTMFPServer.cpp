@@ -33,9 +33,9 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-class RTMFPManager : private Task {
+class RTMFPManager : private Task, private Startable {
 public:
-	RTMFPManager(RTMFPServer& server):_server(server),Task(server,"RTMFPManager")  {
+	RTMFPManager(RTMFPServer& server):_server(server),Task(server),Startable("RTMFPManager")  {
 		setPriority(Thread::PRIO_LOW);
 		start();
 	}
@@ -54,7 +54,7 @@ private:
 };
 
 
-RTMFPServer::RTMFPServer(UInt32 cores) : Startable("RTMFPServer"),_pRTMFPReceived(NULL),_pRTMFPReceiving(new RTMFPReceiving(*this)),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(UInt32 cores) : Startable("RTMFPServer"),_pRTMFPReceiving(new RTMFPReceiving(*this)),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -62,7 +62,7 @@ RTMFPServer::RTMFPServer(UInt32 cores) : Startable("RTMFPServer"),_pRTMFPReceive
 	DEBUG("Id of this RTMFP server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
-RTMFPServer::RTMFPServer(const string& name,UInt32 cores) : Startable(name),_pRTMFPReceived(NULL),_pRTMFPReceiving(new RTMFPReceiving(*this)),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(const string& name,UInt32 cores) : Startable(name),_pRTMFPReceiving(new RTMFPReceiving(*this)),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -130,6 +130,10 @@ void RTMFPServer::prerun() {
 	} catch (...) {
 		FATAL("RTMFPServer, unknown error");
 	}
+	terminate(); // done here to keep working the "sockets" object (for RTMFPEdge)
+	_receivingEngine.clear(); // have to be done after the terminate()
+	sockets.clear();
+	_mainSockets.clear();
 	onStop();
 	
 	NOTE("RTMFP server stops");
@@ -137,6 +141,7 @@ void RTMFPServer::prerun() {
 
 void RTMFPServer::run() {
 	_socket.bind(SocketAddress("0.0.0.0",_port));
+
 	_mainSockets.add(_socket,*this);
 
 	if(_edgesPort>0) {
@@ -156,7 +161,6 @@ void RTMFPServer::run() {
 	_sendingEngine.clear();
 	_mainSockets.remove(_socket);
 	_socket.close();
-	_receivingEngine.clear();
 	if(_edgesPort>0) {
 		_mainSockets.remove(_edgesSocket);
 		_edgesSocket.close();
@@ -195,47 +199,36 @@ void RTMFPServer::onReadable(Socket& socket) {
 }
 
 void RTMFPServer::handle(bool& terminate){
-	if(sleep()!=STOP) {
-		// Process task
+	if(sleep()!=STOP)
 		giveHandle();
-
-		ScopedLock<FastMutex> lock(_mutex);
-		if(_pRTMFPReceived.isNull())
-			return;
-		// Process packet
-		bool isEdges = _pRTMFPReceived->socket==_edgesSocket;
-		if(isEdges) {
-			Edge* pEdge = edges(_pRTMFPReceived->address);
-			if(pEdge)
-				pEdge->update();
-		}
-
-		if(_pRTMFPReceived->id==0) {
-			DEBUG("Handshaking");
-			_handshake.setEndPoint(_pRTMFPReceived->socket,_pRTMFPReceived->address);
-			if(isEdges)
-				_handshake.nextDumpAreMiddle=true;
-			_handshake.receive(*_pRTMFPReceived->pPacket);
-		} else {
-			Session* pSession = _sessions.find(_pRTMFPReceived->id);
-			if(pSession) {
-				if(!pSession->checked)
-					_handshake.commitCookie(*pSession);
-				pSession->setEndPoint(_pRTMFPReceived->socket,_pRTMFPReceived->address);
-				pSession->receive(*_pRTMFPReceived->pPacket);
-			}
-		}
-
-		_pRTMFPReceived = NULL;
-
-	} else
+	else
 		terminate = true;
 }
 
 void RTMFPServer::receive(RTMFPReceiving& rtmfpReceiving) {
-	ScopedLock<FastMutex> lock(_mutex);
-	_pRTMFPReceived.assign(&rtmfpReceiving,true);
-	wakeUp();
+	// Process packet
+	bool isEdges = rtmfpReceiving.socket==_edgesSocket;
+	if(isEdges) {
+		Edge* pEdge = edges(rtmfpReceiving.address);
+		if(pEdge)
+			pEdge->update();
+	}
+
+	if(rtmfpReceiving.id==0) {
+		DEBUG("Handshaking");
+		_handshake.setEndPoint(rtmfpReceiving.socket,rtmfpReceiving.address);
+		if(isEdges)
+			_handshake.nextDumpAreMiddle=true;
+		_handshake.receive(*rtmfpReceiving.pPacket);
+	} else {
+		Session* pSession = _sessions.find(rtmfpReceiving.id);
+		if(pSession) {
+			if(!pSession->checked)
+				_handshake.commitCookie(*pSession);
+			pSession->setEndPoint(rtmfpReceiving.socket,rtmfpReceiving.address);
+			pSession->receive(*rtmfpReceiving.pPacket);
+		}
+	}
 }
 
 UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const SocketAddress& address,const UInt8* peerIdWanted) {

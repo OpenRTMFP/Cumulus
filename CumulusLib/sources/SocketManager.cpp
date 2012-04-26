@@ -50,16 +50,26 @@ public:
 
 
 
-SocketManager::SocketManager(TaskHandler& handler,const string& name) : Task(handler,name) {
-	start();
+SocketManager::SocketManager(TaskHandler& handler,const string& name) : Startable(name),Task(handler) {
+
 }
 
 
 SocketManager::~SocketManager() {
+	clear();
+}
+
+void SocketManager::clear() {
+	{
+		ScopedLock<Mutex> lock(_mutex);
+		map<const Socket*,SocketManaged*>::iterator it;
+		for(it=_sockets.begin();it!= _sockets.end();++it) {
+			((SocketManagedImpl*)it->second->socketSelectable.impl())->pSocketManaged = NULL;
+			delete it->second;
+		}
+		_sockets.clear();
+	}
 	stop();
-	map<const Socket*,SocketManaged*>::iterator it;
-	for(it=_sockets.begin();it!= _sockets.end();++it)
-		delete it->second;
 }
 
 void SocketManager::add(const Socket& socket,SocketHandler& handler) {
@@ -70,6 +80,8 @@ void SocketManager::add(const Socket& socket,SocketHandler& handler) {
 	if(it!=_sockets.begin())
 		--it;
 	_sockets.insert(it,pair<const Socket*,SocketManaged*>(&socket,new SocketManaged(socket,handler)));
+	if(!running())
+		start();
 }
 
 void SocketManager::remove(const Socket& socket) {
@@ -123,7 +135,6 @@ void SocketManager::handle() {
 
 void SocketManager::run() {
 
-	
 	Timespan			timeout(50000);
 	
 	while(running()) {
@@ -158,6 +169,7 @@ void SocketManager::run() {
 		} catch(Exception& ex) {
 			WARN("Socket error, %s",ex.displayText().c_str())
 		}
+		
 		waitHandle();
 	}
 

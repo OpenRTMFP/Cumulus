@@ -51,8 +51,8 @@ public:
 	virtual ~MainSockets(){}
 private:
 	void requestHandle(){giveHandle();}
-	
 };
+
 
 class RTMFPServer : private Gateway,protected Handler,private Startable,private SocketHandler {
 	friend class RTMFPServerEdge;
@@ -100,11 +100,9 @@ private:
 	bool							_middle;
 	Target*							_pCirrus;
 	Sessions						_sessions;
-
 	MainSockets						_mainSockets;
+
 	Poco::AutoPtr<RTMFPReceiving>	_pRTMFPReceiving;
-	Poco::AutoPtr<RTMFPReceiving>	_pRTMFPReceived;
-	Poco::FastMutex					_mutex;
 };
 
 inline void	RTMFPServer::requestHandle() {

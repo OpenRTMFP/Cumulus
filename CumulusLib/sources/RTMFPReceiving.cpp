@@ -25,7 +25,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPReceiving::RTMFPReceiving(RTMFPServer& server): _server(server),pPacket(NULL),id(0) {
+RTMFPReceiving::RTMFPReceiving(RTMFPServer& server): Task(server), _server(server),pPacket(NULL),id(0) {
 
 }
 
@@ -43,6 +43,10 @@ void RTMFPReceiving::run() {
 		ERROR("Decrypt error on session %u",id);
 		return;
 	}
+	waitHandle();
+}
+
+void RTMFPReceiving::handle() {
 	_server.receive(*this);
 }
 

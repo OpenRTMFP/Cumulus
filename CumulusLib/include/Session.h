@@ -65,12 +65,13 @@ public:
 	void				send(AESEngine::Type type);
 	PacketWriter&		writer();
 	virtual void		kill();
+	AESEngine::Type		prevAESType();
 protected:
 	void				send(Poco::UInt32 farId,Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& receiver,AESEngine::Type type=AESEngine::DEFAULT);
 
 	AESEngine			aesDecrypt;
 	AESEngine			aesEncrypt;
-	AESEngine::Type		prevAESType;
+	
 
 private:
 	virtual void	packetHandler(PacketReader& packet)=0;
@@ -79,18 +80,26 @@ private:
 	Poco::AutoPtr<RTMFPSending>	    _pRTMFPSending;
 	PoolThread<RTMFPSending>*	    _pSendingThread;
 
+	Poco::FastMutex					_mutex;
+	AESEngine::Type					_prevAESType;
+
 	ReceivingEngine&				_receivingEngine;
 	PoolThread<RTMFPReceiving>*		_pReceivingThread;
 
 	Poco::Net::DatagramSocket	_socket;
 };
 
+inline AESEngine::Type Session::prevAESType() {
+	Poco::ScopedLock<Poco::FastMutex> lock(_mutex);
+	return _prevAESType;
+}
+
 inline void Session::decode(Poco::AutoPtr<RTMFPReceiving>& pRTMFPSending) {
 	decode(pRTMFPSending,farId==0 ? AESEngine::SYMMETRIC : AESEngine::DEFAULT);
 }
 
 inline void Session::send() {
-	send(farId,_socket,peer.address,prevAESType);
+	send(farId,_socket,peer.address,prevAESType());
 }
 
 inline void Session::send(AESEngine::Type type) {

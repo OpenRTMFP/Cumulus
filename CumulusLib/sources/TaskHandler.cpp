@@ -22,22 +22,28 @@ using namespace Poco;
 
 namespace Cumulus {
 
-TaskHandler::TaskHandler():_pTask(NULL) {
+TaskHandler::TaskHandler():_pTask(NULL),_stop(false) {
 }
 TaskHandler::~TaskHandler() {
+	terminate();
+}
+
+void TaskHandler::terminate() {
+	ScopedLock<FastMutex> lock(_mutex);
+	_stop=true;
+	_event.set();
 }
 
 void TaskHandler::waitHandle(Task& task) {
 	ScopedLock<FastMutex> lockWait(_mutexWait);
 	{
 		ScopedLock<FastMutex> lock(_mutex);
+		if(_stop)
+			return;
 		_pTask = &task;
 	}
 	requestHandle();
-	_pTask->sleep();
-
-	ScopedLock<FastMutex> lock(_mutex);
-	_pTask=NULL;
+	_event.wait();
 }
 
 void TaskHandler::giveHandle() {
@@ -45,8 +51,8 @@ void TaskHandler::giveHandle() {
 	if(!_pTask)
 		return;
 	_pTask->handle();
-	_pTask->wakeUp();
-
+	_pTask=NULL;
+	_event.set();
 }
 
 

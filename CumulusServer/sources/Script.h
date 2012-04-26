@@ -141,14 +141,26 @@ public:
 		const char* idc = id.c_str();
 		lua_getfield(pState,-1,idc);
 		if(!lua_isnil(pState,-1)) {
-			lua_pop(pState,1);
+
+			if(lua_getmetatable(pState,-1)!=0) {
+				// erase __gcThis in metatable
+				lua_getfield(pState,-1,"__gcThis");
+				if(!lua_isnil(pState,-1)) {
+					lua_pushnil(pState);
+					lua_setmetatable(pState,-2);
+				}
+				lua_pop(pState,2);
+			}
+
+			// erase metatable
 			lua_pushnil(pState);
 			lua_setmetatable(pState,-2);
+
+			// erase pointer
 			lua_pushnil(pState);
-			lua_setfield(pState,-2,idc);
-		} else
-			lua_pop(pState,1);
-		lua_pop(pState,1);
+			lua_setfield(pState,-3,idc);
+		}
+		lua_pop(pState,2);
 	}
 	
 

@@ -18,6 +18,7 @@
 #pragma once
 
 #include "Task.h"
+#include "Startable.h"
 #include "MailHandler.h"
 #include "Poco/Event.h"
 #include "Poco/Net/SMTPClientSession.h"
@@ -26,7 +27,7 @@
 
 
 class Mail;
-class SMTPSession : private Cumulus::Task {
+class SMTPSession : private Cumulus::Task, private Cumulus::Startable {
 public:
 	enum
 	{

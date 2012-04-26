@@ -20,13 +20,14 @@
 #include "Cumulus.h"
 #include "AESEngine.h"
 #include "PacketReader.h"
+#include "Task.h"
 #include "Poco/Net/DatagramSocket.h"
 #include "Poco/RefCountedObject.h"
 
 namespace Cumulus {
 
 class RTMFPServer;
-class RTMFPReceiving : public Poco::RefCountedObject {
+class RTMFPReceiving : public Poco::RefCountedObject, private Task {
 public:
 	RTMFPReceiving(RTMFPServer& server);
 	~RTMFPReceiving();
@@ -40,6 +41,7 @@ public:
 	void						run();
 	PacketReader*				receive(Poco::Net::DatagramSocket& socket);
 private:
+	void						handle();
 	RTMFPServer&				_server;
 	Poco::UInt8					_buff[PACKETRECV_SIZE];
 };

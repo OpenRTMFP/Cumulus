@@ -309,7 +309,7 @@ void FlowWriter::manage(Invoker& invoker) {
 	flush();
 }
 
-UInt32 FlowWriter::headerSize(UInt64 stage) {
+UInt32 FlowWriter::headerSize(UInt64 stage) { // max size header = 50
 	UInt32 size= Util::Get7BitValueSize(id);
 	size+= Util::Get7BitValueSize(stage);
 	if(_stageAck>stage)
@@ -452,27 +452,29 @@ void FlowWriter::flush(bool full) {
 
 		do {
 
+			++_stage;
+
 			// Actual sending packet is enough large?
-			if(_band.writer().available()<12) { // 12 to have a size minimum of fragmentation!
+			UInt32 contentSize = _band.writer().available();
+			UInt32 headerSize = (header && contentSize<62) ? this->headerSize(_stage) : 0; // calculate only if need!
+			if(contentSize<(headerSize+12)) { // 12 to have a size minimum of fragmentation
 				_band.flush(false); // send packet (and without time echo)
 				header=true;
 			}
 
 			PacketWriter& packet(_band.writer());
-			bool head = header;
-
-			UInt32 contentSize = available;
+			contentSize = available;
 			UInt32 size = contentSize+4;
-			++_stage;
-
-			if(head)
-				size+=headerSize(_stage);
+			
+			if(header)
+				size+= headerSize>0 ? headerSize : this->headerSize(_stage);
 
 			// Compute flags
 			UInt8 flags = 0;
 			if(fragments>0)
 				flags |= MESSAGE_WITH_BEFOREPART;
 
+			bool head = header;
 			if(size>packet.available()) {
 				// the packet will change! The message will be fragmented.
 				flags |= MESSAGE_WITH_AFTERPART;

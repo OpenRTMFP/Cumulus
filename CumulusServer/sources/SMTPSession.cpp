@@ -40,7 +40,7 @@ public:
 };
 
 
-SMTPSession::SMTPSession(TaskHandler& handler,const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Task(handler,"SMTPSession"),_host(host),_port(port),_timeout(timeout*1000) {
+SMTPSession::SMTPSession(TaskHandler& handler,const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Startable("SMTPSession"),Task(handler),_host(host),_port(port),_timeout(timeout*1000) {
 	setPriority(Thread::PRIO_LOWEST);
 }
 
@@ -157,6 +157,7 @@ void SMTPSession::run() {
 					if(_error.empty())
 						_error = ex.displayText();
 				}
+				stop();
 				break;
 			}
 			pMail = _mails.front();

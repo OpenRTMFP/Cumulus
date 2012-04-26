@@ -19,6 +19,8 @@
 
 #include "Cumulus.h"
 #include "Task.h"
+#include "Poco/Mutex.h"
+#include "Poco/Event.h"
 
 namespace Cumulus {
 
@@ -30,6 +32,7 @@ public:
 	void waitHandle(Task& task);
 
 protected:
+	void terminate();
 	void giveHandle();
 private:
 	virtual void requestHandle()=0;
@@ -37,6 +40,8 @@ private:
 	Poco::FastMutex			_mutex;
 	Poco::FastMutex			_mutexWait;
 	Task*					_pTask;
+	Poco::Event				_event;
+	bool					_stop;
 };
 
 

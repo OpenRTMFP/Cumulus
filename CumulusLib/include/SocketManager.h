@@ -19,19 +19,21 @@
 
 #include "Cumulus.h"
 #include "SocketHandler.h"
+#include "Startable.h"
 #include "Task.h"
 #include <map>
 
 namespace Cumulus {
 
 class SocketManaged;
-class SocketManager : private Poco::Net::SocketImpl, private Task {
+class SocketManager : private Poco::Net::SocketImpl, private Task, private Startable {
 public:
 	SocketManager(TaskHandler& handler,const std::string& name="SocketManager");
 	virtual ~SocketManager();
 
 	void add(const Poco::Net::Socket& socket,SocketHandler& handler);
 	void remove(const Poco::Net::Socket& socket);
+	void clear();
 
 private:
 	void					run();

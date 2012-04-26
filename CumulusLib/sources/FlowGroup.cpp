@@ -60,16 +60,25 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 			if(_pGroup) {
 				UInt16 count=6;
 				Group::Iterator it;
+				Client* pClient=NULL;
 				for(it=_pGroup->begin();it!=_pGroup->end();++it) {
 					if(peer==(*it)->id)
 						continue;
 					BinaryWriter& response(writer.writeRawMessage(true));
 					response.write8(0x0b); // unknown
 					response.writeRaw((*it)->id,ID_SIZE);
-					if((*it)->ping>=1000)
+					if((*it)->ping>=1000) {
+						if(!pClient || (*it)->ping<pClient->ping)
+							pClient = *it;
 						continue;
+					}
 					if(--count==0)
 						break;
+				}
+				if(count==6 && pClient) {
+					BinaryWriter& response(writer.writeRawMessage(true));
+					response.write8(0x0b); // unknown
+					response.writeRaw(pClient->id,ID_SIZE);
 				}
 				peer.joinGroup(*_pGroup);
 			} else

@@ -55,23 +55,23 @@ void TCPClient::onReadable(Socket& socket) {
 	UInt32 size = _recvBuffer.size();
 	_recvBuffer.resize(size+available);
 
-	try {
-		int received = _socket.receiveBytes(&_recvBuffer[size],available);
-		if(received<=0) {
-			disconnect(); // Graceful disconnection
-			return;
-		}
-		available = size+received;
-	} catch (...) {
+	int received = _socket.receiveBytes(&_recvBuffer[size],available);
+	if(received<=0) {
+		disconnect(); // Graceful disconnection
 		return;
 	}
+	available = size+received;
 
 	UInt32 rest = onReception(&_recvBuffer[0],available);
 	if(rest>available) {
 		WARN("TCPClient : onReception has returned a 'rest' value more important than the available value (%u>%u)",rest,available);
 		rest=available;
 	}
-	_recvBuffer.resize(rest);
+	if(_recvBuffer.size()>rest) {
+		if(available>rest)
+			_recvBuffer.erase(_recvBuffer.begin(),_recvBuffer.begin()+(available-rest));
+		_recvBuffer.resize(rest);
+	}
 }
 
 void TCPClient::onWritable(Socket& socket) {

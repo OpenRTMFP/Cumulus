@@ -74,7 +74,7 @@ void RTMFPServerEdge::start(RTMFPServerEdgeParams& params) {
 
 void RTMFPServerEdge::run() {
 	_serverSocket.connect(_serverAddress);
-	_mainSockets.add(_serverSocket,*this);
+	sockets.add(_serverSocket,*this);
 
 	_serverConnection.setEndPoint(_serverSocket,_serverAddress);
 
@@ -107,7 +107,7 @@ void RTMFPServerEdge::run() {
 		}
 	}
 	_sendingEngine.clear();
-	_mainSockets.remove(_serverSocket);
+	sockets.remove(_serverSocket);
 	_serverSocket.close();
 }
 
@@ -116,15 +116,16 @@ void RTMFPServerEdge::onReadable(Socket& socket) {
 		RTMFPServer::onReadable(socket);
 		return;
 	}
-	NOTE("before")
+	if(_serverSocket.available()==0)
+		return;
 	int size = _serverSocket.receiveBytes(_buff,sizeof(_buff));
-	NOTE("after")
-	_timeLastServerReception.update();
 
 	if(size<RTMFP_MIN_PACKET_SIZE) {
 		ERROR("Invalid server packet");
 		return;
 	}
+	_timeLastServerReception.update();
+
 	PacketReader packet(_buff,size);
 	UInt32 id = RTMFP::Unpack(packet);
 	if(!RTMFP::ReadCRC(packet)) {

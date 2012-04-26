@@ -32,7 +32,7 @@ Session::Session(ReceivingEngine& receivingEngine,
 				 const Peer& peer,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey) : 
-	nextDumpAreMiddle(false),prevAESType(AESEngine::DEFAULT),_pSendingThread(NULL),_pReceivingThread(NULL),_receivingEngine(receivingEngine),_sendingEngine(sendingEngine),flags(0),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pRTMFPSending(new RTMFPSending()) {
+	nextDumpAreMiddle(false),_prevAESType(AESEngine::DEFAULT),_pSendingThread(NULL),_pReceivingThread(NULL),_receivingEngine(receivingEngine),_sendingEngine(sendingEngine),flags(0),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pRTMFPSending(new RTMFPSending()) {
 
 }
 
@@ -52,13 +52,14 @@ void Session::setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::Soc
 }
 
 void Session::decode(AutoPtr<RTMFPReceiving>& RTMFPReceiving,AESEngine::Type type) {
-	prevAESType = type;
 	RTMFPReceiving->decoder = aesDecrypt.next(type);
 	try {
 		_pReceivingThread = _receivingEngine.enqueue(RTMFPReceiving,_pReceivingThread);
 	} catch(Exception& ex) {
 		WARN("Receiving message impossible on session %u : %s",id,ex.displayText().c_str());
 	}
+	ScopedLock<FastMutex> lock(_mutex);
+	_prevAESType = type;
 }
 
 void Session::receive(PacketReader& packet) {

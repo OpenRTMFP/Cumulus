@@ -18,20 +18,19 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "Startable.h"
 
 namespace Cumulus {
 
 class TaskHandler;
-class Task : public Startable {
+class Task {
 public:
-	Task(TaskHandler& handler,const std::string& name);
+	Task(TaskHandler& handler);
 
 	virtual void	handle()=0;
 protected:
 	void waitHandle();
 private:
-	TaskHandler& _handler;
+	TaskHandler&	_handler;
 };
 
 

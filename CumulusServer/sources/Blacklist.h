@@ -31,3 +31,7 @@ private:
 
 	Cumulus::Invoker&	_invoker;
 };
+
+inline void Blacklist::clear() {
+	_invoker.clearBannedList();
+}
