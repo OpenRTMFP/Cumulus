@@ -50,10 +50,6 @@ bool AMFWriter::repeat(UInt32 reference) {
 
 void AMFWriter::write(const string& value) {
 	(UInt32&)lastReference=0;
-	if(value.empty()) {
-		writer.write8(_amf3 ? 0x01 : AMF_UNDEFINED);
-		return;
-	}
 	if(!_amf3) {
 		if(amf0Preference) {
 			if(value.size()>65535) {

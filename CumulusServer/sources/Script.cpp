@@ -516,7 +516,7 @@ void Script::ReadAMF(lua_State* pState,AMFWriter& writer,UInt32 count,map<UInt64
 				break;
 			case LUA_TNUMBER: {
 				double value = lua_tonumber(pState,args);
-				if(ROUND(value) == value)
+				if(value<=AMFWriter::AMF_MAX_INTEGER && ROUND(value) == value)
 					writer.writeInteger((Int32)value);
 				else
 					writer.writeNumber(value);

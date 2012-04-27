@@ -26,6 +26,9 @@ namespace Cumulus {
 
 class AMFWriter {
 public:
+	enum {
+		AMF_MAX_INTEGER=268435455
+	};
 	AMFWriter(BinaryWriter& writer);
 	~AMFWriter();
 
