@@ -152,6 +152,8 @@ int	LUAByteWriter::WriteUTF(lua_State *pState) {
 
 int	LUAByteWriter::WriteUTFBytes(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFWriter,LUAByteWriter,writer)
-		writer.writer.writeRaw(SCRIPT_READ_STRING(""));
+		SCRIPT_READ_BINARY(value,size)
+		if(size>0)
+			writer.writer.writeRaw(value,size);
 	SCRIPT_CALLBACK_RETURN
 }

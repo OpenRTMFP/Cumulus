@@ -103,6 +103,7 @@ private:
 	void				initFlowWriter(FlowWriter& flowWriter);
 	void				resetFlowWriter(FlowWriter& flowWriter);
 	bool				canWriteFollowing(FlowWriter& flowWriter);
+	void				close();
 
 	PacketWriter&		writeMessage(Poco::UInt8 type,Poco::UInt16 length,FlowWriter* pFlowWriter=NULL);
 
@@ -124,6 +125,10 @@ private:
 
 	std::map<std::string,Attempt*>		_helloAttempts;
 };
+
+inline void ServerSession::close() {
+	failSignal();
+}
 
 inline Poco::UInt32	ServerSession::helloAttempt(const std::string& tag) {
 	return (helloAttempt<Attempt>(tag)).count;

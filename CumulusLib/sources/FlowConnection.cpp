@@ -66,10 +66,8 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 			response.write("objectEncoding",3.0);
 			accept = peer.onConnection(message,response);
 		}
-		if(!accept) {
+		if(!accept)
 			writer.cancel(queue);
-			peer.close();
-		}
 
 	} else if(name == "setPeerInfo") {
 

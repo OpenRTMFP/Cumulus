@@ -53,17 +53,18 @@ int LUAGroups::Get(lua_State *pState) {
 		else if(name=="count")
 			SCRIPT_WRITE_NUMBER(groups.count())
 		else if(name=="(") {
-			string id = SCRIPT_READ_STRING("");
+			SCRIPT_READ_BINARY(id,size)
 			Group* pGroup = NULL;
-			if(id.size()==ID_SIZE)
-				pGroup = groups((const UInt8*)id.c_str());
-			else if(id.size()==(ID_SIZE*2)) {
-				istringstream iss(id);
+			if(size==ID_SIZE)
+				pGroup = groups(id);
+			else if(size==(ID_SIZE*2)) {
+				stringstream ss;
+				ss.write((const char*)id,size);
 				UInt8 groupId[ID_SIZE];
-				HexBinaryDecoder(iss).read((char*)groupId,ID_SIZE);
+				HexBinaryDecoder(ss).read((char*)groupId,ID_SIZE);
 				pGroup = groups(groupId);
 			} else
-				SCRIPT_ERROR("Bad group format id %s",id.c_str())
+				SCRIPT_ERROR("Bad group format id %s",id)
 			if(pGroup)
 				SCRIPT_WRITE_PERSISTENT_OBJECT(Group,LUAGroup,*pGroup)
 		}

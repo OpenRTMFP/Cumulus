@@ -30,8 +30,5 @@ public:
 
 	static void ID(std::string& id){}
 
-private:
-	static int Close(lua_State* pState);
-
 };
 

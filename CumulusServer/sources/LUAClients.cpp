@@ -51,17 +51,18 @@ int LUAClients::Get(lua_State *pState) {
 		else if(name=="count")
 			SCRIPT_WRITE_NUMBER(clients.count())
 		else if(name=="(") {
-			string id = SCRIPT_READ_STRING("");
+			SCRIPT_READ_BINARY(id,size)
 			Client* pClient = NULL;
-			if(id.size()==ID_SIZE)
-				pClient = clients((const UInt8*)id.c_str());
-			else if(id.size()==(ID_SIZE*2)) {
-				istringstream iss(id);
+			if(size==ID_SIZE)
+				pClient = clients(id);
+			else if(size==(ID_SIZE*2)) {
+				stringstream ss;
+				ss.write((const char*)id,size);
 				UInt8 clientId[ID_SIZE];
-				HexBinaryDecoder(iss).read((char*)clientId,ID_SIZE);
+				HexBinaryDecoder(ss).read((char*)clientId,ID_SIZE);
 				pClient = clients(clientId);
 			} else
-				SCRIPT_ERROR("Bad client format id %s",id.c_str())
+				SCRIPT_ERROR("Bad client format id %s",id)
 			if(pClient)
 				SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,*pClient)
 		}

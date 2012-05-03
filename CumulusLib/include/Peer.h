@@ -37,7 +37,6 @@ public:
 	std::list<Address>				addresses;
 
 	const bool						connected;
-	bool							closed();
 
 	void setFlowWriter(FlowWriter* pWriter);
 
@@ -71,9 +70,6 @@ private:
 	std::map<Group*,Poco::UInt32>	_groups;
 };
 
-inline bool Peer::closed(){
-	return _closed;
-}
 
 inline void Peer::setFlowWriter(FlowWriter* pWriter){
 	_pFlowWriter = pWriter;

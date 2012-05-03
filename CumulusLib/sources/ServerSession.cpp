@@ -137,8 +137,7 @@ void ServerSession::manage() {
 	if(_failed) {
 		failSignal();
 		return;
-	} else if(peer.closed())
-		fail("");
+	}
 
 	// After 6 mn we considerate than the session has failed
 	if(_recvTimestamp.isElapsed(360000000)) {
@@ -200,11 +199,8 @@ void ServerSession::eraseHelloAttempt(const string& tag) {
 
 
 void ServerSession::p2pHandshake(const SocketAddress& address,const std::string& tag,Session* pSession) {
-	if(_failed || peer.closed()) {
-		if(!_failed)
-			fail("");
+	if(_failed)
 		return;
-	}
 
 	bool good=true;
 
@@ -333,9 +329,6 @@ PacketWriter& ServerSession::writeMessage(UInt8 type,UInt16 length,FlowWriter* p
 void ServerSession::packetHandler(PacketReader& packet) {
 	if(died)
 		return;
-
-	if(peer.closed())
-		fail("");
 
 	if(peer.addresses.size()==0) {
 		CRITIC("Session %u has no any addresses!",id);
@@ -519,7 +512,7 @@ void ServerSession::packetHandler(PacketReader& packet) {
 				// Process request
 				if(pFlow) {
 					pFlow->fragmentHandler(stage,deltaNAck,message,flags);
-					if(!pFlow->error().empty() || peer.closed()) {
+					if(!pFlow->error().empty()) {
 						fail(pFlow->error()); // send fail message immediatly
 						pFlow = NULL;
 					}

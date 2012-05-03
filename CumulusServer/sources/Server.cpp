@@ -175,8 +175,7 @@ bool Server::onMessage(Client& client,const string& name,AMFReader& reader) {
 	bool result = false;
 
 	SCRIPT_BEGIN(client.object<Service>()->open())
-		SCRIPT_FUNCTION_BEGIN(name.c_str())
-			SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,client)
+		SCRIPT_MEMBER_FUNCTION_BEGIN(Client,LUAClient,client,name.c_str())
 			SCRIPT_WRITE_AMF(reader,0)
 			result = true;
 			SCRIPT_FUNCTION_CALL

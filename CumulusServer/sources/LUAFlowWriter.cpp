@@ -53,7 +53,7 @@ int LUAFlowWriter::Destroy(lua_State* pState) {
 }
 
 int LUAFlowWriter::Close(lua_State* pState) {
-	SCRIPT_CALLBACK(NewWriter,LUAFlowWriter,writer)
+	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
 		writer.close();
 	SCRIPT_CALLBACK_RETURN
 }
@@ -73,11 +73,7 @@ int LUAFlowWriter::Get(lua_State *pState) {
 		} else if(name=="newFlowWriter") {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::NewFlowWriter)
 		} else if(name=="close") {
-			NewWriter* pNewWriter = dynamic_cast<NewWriter*>(&writer);
-			if(pNewWriter)
-				SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::Close)
-			else
-				SCRIPT_ERROR("Impossible to close a flowWriter created by the client")
+			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::Close)
 		}
 	SCRIPT_CALLBACK_RETURN
 }

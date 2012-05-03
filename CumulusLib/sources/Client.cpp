@@ -28,18 +28,11 @@ PacketWriter	BandWriterNull::WriterNull(NULL,0);
 BandWriterNull	Client::_BandWriterNull;
 FlowWriter		Client::_FlowWriterNull("",_BandWriterNull);
 
-Client::Client() : _pFlowWriter(NULL),_pObject(NULL),ping(0),_closed(false) {
+Client::Client() : _pFlowWriter(NULL),_pObject(NULL),ping(0) {
 }
 
 Client::~Client() {
 }
 
-void Client::close() {
-	if(_pFlowWriter) {
-		_pFlowWriter->writeAMFMessage("close");
-		_pFlowWriter->flush(true);
-		(bool&)_closed=true;
-	}
-}
 
 } // namespace Cumulus

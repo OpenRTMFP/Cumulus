@@ -31,6 +31,7 @@ public:
 	virtual ~BandWriterNull() {}
 
 	void			initFlowWriter(FlowWriter& flowWriter){}
+	void			close(){}
 	void			resetFlowWriter(FlowWriter& flowWriter){}
 	bool			failed() const{return true;}
 	bool			canWriteFollowing(FlowWriter& flowWriter){return false;}
@@ -65,12 +66,9 @@ public:
 		return (ObjectType*)_pObject;
 	}
 
-	void										close();	
-	
 	FlowWriter&									writer();			
 protected:
 	FlowWriter*									_pFlowWriter;
-	bool										_closed;
 private:
 	void*										_pObject;
 	static FlowWriter							_FlowWriterNull;

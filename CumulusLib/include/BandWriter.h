@@ -31,6 +31,7 @@ public:
 
 	virtual void			initFlowWriter(FlowWriter& flowWriter)=0;
 	virtual void			resetFlowWriter(FlowWriter& flowWriter)=0;
+	virtual void			close()=0;
 
 	virtual bool			failed() const = 0;
 	virtual bool			canWriteFollowing(FlowWriter& flowWriter)=0;
