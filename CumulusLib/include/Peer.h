@@ -62,6 +62,8 @@ public:
 	bool onSubscribe(const Listener& listener,std::string& error);
 	void onUnsubscribe(const Listener& listener);
 
+	void onManage();
+
 private:
 	void onJoinGroup(Group& group);
 	void onUnjoinGroup(Group& group);

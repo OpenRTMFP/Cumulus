@@ -90,10 +90,9 @@ void FlowWriter::close() {
 	if(_stage>0 && _messages.size()==0)
 		writeAbandonMessage(); // Send a MESSAGE_END just in the case where the receiver has been created
 	_closed=true;
+	flush();
 	if(critical)
 		_band.close();
-	else
-		flush();
 }
 
 void FlowWriter::acknowledgment(PacketReader& reader) {

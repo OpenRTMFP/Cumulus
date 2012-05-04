@@ -45,6 +45,8 @@ public:
 
 	virtual bool			onSubscribe(Client& client,const Listener& listener,std::string& error){return true;}
 	virtual void			onUnsubscribe(Client& client,const Listener& listener){}
+
+	virtual void			onManage(Client& client){}
 private:
 	Peer&					myself();
 	Peer					_myself;

@@ -326,3 +326,11 @@ void Server::onUnjoinGroup(Client& client,Group& group) {
 		Script::ClearPersistentObject<Group,LUAGroup>(_pState,group);
 }
 
+void Server::onManage(Client& client) {
+	SCRIPT_BEGIN(client.object<Service>()->open())
+		SCRIPT_MEMBER_FUNCTION_BEGIN(Client,LUAClient,client,"onManage")
+			SCRIPT_FUNCTION_CALL
+		SCRIPT_FUNCTION_END
+	SCRIPT_END
+}
+

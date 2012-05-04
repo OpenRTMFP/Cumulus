@@ -168,6 +168,10 @@ void ServerSession::manage() {
 		}
 		++it2;
 	}
+
+	if(!_failed)
+		peer.onManage();
+
 	flush();
 }
 

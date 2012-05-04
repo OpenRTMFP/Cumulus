@@ -139,6 +139,13 @@ bool Peer::onMessage(const string& name,AMFReader& reader) {
 	return true;
 }
 
+void Peer::onManage() {
+	if(connected) {
+		_handler.onManage(*this);
+		return;
+	}
+}
+
 void Peer::onJoinGroup(Group& group) {
 	if(connected) {
 		_handler.onJoinGroup(*this,group);

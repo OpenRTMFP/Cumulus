@@ -58,6 +58,8 @@ private:
 	bool					onSubscribe(Cumulus::Client& client,const Cumulus::Listener& listener,std::string& error);
 	void					onUnsubscribe(Cumulus::Client& client,const Cumulus::Listener& listener);
 
+	void					onManage(Cumulus::Client& client);
+
 	Blacklist				_blacklist;
 	lua_State*				_pState;
 	ApplicationKiller&		_applicationKiller;
