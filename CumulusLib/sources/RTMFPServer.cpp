@@ -36,13 +36,13 @@ namespace Cumulus {
 class RTMFPManager : private Task, private Startable {
 public:
 	RTMFPManager(RTMFPServer& server):_server(server),Task(server),Startable("RTMFPManager")  {
-		setPriority(Thread::PRIO_LOW);
 		start();
 	}
 	virtual ~RTMFPManager() {
 		stop();
 	}
 	void run() {
+		setPriority(Thread::PRIO_LOW);
 		while(sleep(2000)!=STOP)
 			waitHandle();
 	}

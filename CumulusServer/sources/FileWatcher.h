@@ -25,7 +25,7 @@ public:
 	virtual ~FileWatcher();
 
 	const std::string	path;
-	void				watch();
+	bool				watch();
 private:
 	virtual void load()=0;
 	virtual void clear()=0;

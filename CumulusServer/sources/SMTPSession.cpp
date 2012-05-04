@@ -41,7 +41,7 @@ public:
 
 
 SMTPSession::SMTPSession(TaskHandler& handler,const string& host,UInt16 port,UInt16 timeout) : _SMTPClient(_socket),Startable("SMTPSession"),Task(handler),_host(host),_port(port),_timeout(timeout*1000) {
-	setPriority(Thread::PRIO_LOWEST);
+	
 }
 
 
@@ -103,6 +103,8 @@ void SMTPSession::send(const string& sender,const list<string>& recipients,const
 
 
 void SMTPSession::run() {
+	setPriority(Thread::PRIO_LOWEST);
+
 	{
 		ScopedLock<FastMutex> lock(_mutexError);
 		_error.clear();

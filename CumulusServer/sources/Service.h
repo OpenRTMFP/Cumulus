@@ -33,7 +33,7 @@ public:
 
 	Service*	get(const std::string& path);
 
-	void		refresh();
+	bool		refresh();
 	lua_State*	open();
 
 	Poco::UInt32		count;
@@ -41,7 +41,6 @@ public:
 private:
 	
 	bool		open(bool create);
-	void		watch();
 	void		load();
 	void		clear();
 
@@ -65,10 +64,6 @@ inline void Service::InitGlobalTable(lua_State* pState) {
 	InitGlobalTable(pState,false);
 }
 
-inline void Service::watch() {
-	FileWatcher::watch();
-}
-
-inline void Service::refresh() {
-	FileWatcher::watch();
+inline bool Service::refresh() {
+	return FileWatcher::watch();
 }

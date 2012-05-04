@@ -30,17 +30,22 @@ FileWatcher::~FileWatcher() {
 
 }
 
-void FileWatcher::watch() {
+bool FileWatcher::watch() {
+	bool result=false;
 	Timestamp lastModified=0;
 	if(_lastModified>0) {
 		if(!_file.exists() || !_file.isFile() || (lastModified=_file.getLastModified())>_lastModified) {
 			_lastModified=lastModified;
 			clear();
-			if(_lastModified>0)
+			if(_lastModified>0) {
 				load();
+				result=true;
+			}
 		}
 	} else if(_file.exists() && _file.isFile()) {
 		_lastModified = _file.getLastModified();
 		load();
+		result=true;
 	}
+	return result;
 }

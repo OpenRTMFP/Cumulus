@@ -27,7 +27,10 @@ Thread* Service::_PVolatileObjectsThreadRecording(NULL);
 bool	Service::_VolatileObjectsRecording(false);
 
 Service::Service(lua_State* pState,const string& path) : _pState(pState), FileWatcher(Server::WWWPath+path+"/main.lua"),_packages("www"+path,"/",StringTokenizer::TOK_IGNORE_EMPTY | StringTokenizer::TOK_TRIM),_running(false),_deleting(false),_path(path),count(0) {
-	refresh();
+	if(!refresh()) {
+		open(true); // open even if no file
+		lua_pop(_pState,1);
+	}
 }
 
 
@@ -98,16 +101,6 @@ int Service::Index(lua_State *pState) {
 		lua_getfield(pState,-1,key.c_str());
 		if(!lua_isnil(pState,-1)) {
 			lua_replace(pState,-2);
-
-			// not take a environment which is not running
-			lua_getmetatable(pState,-1);
-			lua_getfield(pState,-1,"//running");
-			if(lua_isnil(pState,-1)) {
-				lua_replace(pState,-2);
-				lua_replace(pState,-2);
-			} else
-				lua_pop(pState,2);
-
 			return 1;
 		}
 		lua_pop(pState,1);
@@ -328,11 +321,6 @@ void Service::load() {
 		lua_pushvalue(_pState,-2);
 		lua_setfenv(_pState,-2);
 		if(lua_pcall(_pState, 0,0, 0)==0) {
-
-			lua_getmetatable(_pState,-1);
-			lua_pushnumber(_pState,1);
-			lua_setfield(_pState,-2,"//running");
-			lua_pop(_pState,1);
 			_running=true;
 			
 			SCRIPT_FUNCTION_BEGIN("onStart")
@@ -386,11 +374,6 @@ void Service::clear() {
 			}
 			lua_pop(_pState,2);
 		} else {
-			lua_getmetatable(_pState,-1);
-			lua_pushnil(_pState);
-			lua_setfield(_pState,-2,"//running");
-			lua_pop(_pState,1);
-
 			// Clear environment
 			lua_pushnil(_pState);  // first key 
 			while (lua_next(_pState, -2) != 0) {
