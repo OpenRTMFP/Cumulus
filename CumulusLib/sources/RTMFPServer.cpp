@@ -111,8 +111,8 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 	(UInt32&)keepAlivePeer = params.keepAlivePeer<5 ? 5000 : params.keepAlivePeer*1000;
 	(UInt8&)edgesAttemptsBeforeFallback = params.edgesAttemptsBeforeFallback;
 	
-	setPriority(params.threadPriority);
 	Startable::start();
+	setPriority(params.threadPriority);
 }
 
 void RTMFPServer::prerun() {

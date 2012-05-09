@@ -81,6 +81,8 @@ public:
 private:
 	FlowWriter(FlowWriter& flowWriter);
 
+	void					release();
+
 	void					writeResponseHeader(BinaryWriter& writer,const std::string& name,double callbackHandle);
 	AMFObjectWriter			writeAMFResponse(const std::string& name,const std::string& code,const  std::string& description);
 	
