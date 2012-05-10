@@ -25,8 +25,18 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPReceiving::RTMFPReceiving(RTMFPServer& server): Task(server), _server(server),pPacket(NULL),id(0) {
-
+RTMFPReceiving::RTMFPReceiving(RTMFPServer& server,Poco::Net::DatagramSocket& socket): Task(server), _server(server),pPacket(NULL),id(0),socket(socket) {
+	int size = socket.receiveFrom(_buff,sizeof(_buff),address);
+	if(_server.isBanned(address.host())) {
+		INFO("Data rejected because client %s is banned",address.host().toString().c_str());
+		return;
+	}
+	if(size<RTMFP_MIN_PACKET_SIZE) {
+		ERROR("Invalid packet");
+		return;
+	}
+	pPacket = new PacketReader(_buff,size);
+	id = RTMFP::Unpack(*pPacket);
 }
 
 RTMFPReceiving::~RTMFPReceiving() {
@@ -48,22 +58,6 @@ void RTMFPReceiving::run() {
 
 void RTMFPReceiving::handle() {
 	_server.receive(*this);
-}
-
-PacketReader* RTMFPReceiving::receive(DatagramSocket& socket) {
-	this->socket = socket;
-	int size = socket.receiveFrom(_buff,sizeof(_buff),address);
-	if(_server.isBanned(address.host())) {
-		INFO("Data rejected because client %s is banned",address.host().toString().c_str());
-		return NULL;
-	}
-	if(size<RTMFP_MIN_PACKET_SIZE) {
-		ERROR("Invalid packet");
-		return NULL;
-	}
-	if(pPacket)
-		delete pPacket;
-	return pPacket = new PacketReader(_buff,size);
 }
 
 

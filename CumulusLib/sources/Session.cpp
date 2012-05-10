@@ -74,7 +74,7 @@ void Session::send(UInt32 farId,DatagramSocket& socket,const SocketAddress& rece
 	_pRTMFPSending->packet.limit(); // no limit for sending!
 	_pRTMFPSending->id = id;
 	_pRTMFPSending->farId = farId;
-	_pRTMFPSending->socket = socket;
+	_pRTMFPSending->pSocket = new DatagramSocket(socket);
 	_pRTMFPSending->address = receiver;
 	_pRTMFPSending->encoder = aesEncrypt.next(type);
 	try {

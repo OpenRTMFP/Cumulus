@@ -101,8 +101,6 @@ private:
 	Target*							_pCirrus;
 	Sessions						_sessions;
 	MainSockets						_mainSockets;
-
-	Poco::AutoPtr<RTMFPReceiving>	_pRTMFPReceiving;
 };
 
 inline void	RTMFPServer::requestHandle() {

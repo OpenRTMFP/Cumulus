@@ -29,7 +29,7 @@ namespace Cumulus {
 class RTMFPServer;
 class RTMFPReceiving : public Poco::RefCountedObject, private Task {
 public:
-	RTMFPReceiving(RTMFPServer& server);
+	RTMFPReceiving(RTMFPServer& server,Poco::Net::DatagramSocket& socket);
 	~RTMFPReceiving();
 
 	Poco::UInt32				id;
@@ -39,7 +39,6 @@ public:
 	PacketReader*				pPacket;
 
 	void						run();
-	PacketReader*				receive(Poco::Net::DatagramSocket& socket);
 private:
 	void						handle();
 	RTMFPServer&				_server;

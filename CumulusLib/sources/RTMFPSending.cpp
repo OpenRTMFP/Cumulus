@@ -25,20 +25,25 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-RTMFPSending::RTMFPSending(): packet(_buffer,sizeof(_buffer)),id(0),farId(0) {
+RTMFPSending::RTMFPSending(): packet(_buffer,sizeof(_buffer)),id(0),farId(0),pSocket(NULL) {
 	packet.clear(6);
 	packet.limit(RTMFP_MAX_PACKET_LENGTH); // set normal limit
 }
 
 RTMFPSending::~RTMFPSending() {
-
+	if(pSocket)
+		delete pSocket;
 }
 
 void RTMFPSending::run() {
+	if(!pSocket) {
+		ERROR("Socket sending impossible on session %u impossible with a null socket",id);
+		return;
+	}
 	RTMFP::Encode(encoder,packet);
 	RTMFP::Pack(packet,farId);
 	try {
-		if(socket.sendTo(packet.begin(),(int)packet.length(),address)!=packet.length())
+		if(pSocket->sendTo(packet.begin(),(int)packet.length(),address)!=packet.length())
 			ERROR("Socket sending error on session %u : all data were not sent",id);
 	} catch(Exception& ex) {
 		 WARN("Socket sending error on session %u : %s",id,ex.displayText().c_str());

@@ -54,7 +54,7 @@ private:
 };
 
 
-RTMFPServer::RTMFPServer(UInt32 cores) : Startable("RTMFPServer"),_pRTMFPReceiving(new RTMFPReceiving(*this)),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(UInt32 cores) : Startable("RTMFPServer"),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -62,7 +62,7 @@ RTMFPServer::RTMFPServer(UInt32 cores) : Startable("RTMFPServer"),_pRTMFPReceivi
 	DEBUG("Id of this RTMFP server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
-RTMFPServer::RTMFPServer(const string& name,UInt32 cores) : Startable(name),_pRTMFPReceiving(new RTMFPReceiving(*this)),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(const string& name,UInt32 cores) : Startable(name),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,_edgesSocket,*this,*this),_sessions(*this) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -178,24 +178,21 @@ void RTMFPServer::onError(const Poco::Net::Socket& socket,const std::string& err
 }
 
 void RTMFPServer::onReadable(Socket& socket) {
-	PacketReader* pPacket = _pRTMFPReceiving->receive((DatagramSocket&)socket);
-	if(!pPacket)
+	AutoPtr<RTMFPReceiving> pRTMFPReceiving(new RTMFPReceiving(*this,(DatagramSocket&)socket));
+	if(!pRTMFPReceiving->pPacket)
 		return;
 
-	_pRTMFPReceiving->id = RTMFP::Unpack(*pPacket);
-	if(_pRTMFPReceiving->id==0) {
-		_handshake.decode(_pRTMFPReceiving,socket==_edgesSocket ? AESEngine::EMPTY : AESEngine::DEFAULT);
-		_pRTMFPReceiving = new RTMFPReceiving(*this);
+	if(pRTMFPReceiving->id==0) {
+		_handshake.decode(pRTMFPReceiving,socket==_edgesSocket ? AESEngine::EMPTY : AESEngine::DEFAULT);
 		return;
 	}
 	ScopedLock<Mutex>  lock(_sessions.mutex);
-	Session* pSession = _sessions.find(_pRTMFPReceiving->id);
+	Session* pSession = _sessions.find(pRTMFPReceiving->id);
 	if(!pSession) {
-		WARN("Unknown session %u",_pRTMFPReceiving->id);
+		WARN("Unknown session %u",pRTMFPReceiving->id);
 		return;
 	}
-	pSession->decode(_pRTMFPReceiving);
-	_pRTMFPReceiving = new RTMFPReceiving(*this);
+	pSession->decode(pRTMFPReceiving);
 }
 
 void RTMFPServer::handle(bool& terminate){
