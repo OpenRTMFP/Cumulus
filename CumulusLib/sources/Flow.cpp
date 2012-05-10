@@ -80,7 +80,7 @@ Flow::Flow(UInt64 id,const string& signature,const string& name,Peer& peer,Invok
 
 Flow::~Flow() {
 	complete();
-	writer.release();
+	writer.close();
 }
 
 void Flow::complete() {

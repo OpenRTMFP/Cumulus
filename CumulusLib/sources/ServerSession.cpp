@@ -97,6 +97,8 @@ void ServerSession::kill() {
 	if(died)
 		return;
 
+	Session::kill();
+
 	peer.setFlowWriter(NULL);
 
 	// unsubscribe peer for its groups
@@ -116,8 +118,6 @@ void ServerSession::kill() {
 	for(it2=_flowWriters.begin();it2!=_flowWriters.end();++it2)
 		delete it2->second;
 	_flowWriters.clear();
-
-	Session::kill();
 }
 
 void ServerSession::manage() {

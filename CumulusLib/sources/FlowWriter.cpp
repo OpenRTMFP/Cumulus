@@ -83,19 +83,14 @@ void FlowWriter::fail(const string& error) {
 	reset(++_resetCount);
 }
 
-void FlowWriter::release() {
+
+void FlowWriter::close() {
 	if(_closed)
 		return;
 	if(_stage>0 && _messages.size()==0)
 		writeAbandonMessage(); // Send a MESSAGE_END just in the case where the receiver has been created
 	_closed=true;
 	flush();
-	
-}
-
-
-void FlowWriter::close() {
-	release();
 	if(critical)
 		_band.close();
 }
