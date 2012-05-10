@@ -88,7 +88,7 @@ void Flow::complete() {
 		return;
 
 	if(!writer.signature.empty()) // writer.signature.empty() == FlowNull instance, not display the message in FullNull case
-		DEBUG("Flow %llu consumed",id);
+		DEBUG("Flow %s consumed",NumberFormatter::format(id).c_str());
 
 	// delete fragments
 	map<UInt64,Fragment*>::const_iterator it;
@@ -106,7 +106,7 @@ void Flow::complete() {
 }
 
 void Flow::fail(const string& error) {
-	ERROR("Flow %llu failed : %s",id,error.c_str());
+	ERROR("Flow %s failed : %s",NumberFormatter::format(id).c_str(),error.c_str());
 	if(!_completed) {
 		BinaryWriter& writer = _band.writeMessage(0x5e,Util::Get7BitValueSize(id)+1);
 		writer.write7BitLongValue(id);
@@ -185,17 +185,17 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 	if(_completed)
 		return;
 
-//	TRACE("Flow %llu stage %llu",id,stage);
+//	TRACE("Flow %s stage %s",NumberFormatter::format(id).c_str(),NumberFormatter::format(stage).c_str());
 
 	UInt64 nextStage = this->stage+1;
 
 	if(stage < nextStage) {
-		DEBUG("Stage %llu on flow %llu has already been received",stage,id);
+		DEBUG("Stage %s on flow %s has already been received",NumberFormatter::format(stage).c_str(),NumberFormatter::format(id).c_str());
 		return;
 	}
 
 	if(deltaNAck>stage) {
-		WARN("DeltaNAck %llu superior to stage %llu on flow %llu",deltaNAck,stage,id);
+		WARN("DeltaNAck %s superior to stage %s on flow %s",NumberFormatter::format(deltaNAck).c_str(),NumberFormatter::format(stage).c_str(),NumberFormatter::format(id).c_str());
 		deltaNAck=stage;
 	}
 	
@@ -228,7 +228,7 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 			if(_fragments.size()>100)
 				DEBUG("_fragments.size()=%lu",_fragments.size()); 
 		} else
-			DEBUG("Stage %llu on flow %llu has already been received",stage,id);
+			DEBUG("Stage %s on flow %s has already been received",NumberFormatter::format(stage).c_str(),NumberFormatter::format(id).c_str());
 	} else {
 		fragmentSortedHandler(nextStage++,fragment,flags);
 		if(flags&MESSAGE_END)
@@ -252,7 +252,7 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 
 void Flow::fragmentSortedHandler(UInt64 stage,PacketReader& fragment,UInt8 flags) {
 	if(stage<=this->stage) {
-		ERROR("Stage %llu not sorted on flow %llu",stage,id);
+		ERROR("Stage %s not sorted on flow %s",NumberFormatter::format(stage).c_str(),NumberFormatter::format(id).c_str());
 		return;
 	}
 	if(stage>(this->stage+1)) {
@@ -354,19 +354,19 @@ void Flow::fragmentSortedHandler(UInt64 stage,PacketReader& fragment,UInt8 flags
 }
 
 void Flow::messageHandler(const std::string& name,AMFReader& message) {
-	ERROR("Message '%s' unknown for flow %llu",name.c_str(),id);
+	ERROR("Message '%s' unknown for flow %s",name.c_str(),NumberFormatter::format(id).c_str());
 }
 void Flow::rawHandler(UInt8 type,PacketReader& data) {
-	ERROR("Raw message %s unknown for flow %llu",Util::FormatHex(data.current(),data.available()).c_str(),id);
+	ERROR("Raw message %s unknown for flow %s",Util::FormatHex(data.current(),data.available()).c_str(),NumberFormatter::format(id).c_str());
 }
 void Flow::audioHandler(PacketReader& packet) {
-	ERROR("Audio packet untreated for flow %llu",id);
+	ERROR("Audio packet untreated for flow %s",NumberFormatter::format(id).c_str());
 }
 void Flow::videoHandler(PacketReader& packet) {
-	ERROR("Video packet untreated for flow %llu",id);
+	ERROR("Video packet untreated for flow %s",NumberFormatter::format(id).c_str());
 }
 void Flow::lostFragmentsHandler(UInt32 count) {
-	INFO("%u fragments lost on flow %llu",count,id);
+	INFO("%u fragments lost on flow %s",count,NumberFormatter::format(id).c_str());
 }
 
 

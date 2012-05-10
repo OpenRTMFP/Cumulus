@@ -149,7 +149,7 @@ UInt32 Listener::computeTime(UInt32 time) {
 }
 
 void Listener::writeBound(FlowWriter& writer) {
-	DEBUG("Writing bound %u on flow writer %llu",_boundId,writer.id);
+	DEBUG("Writing bound %u on flow writer %s",_boundId,NumberFormatter::format(writer.id).c_str());
 	BinaryWriter& data = writer.writeRawMessage();
 	data.write16(0x22);
 	data.write32(_boundId);

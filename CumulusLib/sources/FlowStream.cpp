@@ -81,7 +81,7 @@ void FlowStream::rawHandler(UInt8 type,PacketReader& data) {
 		//TRACE("Bound %u : %u %u",id,data.read32(),data.read32());
 		return;
 	}
-	ERROR("Unknown raw flag %u on FlowStream %llu",flag,id);
+	ERROR("Unknown raw flag %u on FlowStream %s",flag,NumberFormatter::format(id).c_str());
 	Flow::rawHandler(type,data);
 }
 

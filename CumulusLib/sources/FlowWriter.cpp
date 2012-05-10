@@ -18,6 +18,7 @@
 #include "FlowWriter.h"
 #include "Util.h"
 #include "Logs.h"
+#include "Poco/NumberFormatter.h"
 #include "string.h"
 
 using namespace std;
@@ -45,7 +46,7 @@ FlowWriter::~FlowWriter() {
 	_closed=true;
 	clear();
 	if(!signature.empty())
-		DEBUG("FlowWriter %llu consumed",id);
+		DEBUG("FlowWriter %s consumed",NumberFormatter::format(id).c_str());
 }
 
 void FlowWriter::clear() {
@@ -75,7 +76,7 @@ void FlowWriter::clear() {
 void FlowWriter::fail(const string& error) {
 	if(_closed)
 		return;
-	WARN("FlowWriter %llu has failed : %s",id,error.c_str());
+	WARN("FlowWriter %s has failed : %s",NumberFormatter::format(id).c_str(),error.c_str());
 	clear();
 	_stage=_stageAck=_lostCount=_ackCount=0;
 	_band.resetFlowWriter(*new FlowWriter(*this));
@@ -111,12 +112,12 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 	UInt64 stage = _stageAck+1;
 
 	if(stageReaden>_stage) {
-		ERROR("Acknowledgment received %llu superior than the current sending stage %llu on flowWriter %llu",stageReaden,_stage,id);
+		ERROR("Acknowledgment received %s superior than the current sending stage %s on flowWriter %s",NumberFormatter::format(stageReaden).c_str(),NumberFormatter::format(_stage).c_str(),NumberFormatter::format(id).c_str());
 		_stageAck = _stage;
 	} else if(stageReaden<=_stageAck) {
 		// already acked
 		if(reader.available()==0)
-			DEBUG("Acknowledgment %llu obsolete on flowWriter %llu",stageReaden,id);
+			DEBUG("Acknowledgment %s obsolete on flowWriter %s",NumberFormatter::format(stageReaden).c_str(),NumberFormatter::format(id).c_str());
 	} else
 		_stageAck = stageReaden;
 
@@ -141,7 +142,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 		Message& message(**it);
 
 		if(message.fragments.empty()) {
-			CRITIC("Message %llu is bad formatted on fowWriter %llu",stage+1,id);
+			CRITIC("Message %s is bad formatted on fowWriter %s",NumberFormatter::format(stage+1).c_str(),NumberFormatter::format(id).c_str());
 			++it;
 			continue;
 		}
@@ -173,7 +174,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 				// check the range
 				if(lostStage>_stage) {
 					// Not yet sent
-					ERROR("Lost information received %llu have not been yet sent on flowWriter %llu",lostStage,id);
+					ERROR("Lost information received %s have not been yet sent on flowWriter %s",NumberFormatter::format(lostStage).c_str(),NumberFormatter::format(id).c_str());
 					stop=true;
 				} else if(lostStage<=_stageAck) {
 					// already acked
@@ -205,7 +206,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 					++stage;
 					header=true;
 				} else {
-					INFO("FlowWriter %llu : message %llu lost",id,stage);
+					INFO("FlowWriter %s : message %s lost",NumberFormatter::format(id).c_str(),NumberFormatter::format(stage).c_str());
 					--_ackCount;
 					++_lostCount;
 					_stageAck = stage;
@@ -228,7 +229,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 
 			// Repeat message
 
-			DEBUG("FlowWriter %llu : stage %llu repeated",id,stage);
+			DEBUG("FlowWriter %s : stage %s repeated",NumberFormatter::format(id).c_str(),NumberFormatter::format(stage).c_str());
 			UInt32 available;
 			UInt32 fragment(itFrag->first);
 			BinaryReader& content = message.reader(fragment,available);
@@ -286,7 +287,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 	}
 
 	if(lostCount>0 && reader.available()>0)
-		ERROR("Some lost information received have not been yet sent on flowWriter %llu",id);
+		ERROR("Some lost information received have not been yet sent on flowWriter %s",NumberFormatter::format(id).c_str());
 
 
 	// rest messages repeatable?
@@ -315,7 +316,7 @@ UInt32 FlowWriter::headerSize(UInt64 stage) { // max size header = 50
 	UInt32 size= Util::Get7BitValueSize(id);
 	size+= Util::Get7BitValueSize(stage);
 	if(_stageAck>stage)
-		CRITIC("stageAck %llu superior to stage %llu on flowWriter %llu",_stageAck,stage,id);
+		CRITIC("stageAck %s superior to stage %s on flowWriter %s",NumberFormatter::format(_stageAck).c_str(),NumberFormatter::format(stage).c_str(),NumberFormatter::format(id).c_str());
 	size+= Util::Get7BitValueSize(stage-_stageAck);
 	size+= _stageAck>0 ? 0 : (signature.size()+(flowId==0?2:(4+Util::Get7BitValueSize(flowId))));
 	return size;
@@ -412,8 +413,8 @@ void FlowWriter::raiseMessage() {
 			// Actual sending packet is enough large? Here we send just one packet!
 			if(size>_band.writer().available()) {
 				if(!sent)
-					ERROR("Raise messages on flowWriter %llu without sending!",id);
-				DEBUG("Raise message on flowWriter %llu finishs on stage %llu",id,stage);
+					ERROR("Raise messages on flowWriter %s without sending!",NumberFormatter::format(id).c_str());
+				DEBUG("Raise message on flowWriter %s finishs on stage %s",NumberFormatter::format(id).c_str(),NumberFormatter::format(stage).c_str());
 				return;
 			}
 			sent=true;
@@ -507,7 +508,7 @@ void FlowWriter::flush(bool full) {
 
 void FlowWriter::cancel(UInt32 index) {
 	if(index>=queue()) {
-		ERROR("Impossible to cancel %u message on flowWriter %llu",index,id);
+		ERROR("Impossible to cancel %u message on flowWriter %s",index,NumberFormatter::format(id).c_str());
 		return;
 	}
 	list<Message*>::iterator it = _messages.begin();
