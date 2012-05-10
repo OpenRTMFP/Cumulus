@@ -32,7 +32,7 @@ public:
 
 	Poco::UInt32				id;
 	Poco::UInt32				farId;
-	Poco::Net::DatagramSocket	socket;
+	Poco::Net::DatagramSocket*	pSocket;
 	AESEngine					encoder;
 	Poco::Net::SocketAddress	address;
 	PacketWriter				packet;
