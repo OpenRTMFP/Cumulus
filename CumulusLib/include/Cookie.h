@@ -27,13 +27,10 @@ namespace Cumulus {
 class Cookie {
 	friend class Target;
 public:
-	Cookie(); // For light cookie (edge sessions)
 	Cookie(const std::string& tag,const std::string& queryUrl); // For normal cookie
 	Cookie(const std::string& tag,Target& target); // For a Man-In-The-Middle peer/peer cookie
 	virtual ~Cookie();
 
-	
-	const bool						light;
 	const std::string				tag;
 	const Poco::UInt8				value[COOKIE_SIZE];
 	const std::string				queryUrl;

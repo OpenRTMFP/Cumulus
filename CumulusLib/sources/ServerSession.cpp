@@ -202,35 +202,22 @@ void ServerSession::eraseHelloAttempt(const string& tag) {
 }
 
 
-void ServerSession::p2pHandshake(const SocketAddress& address,const std::string& tag,Session* pSession) {
+void ServerSession::p2pHandshake(const SocketAddress& address,const std::string& tag,UInt32 times,Session* pSession) {
 	if(_failed)
 		return;
-
-	bool good=true;
-
-	if(pSession) {
-		if(pSession->peer.addresses.size()==0) {
-			CRITIC("Session %u without peer addresses!",pSession->id);
-			good = false;
-		}
-	} else
-		good = false;
 
 	DEBUG("Peer newcomer address send to peer %u connected",id);
 	
 	UInt16 size = 0x36;
-	UInt32 count = helloAttempt(tag);
 	UInt8 index=0;
 
 	Address const* pAddress = NULL;
-	if(good) {
+	if(pSession && peer.addresses.size()>0) {
 		// If two clients are on the same lan, starts with private address
-		if(peer.addresses.size()==0)
-			CRITIC("Session %u without peer addresses!",id)
-		else if(pSession->peer.addresses.front().host==peer.addresses.front().host)
-			++count;
+		if(pSession->peer.addresses.front().host==peer.addresses.front().host)
+			++times;
 
-		index=count%pSession->peer.addresses.size();
+		index=times%pSession->peer.addresses.size();
 		list<Address>::const_iterator it=pSession->peer.addresses.begin();
 		advance(it,index);
 		pAddress = &(*it);
@@ -334,15 +321,6 @@ void ServerSession::packetHandler(PacketReader& packet) {
 	if(died)
 		return;
 
-	if(peer.addresses.size()==0) {
-		CRITIC("Session %u has no any addresses!",id);
-		peer.addresses.push_front(peer.address.toString());
-	} else if(!(flags&SESSION_BY_EDGE) && peer.addresses.front()!=peer.address) {
-		INFO("Session %u has changed its public address",id);
-		peer.addresses.pop_front();
-		peer.addresses.push_front(peer.address.toString());
-	}
-
 	_recvTimestamp.update();
 
 	// Read packet
@@ -384,19 +362,6 @@ void ServerSession::packetHandler(PacketReader& packet) {
 		PacketReader message(packet.current(),size);		
 
 		switch(type) {
-			case 0x70 : {
-				// only for edge: tell that peer addess has changed!
-				INFO("Edge tells that Session %u has changed its public address",id);
-				string address;
-				message >> address;
-				if(peer.addresses.size()==0)
-					CRITIC("Session %u has no any addresses!",id)
-				else
-					peer.addresses.pop_front();
-				peer.addresses.push_front(address);
-				writeMessage(0x71,address.size()).writeRaw(address);
-				break;
-			}
 			case 0x0c :
 				fail("failed on client side");
 				break;

@@ -568,6 +568,20 @@ const char* Script::ToString(lua_State* pState,string& out) {
 	return out.c_str();
 }
 
+bool Script::CheckType(lua_State *pState,const string& type) {
+	if(lua_gettop(pState)==0 || lua_getmetatable(pState,-1)==0)
+		return false;
+
+	// __type is correct?
+	lua_getfield(pState,-1,"__type");
+	if(!lua_isstring(pState,-1) || (type!=lua_tostring(pState,-1))) {
+		lua_pop(pState,2);
+		return false;
+	}
+	lua_pop(pState,2);
+	return true;
+}
+
 void Script::AddObjectDestructor(lua_State *pState,lua_CFunction destructor) {
 	if(lua_istable(pState,-1)==0) {
 		SCRIPT_BEGIN(pState)

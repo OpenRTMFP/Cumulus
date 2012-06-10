@@ -70,6 +70,11 @@ void BinaryStream::resetReading(UInt32 position) {
     iostream::clear();
 }
 
+void BinaryStream::resetWriting(UInt32 position) {
+	rdbuf()->pubseekoff(position,ios::beg,ios_base::out);
+    iostream::clear();
+}
+
 
 
 } // namespace Cumulus

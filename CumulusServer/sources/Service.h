@@ -21,10 +21,17 @@
 #include "Script.h"
 #include "Poco/StringTokenizer.h"
 
+class Service;
+class ServiceRegistry {
+public:
+	virtual void addFunction(Service& service,const std::string& name){}
+	virtual void clear(Service& service){}
+};
+
 
 class Service : public FileWatcher {
 public:
-	Service(lua_State* pState,const std::string& path);
+	Service(lua_State* pState,const std::string& path,ServiceRegistry& registry);
 	virtual ~Service();
 
 	static void InitGlobalTable(lua_State *pState);
@@ -55,6 +62,7 @@ private:
 	std::string				_path;
 
 	std::map<std::string,Service*>	_services;
+	ServiceRegistry&				_registry;
 
 	static bool						_VolatileObjectsRecording;
 	static Poco::Thread*			_PVolatileObjectsThreadRecording;

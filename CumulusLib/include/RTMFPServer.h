@@ -31,12 +31,10 @@ namespace Cumulus {
 
 class RTMFPServerParams {
 public:
-	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),edgesAttemptsBeforeFallback(2),udpBufferSize(0),edgesPort(0),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15) {
+	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),udpBufferSize(0),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15) {
 	}
 	Poco::UInt16				port;
 	Poco::UInt32				udpBufferSize;
-	Poco::UInt16				edgesPort;
-	Poco::UInt8					edgesAttemptsBeforeFallback;
 	bool						middle;
 	Poco::Net::SocketAddress*	pCirrus;
 	Poco::Thread::Priority		threadPriority;
@@ -55,7 +53,6 @@ private:
 
 
 class RTMFPServer : private Gateway,protected Handler,private Startable,private SocketHandler {
-	friend class RTMFPServerEdge;
 	friend class RTMFPManager;
 	friend class RTMFPReceiving;
 public:
@@ -65,6 +62,7 @@ public:
 	void start();
 	void start(RTMFPServerParams& params);
 	void stop();
+	Poco::UInt16 port();
 	bool running();
 
 protected:
@@ -78,11 +76,9 @@ private:
 	virtual void	handle(bool& terminate);
 
 	void			receive(RTMFPReceiving& rtmfpReceiving);
-	void			prerun();
 	void			run();
 	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);
 	Session&		createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie);
-	void			destroySession(Session& session);
 
 	void			onReadable(Poco::Net::Socket& socket);
 	void			onError(const Poco::Net::Socket& socket,const std::string& error);
@@ -94,14 +90,15 @@ private:
 	Poco::UInt16				_port;
 	Poco::Net::DatagramSocket	_socket;
 
-	Poco::UInt16					_edgesPort;
-	Poco::Net::DatagramSocket		_edgesSocket;
-
 	bool							_middle;
 	Target*							_pCirrus;
 	Sessions						_sessions;
 	MainSockets						_mainSockets;
 };
+
+inline Poco::UInt16 RTMFPServer::port() {
+	return _port;
+}
 
 inline void	RTMFPServer::requestHandle() {
 	wakeUp();

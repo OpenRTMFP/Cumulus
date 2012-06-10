@@ -23,22 +23,29 @@
 #include "Blacklist.h"
 #include "SMTPSession.h"
 #include "TCPServer.h"
+#include "Servers.h"
 
-class Server : public Cumulus::RTMFPServer {
+
+class Server : public Cumulus::RTMFPServer, private ServiceRegistry, private ServerHandler {
 public:
 	Server(ApplicationKiller& applicationKiller,const Poco::Util::AbstractConfiguration& configurations);
 	virtual ~Server();
 
 	static const std::string				WWWPath;
 	SMTPSession								mails;
+	Servers									servers;
 
 private:
+	Poco::UInt16			port();
 	void					manage();
 	bool					readNextConfig(lua_State* pState,const Poco::Util::AbstractConfiguration& configurations,const std::string& root);
 
 	//events
 	void					onStart();
 	void					onStop();
+
+	void					onRendezVousUnknown(const Poco::UInt8* id,std::set<std::string>& addresses);
+	void					onHandshake(Poco::UInt32 attempts,const Poco::Net::SocketAddress& address,const std::string& path,const std::map<std::string,std::string>& properties,std::set<std::string>& addresses);
 
 	bool					onConnection(Cumulus::Client& client,Cumulus::AMFReader& parameters,Cumulus::AMFObjectWriter& response);
 	void					onFailed(const Cumulus::Client& client,const std::string& error);
@@ -60,8 +67,34 @@ private:
 
 	void					onManage(Cumulus::Client& client);
 
+	// ServiceRegistry implementation
+	void					addFunction(Service& service,const std::string& name);
+	void					clear(Service& service);
+
+	// ServerHandler implementation
+	const std::string&	publicAddress();
+	void				connection(ServerConnection& server);
+	void				message(ServerConnection& server,const std::string& handler,Cumulus::PacketReader& reader);
+	void				disconnection(const ServerConnection& server,const char* error);
+
+
+	void				readLUAAddress(std::set<std::string>& addresses);
+	void				readLUAAddresses(std::set<std::string>& addresses);
+
 	Blacklist				_blacklist;
 	lua_State*				_pState;
 	ApplicationKiller&		_applicationKiller;
 	Service*				_pService;
+
+	std::map<std::string,std::set<Service*>>	_scriptEvents;
+
+	std::string					_serversPublicAddress;
 };
+
+inline const std::string& Server::publicAddress() {
+	return _serversPublicAddress;
+}
+
+inline Poco::UInt16 Server::port() {
+	return RTMFPServer::port();
+}

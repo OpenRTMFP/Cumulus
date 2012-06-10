@@ -384,14 +384,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\ServerConnection.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\ServerConnection.h"
-					>
-				</File>
-				<File
 					RelativePath=".\sources\ServerSession.cpp"
 					>
 				</File>
@@ -556,34 +548,6 @@
 				</File>
 				<File
 					RelativePath=".\include\Target.h"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="Edges"
-				>
-				<File
-					RelativePath=".\sources\Edges.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\Edges.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\EdgeSession.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\EdgeSession.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\RTMFPServerEdge.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\include\RTMFPServerEdge.h"
 					>
 				</File>
 			</Filter>

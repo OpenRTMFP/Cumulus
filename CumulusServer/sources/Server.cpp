@@ -25,16 +25,20 @@
 #include "LUAClients.h"
 #include "LUAGroups.h"
 #include "LUAGroup.h"
-#include "LUAEdges.h"
 #include "LUAAMFObjectWriter.h"
+#include "LUAServer.h"
+#include "LUAServers.h"
 
 using namespace std;
 using namespace Poco;
+using namespace Poco::Net;
 using namespace Cumulus;
 
 const string Server::WWWPath;
 
 Server::Server(ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : RTMFPServer(configurations.getInt("cores",0)),_pState(Script::CreateState()),_blacklist(configurations.getString("application.dir","./")+"blacklist",*this),_applicationKiller(applicationKiller),_pService(NULL),
+	servers(configurations.getInt("servers.port",0),*this,sockets,configurations.getString("servers.addresses","")),
+	_serversPublicAddress(configurations.getString("servers.publicAddress","")),
 	mails(*this,configurations.getString("smtp.host","localhost"),configurations.getInt("smtp.port",SMTPSession::SMTP_PORT),configurations.getInt("smtp.timeout",60)) {
 	
 	File((string&)WWWPath = configurations.getString("application.dir","./")+"www").createDirectory();
@@ -79,10 +83,24 @@ Server::~Server() {
 	Script::CloseState(_pState);
 }
 
+
+void Server::addFunction(Service& service,const std::string& name) {
+	if(name=="onManage" || name=="onServerConnection" || name=="onServerDisconnection" || name=="onRendezVousUnknown")
+		_scriptEvents[name].insert(&service);
+}
+
+void Server::clear(Service& service) {
+	map<string,set<Service*>>::iterator it;
+	for(it=_scriptEvents.begin();it!=_scriptEvents.end();++it)
+		it->second.erase(&service);
+}
+
 void Server::onStart() {
-	_pService = new Service(_pState,"");
+	_pService = new Service(_pState,"",*this);
+	servers.start();
 }
 void Server::onStop() {
+	servers.stop();
 	// delete service
 	if(_pService) {
 		delete _pService;
@@ -95,9 +113,87 @@ void Server::onStop() {
 void Server::manage() {
 	RTMFPServer::manage();
 	_pService->refresh();
-	SCRIPT_BEGIN(_pService->open())
-		SCRIPT_FUNCTION_BEGIN("onManage")
+	set<Service*>& events = _scriptEvents["onManage"];
+	set<Service*>::const_iterator it;
+	for(it=events.begin();it!=events.end();++it) {
+		SCRIPT_BEGIN((*it)->open())
+			SCRIPT_FUNCTION_BEGIN("onManage")
+				SCRIPT_FUNCTION_CALL
+			SCRIPT_FUNCTION_END
+		SCRIPT_END
+	}
+	servers.manage();
+}
+
+void Server::readLUAAddresses(set<string>& addresses) {
+	lua_pushnil(_pState);  // first key 
+	while (lua_next(_pState, -2) != 0) {
+		// uses 'key' (at index -2) and 'value' (at index -1) 
+		readLUAAddress(addresses);
+		lua_pop(_pState,1);
+	}
+}
+
+
+void Server::readLUAAddress(set<string>& addresses) {
+	int type = lua_type(_pState,-1);
+	if(type==LUA_TTABLE) {
+		if(Script::CheckType(_pState,"LUAServers")) {
+			Servers::Iterator it;
+			for(it=servers.begin();it!=servers.end();++it)
+				addresses.insert(it->first);
+		} else if(Script::CheckType(_pState,"LUAServer")) {
+			lua_getfield(_pState,-1,"publicAddress");
+			if(lua_isstring(_pState,-1))
+				addresses.insert(lua_tostring(_pState,-1));
+			lua_pop(_pState,1);
+		} else
+			readLUAAddresses(addresses);
+	} else {
+		const char* addr = lua_tostring(_pState,-1);
+		if(addr)
+			addresses.insert(addr);
+	}
+}
+
+
+void Server::onRendezVousUnknown(const UInt8* id,set<string>& addresses) {
+	set<Service*>& events = _scriptEvents["onRendezVousUnknown"];
+	set<Service*>::const_iterator it;
+	for(it=events.begin();it!=events.end();++it) {
+		SCRIPT_BEGIN((*it)->open())
+			SCRIPT_FUNCTION_BEGIN("onRendezVousUnknown")
+				SCRIPT_WRITE_BINARY(id,ID_SIZE)
+				SCRIPT_FUNCTION_CALL
+				while(SCRIPT_CAN_READ) {
+					readLUAAddress(addresses);
+					SCRIPT_READ_NEXT
+				}
+			SCRIPT_FUNCTION_END
+		SCRIPT_END
+	}
+}
+
+void Server::onHandshake(UInt32 attempts,const SocketAddress& address,const string& path,const map<string,string>& properties,set<string>& addresses) {
+	Service* pService = _pService->get(path);
+	if(!pService)
+		return;
+	SCRIPT_BEGIN(pService->open())
+		SCRIPT_FUNCTION_BEGIN("onHandshake")
+			SCRIPT_WRITE_STRING(path.c_str())
+			lua_newtable(_pState);
+			map<string,string>::const_iterator it;
+			for(it=properties.begin();it!=properties.end();++it) {
+				lua_pushstring(_pState,it->second.c_str());
+				lua_setfield(_pState,-2,it->first.c_str());
+			}
+			SCRIPT_WRITE_STRING(address.toString().c_str())
+			SCRIPT_WRITE_INT(attempts)
 			SCRIPT_FUNCTION_CALL
+			while(SCRIPT_CAN_READ) {
+				readLUAAddress(addresses);
+				SCRIPT_READ_NEXT
+			}
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
 }
@@ -332,5 +428,50 @@ void Server::onManage(Client& client) {
 			SCRIPT_FUNCTION_CALL
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
+}
+
+
+void Server::connection(ServerConnection& server) {
+	set<Service*>& events = _scriptEvents["onServerConnection"];
+	set<Service*>::const_iterator it;
+	for(it=events.begin();it!=events.end();++it) {
+		SCRIPT_BEGIN((*it)->open())
+			SCRIPT_FUNCTION_BEGIN("onServerConnection")
+				SCRIPT_WRITE_PERSISTENT_OBJECT(ServerConnection,LUAServer,server)
+				SCRIPT_FUNCTION_CALL
+			SCRIPT_FUNCTION_END
+		SCRIPT_END
+	}
+}
+
+void Server::message(ServerConnection& server,const std::string& handler,Cumulus::PacketReader& reader) {
+	SCRIPT_BEGIN(_pState)
+		bool called=false;
+		SCRIPT_MEMBER_FUNCTION_BEGIN(ServerConnection,LUAServer,server,handler.c_str())
+			AMFReader amf(reader);
+			SCRIPT_WRITE_AMF(amf,0)
+			SCRIPT_FUNCTION_CALL
+			called=true;
+		SCRIPT_FUNCTION_END
+		if(!called)
+			WARN("Server %s has called the non-existent '%s' handler",server.publicAddress.c_str(),handler.c_str())
+	SCRIPT_END
+}
+
+void Server::disconnection(const ServerConnection& server,const char* error) {
+	if(error)
+		ERROR("Servers error, %s",error)
+	set<Service*>& events = _scriptEvents["onServerDisconnection"];
+	set<Service*>::const_iterator it;
+	for(it=events.begin();it!=events.end();++it) {
+		SCRIPT_BEGIN((*it)->open())
+			SCRIPT_FUNCTION_BEGIN("onServerDisconnection")
+				SCRIPT_WRITE_PERSISTENT_OBJECT(ServerConnection,LUAServer,server)
+				SCRIPT_FUNCTION_CALL
+			SCRIPT_FUNCTION_END
+		SCRIPT_END
+	}
+
+	LUAServer::Clear(_pState,server);
 }
 

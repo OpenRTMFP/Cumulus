@@ -199,18 +199,9 @@ private:
 			try {
 				// starts the server
 				_params.port = config().getInt("port", _params.port);
-				UInt16 edgesPort = config().getInt("edges.port",RTMFP_DEFAULT_PORT+1);
-				if(config().getBool("edges.activated",false)) {
-					if(edgesPort==0)
-						WARN("edges.port must have a positive value if edges.activated is true. Server edges is disactivated.");
-					_params.edgesPort=edgesPort;
-				}
-				
 				_params.udpBufferSize = config().getInt("udpBufferSize",_params.udpBufferSize);
 				_params.keepAliveServer = config().getInt("keepAliveServer",_params.keepAliveServer);
 				_params.keepAlivePeer = config().getInt("keepAlivePeer",_params.keepAlivePeer);
-				_params.edgesAttemptsBeforeFallback = config().getInt("edges.attemptsBeforeFallback",_params.edgesAttemptsBeforeFallback);
-
 
 #if defined(POCO_OS_FAMILY_UNIX)
 				sigset_t sset;

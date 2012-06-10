@@ -62,10 +62,18 @@ UInt8 Util::Get7BitValueSize(UInt64 value) {
 }
 
 void Util::UnpackUrl(const string& url,string& path,map<string,string>& properties) {
+	string host;
+	UInt16 port;
+	UnpackUrl(url,host,port,path,properties);
+}
+
+void Util::UnpackUrl(const string& url,string& host,UInt16& port,string& path,map<string,string>& properties) {
 	try {
 		URI uri(url);
 		uri.normalize();
 		path = uri.getPath();
+		host = uri.getHost();
+		port = uri.getPort();
 		size_t found = path.rfind('/');
 		if(found!= string::npos && found==(path.size()-1))
 			path.erase(found);

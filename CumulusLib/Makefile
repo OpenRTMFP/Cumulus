@@ -1,5 +1,5 @@
 # source files.
-OBJECTS = Address AESEngine AMFObjectWriter AMFReader AMFSimpleObject AMFWriter BinaryReader BinaryStream BinaryWriter Client Cookie Cumulus Edges EdgeSession Entity Flow FlowConnection FlowGroup FlowNull FlowStream FlowWriter Group Handshake Invoker Listener Logs MemoryStream Message Middle PacketReader PacketWriter Peer Publication Publications QualityOfService RTMFP RTMFPReceiving RTMFPSending RTMFPServer RTMFPServerEdge ServerConnection ServerSession Session Sessions SocketManager Startable Streams Target Task TaskHandler Trigger Util
+OBJECTS = Address AESEngine AMFObjectWriter AMFReader AMFSimpleObject AMFWriter BinaryReader BinaryStream BinaryWriter Client Cookie Cumulus Entity Flow FlowConnection FlowGroup FlowNull FlowStream FlowWriter Group Handshake Invoker Listener Logs MemoryStream Message Middle PacketReader PacketWriter Peer Publication Publications QualityOfService RTMFP RTMFPReceiving RTMFPSending RTMFPServer ServerSession Session Sessions SocketManager Startable Streams Target Task TaskHandler Trigger Util
 
 CC=g++
 ifeq ($(shell uname -s),Darwin)

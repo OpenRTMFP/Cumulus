@@ -18,15 +18,24 @@
 #pragma once
 
 #include "Script.h"
+#include "ServerConnection.h"
 
-class LUAEdges {
+class LUAServer {
 public:
+
 	static const char* Name;
 
-	static int Get(lua_State *pState);
-	static int Set(lua_State *pState);
+	static void Clear(lua_State* pState,const ServerConnection& server);
+	static int Get(lua_State* pState);
+	static int Set(lua_State* pState);
 
 	static void ID(std::string& id){}
+
 private:
-	static int Pairs(lua_State* pState);
+	static int Send(lua_State* pState);
+
 };
+
+inline void LUAServer::Clear(lua_State* pState,const ServerConnection& server){
+	Script::ClearPersistentObject<ServerConnection,LUAServer>(pState,server);
+}

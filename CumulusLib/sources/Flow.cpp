@@ -18,6 +18,7 @@
 #include "Flow.h"
 #include "Logs.h"
 #include "Util.h"
+#include "Poco/NumberFormatter.h"
 #include "string.h"
 
 using namespace std;
@@ -226,7 +227,7 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 				--it;
 			_fragments.insert(it,pair<UInt64,Fragment*>(stage,new Fragment(fragment,flags)));
 			if(_fragments.size()>100)
-				DEBUG("_fragments.size()=%lu",_fragments.size()); 
+				DEBUG("_fragments.size()=%s",NumberFormatter::format(_fragments.size()).c_str());
 		} else
 			DEBUG("Stage %s on flow %s has already been received",NumberFormatter::format(stage).c_str(),NumberFormatter::format(id).c_str());
 	} else {

@@ -20,6 +20,7 @@
 #include "Cumulus.h"
 #include "Session.h"
 #include "Gateway.h"
+#include "Entities.h"
 #include <cstddef>
 
 namespace Cumulus {
@@ -27,7 +28,6 @@ namespace Cumulus {
 class Sessions
 {
 public:
-
 	typedef std::map<Poco::UInt32,Session*>::const_iterator Iterator;
 
 	Sessions(Gateway& gateway);
@@ -35,9 +35,12 @@ public:
 
 	Poco::UInt32	count() const;
 	Poco::UInt32	nextId() const;
+
 	Session* find(Poco::UInt32 id);
 	Session* find(const Poco::UInt8* peerId);
+	Session* find(const Poco::Net::SocketAddress& address);
 	
+	void	 changeAddress(const Poco::Net::SocketAddress& oldAddress,Session& session);
 	Session* add(Session* pSession);
 
 	Iterator begin() const;
@@ -50,8 +53,16 @@ public:
 private:
 	void    remove(std::map<Poco::UInt32,Session*>::iterator it);
 
+	struct Compare {
+	   bool operator()(const Poco::Net::SocketAddress& a,const Poco::Net::SocketAddress& b) const {
+		   return a==b ? 0 : (a.port()<b.port());
+	   }
+	};
+
 	Poco::UInt32					_nextId;
-	std::map<Poco::UInt32,Session*>	_sessions;
+	std::map<Poco::UInt32,Session*>						_sessions;
+	Entities<Session>::Map								_sessionsByPeerId;
+	std::map<Poco::Net::SocketAddress,Session*,Compare>	_sessionsByAddress;
 	Gateway&						_gateway;
 	Poco::UInt32					_oldCount;
 };
@@ -72,7 +83,6 @@ inline Poco::UInt32 Sessions::count() const {
 inline Sessions::Iterator Sessions::end() const {
 	return _sessions.end();
 }
-
 
 
 } // namespace Cumulus

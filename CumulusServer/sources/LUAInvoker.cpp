@@ -17,7 +17,6 @@
 
 #include "LUAInvoker.h"
 #include "LUAClients.h"
-#include "LUAEdges.h"
 #include "LUAPublication.h"
 #include "LUAPublications.h"
 #include "LUAGroups.h"
@@ -27,6 +26,7 @@
 #include "Server.h"
 #include "Poco/Net/StreamSocket.h"
 #include "math.h"
+#include "LUAServers.h"
 
 using namespace Cumulus;
 using namespace Poco;
@@ -76,11 +76,7 @@ int	LUAInvoker::ToAMF(lua_State *pState) {
 		Cumulus::BinaryWriter rawWriter(stream);
 		AMFWriter writer(rawWriter);
 		SCRIPT_READ_AMF(writer)
-		UInt32 size = stream.size();
-		char* temp = new char[size]();
-		stream.read(temp,size);
-		SCRIPT_WRITE_BINARY(temp,size)
-		delete [] temp;
+		SCRIPT_WRITE_BINARY(stream.data(),stream.size())
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -91,11 +87,7 @@ int	LUAInvoker::ToAMF0(lua_State *pState) {
 		AMFWriter writer(rawWriter);
 		writer.amf0Preference=true;
 		SCRIPT_READ_AMF(writer)
-		UInt32 size = stream.size();
-		char* temp = new char[size]();
-		stream.read(temp,size);
-		SCRIPT_WRITE_BINARY(temp,size)
-		delete [] temp;
+		SCRIPT_WRITE_BINARY(stream.data(),stream.size())
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -130,11 +122,15 @@ int LUAInvoker::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
 		string name = SCRIPT_READ_STRING("");
 		if(name=="clients") {
-			SCRIPT_WRITE_OBJECT(Entities<Client>,LUAClients,invoker.clients)
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Entities<Client>,LUAClients,invoker.clients)
+		} else if(name=="publicAddress") {
+			SCRIPT_WRITE_STRING(((ServerHandler&)invoker).publicAddress().c_str())
 		} else if(name=="groups") {
-			SCRIPT_WRITE_OBJECT(Entities<Group>,LUAGroups,invoker.groups)
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Entities<Group>,LUAGroups,invoker.groups)
 		} else if(name=="publications") {
-			SCRIPT_WRITE_OBJECT(Publications,LUAPublications,invoker.publications)
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Publications,LUAPublications,invoker.publications)
+		} else if(name=="servers") {
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Servers,LUAServers,((Server&)invoker).servers)
 		} else if(name=="publish") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::Publish)
 		} else if(name=="toAMF") {
@@ -147,8 +143,6 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::AbsolutePath)
 		} else if(name=="epochTime") {
 			SCRIPT_WRITE_NUMBER(ROUND(Timestamp().epochMicroseconds()/1000))
-		} else if(name=="edges") {
-			SCRIPT_WRITE_OBJECT(Edges,LUAEdges,invoker.edges)
 		} else if(name=="createTCPClient") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPClient)
 		} else if(name=="createTCPServer") {

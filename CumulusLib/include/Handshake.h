@@ -36,7 +36,7 @@ public:
 
 class Handshake : public ServerSession {
 public:
-	Handshake(ReceivingEngine& receivingEngine,SendingEngine& sendingEngine,Gateway& gateway,Poco::Net::DatagramSocket& edgesSocket,Handler& handler,Entity& entity);
+	Handshake(ReceivingEngine& receivingEngine,SendingEngine& sendingEngine,Gateway& gateway,Handler& handler,Entity& entity);
 	~Handshake();
 
 	void	createCookie(PacketWriter& writer,HelloAttempt& attempt,const std::string& tag,const std::string& queryUrl);
@@ -45,8 +45,6 @@ public:
 	void	clear();
 
 private:
-	std::map<std::string,Edge*>&	edges();
-	bool		updateEdge(PacketReader& request);
 	void		flush();
 	void		flush(AESEngine::Type type);
 
@@ -62,7 +60,6 @@ private:
 	std::map<const Poco::UInt8*,Cookie*,CompareCookies> _cookies; // Cookie, in waiting of creation session
 	Poco::UInt8											_certificat[77];
 	Gateway&											_gateway;
-	Poco::Net::DatagramSocket&							_edgesSocket;
 };
 
 inline void Handshake::flush() {
@@ -71,10 +68,6 @@ inline void Handshake::flush() {
 
 inline void Handshake::flush(AESEngine::Type type) {
 	ServerSession::flush(0x0b,false,type);
-}
-
-inline std::map<std::string,Edge*>& Handshake::edges() {
-	return _invoker._edges;
 }
 
 

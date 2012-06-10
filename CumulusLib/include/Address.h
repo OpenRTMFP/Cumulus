@@ -27,6 +27,7 @@ namespace Cumulus {
 class Address {
 public:
 	Address();
+	Address(const std::string& host,Poco::UInt16 port);
 	Address(const std::string& address);
 	virtual ~Address();
 
@@ -38,6 +39,8 @@ public:
 
 	const std::vector<Poco::UInt8>	host;
 	const Poco::UInt16				port;
+private:
+	void buildHost(const std::string& host);
 };
 
 inline bool Address::operator==(const Address& other) const {

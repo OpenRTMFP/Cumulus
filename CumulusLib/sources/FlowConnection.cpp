@@ -73,7 +73,7 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 
 	} else if(name == "setPeerInfo") {
 
-		peer.addresses.erase(++peer.addresses.begin(),peer.addresses.end());
+		peer.addresses.resize(1);
 		string addr;
 		while(message.available()) {
 			message.read(addr); // private host

@@ -20,7 +20,6 @@
 #include "Cumulus.h"
 #include "Group.h"
 #include "Streams.h"
-#include "Edges.h"
 #include "Entities.h"
 #include "SocketManager.h"
 #include "TaskHandler.h"
@@ -29,14 +28,12 @@ namespace Cumulus {
 
 class Invoker : public Entity,protected TaskHandler {
 	friend class Peer; // Peer manage _clients and _groups list!
-	friend class Handshake; // Peer manage _edges list!
 	friend class FlowStream; // FlowStream manage _streams list!
 	friend class FlowConnection; // FlowConnection manage _streams list!
 public:
 	// invocations
 	Entities<Client>		clients;
 	Entities<Group>			groups;
-	Edges					edges;
 	Publications			publications;
 	SocketManager			sockets;
 
@@ -52,7 +49,6 @@ public:
 	const Poco::UInt32		udpBufferSize;
 	const Poco::UInt32		keepAlivePeer;
 	const Poco::UInt32		keepAliveServer;
-	const Poco::UInt8		edgesAttemptsBeforeFallback;
 
 protected:
 	Invoker();
@@ -64,7 +60,6 @@ private:
 	Streams															_streams;
 	std::set<const Publication*>									_publishers;
 	Entities<Group>::Map											_groups;
-	std::map<std::string,Edge*>										_edges;
 	Entities<Client>::Map											_clients;
 	std::set<Poco::Net::IPAddress>									_bannedList;
 };

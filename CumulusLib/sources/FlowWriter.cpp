@@ -435,7 +435,7 @@ void FlowWriter::raiseMessage() {
 void FlowWriter::flush(bool full) {
 
 	if(_messagesSent.size()>100)
-		DEBUG("_messagesSent.size()=%lu",_messagesSent.size());
+		DEBUG("_messagesSent.size()=%s",NumberFormatter::format(_messagesSent.size()).c_str());
 
 	// flush
 	bool header = !_band.canWriteFollowing(*this);

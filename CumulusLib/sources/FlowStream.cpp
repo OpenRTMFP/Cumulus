@@ -18,6 +18,7 @@
 #include "FlowStream.h"
 #include "Logs.h"
 #include "Util.h"
+#include "Poco/NumberFormatter.h"
 
 using namespace std;
 using namespace Poco;

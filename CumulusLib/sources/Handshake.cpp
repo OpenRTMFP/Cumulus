@@ -19,6 +19,7 @@
 #include "Logs.h"
 #include "Util.h"
 #include "Poco/RandomStream.h"
+#include "Poco/Format.h"
 #include <openssl/evp.h>
 #include "string.h"
 
@@ -28,8 +29,8 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(ReceivingEngine& receivingEngine,SendingEngine& sendingEngine,Gateway& gateway,DatagramSocket& edgesSocket,Handler& handler,Entity& entity) : ServerSession(receivingEngine,sendingEngine,0,0,Peer(handler),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,(Invoker&)handler),
-	_gateway(gateway),_edgesSocket(edgesSocket) {
+Handshake::Handshake(ReceivingEngine& receivingEngine,SendingEngine& sendingEngine,Gateway& gateway,Handler& handler,Entity& entity) : ServerSession(receivingEngine,sendingEngine,0,0,Peer(handler),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,(Invoker&)handler),
+	_gateway(gateway) {
 	(bool&)checked=true;
 
 	memcpy(_certificat,"\x01\x0A\x41\x0E",4);
@@ -50,36 +51,12 @@ void Handshake::manage() {
 	map<const UInt8*,Cookie*,CompareCookies>::iterator it=_cookies.begin();
 	while(it!=_cookies.end()) {
 		if(it->second->obsolete()) {
-			if(!it->second->light)
-				eraseHelloAttempt(it->second->tag);
+			eraseHelloAttempt(it->second->tag);
 			DEBUG("Obsolete cookie : %s",Util::FormatHex(it->first,COOKIE_SIZE).c_str());
 			delete it->second;
 			_cookies.erase(it++);
 		} else
 			++it;
-	}
-
-	// keepalive edges
-	map<string,Edge*>::iterator it2=edges().begin();
-	while(it2!=edges().end()) {
-		if(it2->second->obsolete()) {
-			if(it2->second->raise()) {
-				NOTE("RTMFP server edge %s lost",it2->first.c_str());
-				UInt32 newBufferSize = edges().size()*_invoker.udpBufferSize;
-				_edgesSocket.setReceiveBufferSize(newBufferSize);_edgesSocket.setReceiveBufferSize(newBufferSize);
-				delete it2->second;
-				edges().erase(it2++);
-				continue;
-			};
-			PacketWriter& packet(writer());
-			packet.write8(0x40);
-			packet.write16(0);
-			setEndPoint(_edgesSocket,SocketAddress(it2->first));
-			nextDumpAreMiddle=true;
-			flush(AESEngine::EMPTY);
-			INFO("Keepalive RTMFP server edge %s",it2->first.c_str());
-		}
-		++it2;
 	}
 }
 
@@ -88,8 +65,7 @@ void Handshake::commitCookie(const Session& session) {
 	map<const UInt8*,Cookie*,CompareCookies>::iterator it;
 	for(it=_cookies.begin();it!=_cookies.end();++it) {
 		if(it->second->id==session.id) {
-			if(!it->second->light)
-				eraseHelloAttempt(it->second->tag);
+			eraseHelloAttempt(it->second->tag);
 			delete it->second;
 			_cookies.erase(it);
 			return;
@@ -102,24 +78,10 @@ void Handshake::clear() {
 	// delete cookies
 	map<const UInt8*,Cookie*,CompareCookies>::const_iterator it;
 	for(it=_cookies.begin();it!=_cookies.end();++it) {
-		if(!it->second->light)
-			eraseHelloAttempt(it->second->tag);
+		eraseHelloAttempt(it->second->tag);
 		delete it->second;
 	}
 	_cookies.clear();
-	// clear edges and warn them on server death
-	map<string,Edge*>::iterator it2;
-	for(it2=edges().begin();it2!=edges().end();++it2) {
-		PacketWriter& packet(writer());
-		packet.write8(0x45);
-		packet.write16(0);
-		setEndPoint(_edgesSocket,SocketAddress(it2->first));
-		nextDumpAreMiddle=true;
-		flush(AESEngine::EMPTY);
-		delete it2->second;
-	}
-	edges().clear();
-	_edgesSocket.setReceiveBufferSize(_invoker.udpBufferSize);_edgesSocket.setReceiveBufferSize(_invoker.udpBufferSize);
 }
 
 void Handshake::createCookie(PacketWriter& writer,HelloAttempt& attempt,const string& tag,const string& queryUrl) {
@@ -137,26 +99,6 @@ void Handshake::createCookie(PacketWriter& writer,HelloAttempt& attempt,const st
 	writer.writeRaw(pCookie->value,COOKIE_SIZE);
 }
 
-
-bool Handshake::updateEdge(PacketReader& request) {
-	string address = peer.address.toString();
-	map<string,Edge*>::iterator it = edges().lower_bound(address);
-	if(it!=edges().end() && it->first==address) {
-		it->second->update();
-		return false;
-	}
-	if(it!=edges().begin())
-		--it;
-
-	NOTE("New RTMFP server edge %s",address.c_str());
-
-	Edge* pEdgeDescriptor = new Edge();
-	request.readAddress(pEdgeDescriptor->address);
-	edges().insert(it,pair<string,Edge*>(address,pEdgeDescriptor));
-	UInt32 newBufferSize = (edges().size()+1)*_invoker.udpBufferSize;
-	_edgesSocket.setReceiveBufferSize(newBufferSize);_edgesSocket.setReceiveBufferSize(newBufferSize);
-	return true;
-}
 
 void Handshake::packetHandler(PacketReader& packet) {
 
@@ -209,53 +151,39 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			if(type == 0x0a){
 				/// Handshake
 				HelloAttempt& attempt = helloAttempt<HelloAttempt>(tag);
-				if(edges().size()>0 && (_invoker.edgesAttemptsBeforeFallback==0 || attempt.count <_invoker.edgesAttemptsBeforeFallback)) {
-					
-					if(_invoker.edgesAttemptsBeforeFallback>0) {
-						try {
-							URI uri(epd);
-							response.writeAddress(SocketAddress(uri.getHost(),uri.getPort()),false); // TODO check with true!
-						} catch(Exception& ex) {
-							ERROR("Parsing %s URL problem in hello attempt : %s",epd.c_str(),ex.displayText().c_str());
-						}
-					}
-
-					map<int,list<Edge*> > edgesSortedByCount;
-					map<string,Edge*>::const_iterator it;
-					for(it=edges().begin();it!=edges().end();++it)
-						edgesSortedByCount[it->second->count].push_back(it->second);
-
-					UInt8 count=0;
-					map<int,list<Edge*> >::const_iterator it2;
-					for(it2=edgesSortedByCount.begin();it2!=edgesSortedByCount.end();++it2) {
-						list<Edge*>::const_iterator it3;
-						for(it3=it2->second.begin();it3!=it2->second.end();++it3) {
-							response.writeAddress((*it3)->address,false);
-							if((++count)==6) // 6 redirections maximum
-								break;
-						}
-						if(it3!=it2->second.end())
-							break;
-					}
-					return 0x71;
-
-				}
-
-				if(edges().size()>0)
-					WARN("After %u hello attempts, impossible to connect to edges. Edges are busy? or unreachable?",_invoker.edgesAttemptsBeforeFallback);
-	
+				
 				// New Cookie
 				createCookie(response,attempt,tag,epd);
+
+				// Fill peer infos
+				UInt16 port;
+				string host;
+				Util::UnpackUrl(epd,host,port,(string&)peer.path,(map<string,string>&)peer.properties);
+				set<string> addresses;
+				peer.onHandshake(attempt.count+1,addresses);
+				if(!addresses.empty()) {
+					set<string>::iterator it;
+					for(it=addresses.begin();it!=addresses.end();++it) {
+						try {
+							if((*it)=="again")
+								*it = format("%s:%hu",host,port);
+							SocketAddress address(*it);
+							response.writeAddress(address,it==addresses.begin());
+						} catch(Exception& ex) {
+							ERROR("Bad redirection address %s in hello attempt, %s",(*it)=="again" ? epd.c_str() : (*it).c_str(),ex.displayText().c_str());
+						}
+					}
+					return 0x71;
+				}
+
 				 
 				// instance id (certificat in the middle)
 				response.writeRaw(_certificat,sizeof(_certificat));
-				
 				return 0x70;
 			} else
 				ERROR("Unkown handshake first way with '%02x' type",type);
 			break;
 		}
-		case 0x39:
 		case 0x38: {
 			(UInt32&)farId = request.read32();
 
@@ -266,16 +194,8 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 	
 			map<const UInt8*,Cookie*,CompareCookies>::iterator itCookie = _cookies.find(request.current());
 			if(itCookie==_cookies.end()) {
-				if(id!=0x39) {
-					ERROR("Handshake cookie '%s' unknown",Util::FormatHex(request.current(),COOKIE_SIZE).c_str());
-					return 0;
-				}
-				Cookie* pCookie = new Cookie();
-				UInt32 pos = request.position();
-				request.readRaw((UInt8*)pCookie->value,COOKIE_SIZE);
-				request >> (string&)pCookie->queryUrl;
-				request.reset(pos);
-				itCookie = _cookies.insert(pair<const UInt8*,Cookie*>(pCookie->value,pCookie)).first;
+				ERROR("Handshake cookie '%s' unknown",Util::FormatHex(request.current(),COOKIE_SIZE).c_str());
+				return 0;
 			}
 
 			Cookie& cookie(*itCookie->second);
@@ -285,27 +205,19 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				UInt8 decryptKey[AES_KEY_SIZE];UInt8* pDecryptKey=&decryptKey[0];
 				UInt8 encryptKey[AES_KEY_SIZE];UInt8* pEncryptKey=&encryptKey[0];
 
-				if(id==0x38) {
-					request.next(COOKIE_SIZE);
-					size_t size = (size_t)request.read7BitLongValue();
-					// peerId = SHA256(farPubKey)
-					EVP_Digest(request.current(),size,(UInt8*)peer.id,NULL,EVP_sha256(),NULL);
 
-					vector<UInt8> publicKey(request.read7BitValue()-2);
-					request.next(2); // unknown
-					request.readRaw(&publicKey[0],publicKey.size());
+				request.next(COOKIE_SIZE);
+				size_t size = (size_t)request.read7BitLongValue();
+				// peerId = SHA256(farPubKey)
+				EVP_Digest(request.current(),size,(UInt8*)peer.id,NULL,EVP_sha256(),NULL);
 
-					size = request.read7BitValue();
+				vector<UInt8> publicKey(request.read7BitValue()-2);
+				request.next(2); // unknown
+				request.readRaw(&publicKey[0],publicKey.size());
 
-					cookie.computeKeys(&publicKey[0],publicKey.size(),request.current(),(UInt16)size,decryptKey,encryptKey);
-				} else {
-					// edge
-					pDecryptKey=NULL;
-					pEncryptKey=NULL;
-					memcpy((UInt8*)peer.id,request.current(),ID_SIZE);
-					request.next(COOKIE_SIZE);
-					request.next(request.read7BitEncoded());
-				}
+				size = request.read7BitValue();
+
+				cookie.computeKeys(&publicKey[0],publicKey.size(),request.current(),(UInt16)size,decryptKey,encryptKey);
 
 				// Fill peer infos
 				Util::UnpackUrl(cookie.queryUrl,(string&)peer.path,(map<string,string>&)peer.properties);
@@ -314,52 +226,12 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				Session& session = _gateway.createSession(farId,peer,pDecryptKey,pEncryptKey,cookie);
 				(UInt32&)cookie.id = session.id;
 
-				string address;
-				if(id==0x39) {
-					// Session by edge 
-					session.flags |= SESSION_BY_EDGE;
-					Edge* pEdge = _invoker.edges(peer.address);
-					if(!pEdge)
-						ERROR("Edge session creation by an unknown server edge %s",peer.address.toString().c_str())
-					else
-						pEdge->addSession(session);
-					request >> address;
-				} else // Session direct
-					address = session.peer.address.toString();
-
-				session.peer.addresses.clear();
-				session.peer.addresses.push_back(address);
-
 				cookie.write();
-			} else
-				_gateway.repeatCookie(farId,cookie);
+			}
 			if(cookie.response)
 				cookie.read(response);
 
 			return cookie.response;
-		}
-		case 0x41: {
-			nextDumpAreMiddle=true;
-			// EDGE HELLO Message
-			if(updateEdge(request))
-				return 0x40; // If new edge, we answer with the keepalive message
-			break;
-		}
-		case 0x45: {
-			nextDumpAreMiddle=true;
-			string address = peer.address.toString();
-			// EDGE DEATH Message
-			map<string,Edge*>::iterator it = edges().find(address);
-			if(it==edges().end()) {
-				WARN("Death message for an unknown edge");
-				break;
-			}
-			NOTE("RTMFP server edge %s death",address.c_str());
-			UInt32 newBufferSize = edges().size()*_invoker.udpBufferSize;
-			_edgesSocket.setReceiveBufferSize(newBufferSize);_edgesSocket.setReceiveBufferSize(newBufferSize);
-			delete it->second;
-			edges().erase(it);
-			break;
 		}
 		default:
 			ERROR("Unkown handshake packet id %u",id);

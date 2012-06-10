@@ -34,10 +34,12 @@ Sessions::~Sessions() {
 void Sessions::clear() {
 	ScopedLock<Mutex>	lock(mutex);
 	// delete sessions
+	_sessionsByAddress.clear();
+	_sessionsByPeerId.clear();
 	if(!_sessions.empty())
 		WARN("sessions are deleting");
 	Iterator it;
-	for(it=_sessions.begin();it!=_sessions.end();++it)
+	for(it=begin();it!=end();++it)
 		delete it->second;
 	_sessions.clear();
 }
@@ -50,6 +52,8 @@ Session* Sessions::add(Session* pSession) {
 	}
 	
 	_sessions[_nextId] = pSession;
+	_sessionsByPeerId[pSession->peer.id] = pSession;
+	_sessionsByAddress[pSession->peer.address] = pSession;
 	DEBUG("Session %u created",_nextId);
 
 	do {
@@ -63,28 +67,38 @@ void Sessions::remove(map<UInt32,Session*>::iterator it) {
 	ScopedLock<Mutex>	lock(mutex);
 	DEBUG("Session %u died",it->second->id);
 	_gateway.destroySession(*it->second);
+	_sessionsByPeerId.erase(it->second->peer.id);
+	_sessionsByAddress.erase(it->second->peer.address);
 	delete it->second;
 	_sessions.erase(it);
+}
+
+void Sessions::changeAddress(const SocketAddress& oldAddress,Session& session) {
+	ScopedLock<Mutex>	lock(mutex);
+	_sessionsByAddress.erase(oldAddress);
+	_sessionsByAddress[session.peer.address] = &session;
+}
+
+Session* Sessions::find(const Poco::Net::SocketAddress& address) {
+	ScopedLock<Mutex>	lock(mutex);
+	map<SocketAddress,Session*,Compare>::const_iterator it = _sessionsByAddress.find(address);
+	if(it==_sessionsByAddress.end())
+		return NULL;
+	return it->second;
 }
 
 
 Session* Sessions::find(const Poco::UInt8* peerId) {
 	ScopedLock<Mutex>	lock(mutex);
-	map<UInt32,Session*>::iterator it;
-	for(it=_sessions.begin();it!=_sessions.end();++it) {
-		if(it->second->peer == peerId) {
-			if(it->second->died) {
-				remove(it);
-				return NULL;
-			}
-			return it->second;
-		}
-	}
-	return NULL;
+	Entities<Session>::Iterator it = _sessionsByPeerId.find(peerId);
+	if(it==_sessionsByPeerId.end())
+		return NULL;
+	return it->second;
 }
 
 
 Session* Sessions::find(UInt32 id) {
+	ScopedLock<Mutex>	lock(mutex);
 	map<UInt32,Session*>::iterator it = _sessions.find(id);
 	if(it==_sessions.end())
 		return NULL;
@@ -94,7 +108,7 @@ Session* Sessions::find(UInt32 id) {
 void Sessions::manage() {
 	ScopedLock<Mutex>	lock(mutex);
 	map<UInt32,Session*>::iterator it= _sessions.begin();
-	while(it!=end()) {
+	while(it!=_sessions.end()) {
 		it->second->manage();
 		if(it->second->died) {
 			remove(it++);

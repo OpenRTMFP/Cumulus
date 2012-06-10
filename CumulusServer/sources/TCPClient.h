@@ -28,7 +28,7 @@ public:
 	TCPClient(Cumulus::SocketManager& manager);
 	virtual ~TCPClient();
 
-	bool					 connect(const std::string& host,Poco::UInt16 port);
+	bool					 connect(const Poco::Net::SocketAddress& address);
 	bool					 connected();
 	void					 disconnect();
 

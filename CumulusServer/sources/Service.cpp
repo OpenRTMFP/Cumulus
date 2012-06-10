@@ -26,7 +26,7 @@ using namespace Cumulus;
 Thread* Service::_PVolatileObjectsThreadRecording(NULL);
 bool	Service::_VolatileObjectsRecording(false);
 
-Service::Service(lua_State* pState,const string& path) : _pState(pState), FileWatcher(Server::WWWPath+path+"/main.lua"),_packages("www"+path,"/",StringTokenizer::TOK_IGNORE_EMPTY | StringTokenizer::TOK_TRIM),_running(false),_deleting(false),_path(path),count(0) {
+Service::Service(lua_State* pState,const string& path,ServiceRegistry& registry) : _registry(registry),_pState(pState), FileWatcher(Server::WWWPath+path+"/main.lua"),_packages("www"+path,"/",StringTokenizer::TOK_IGNORE_EMPTY | StringTokenizer::TOK_TRIM),_running(false),_deleting(false),_path(path),count(0) {
 	if(!refresh()) {
 		open(true); // open even if no file
 		lua_pop(_pState,1);
@@ -86,7 +86,7 @@ Service* Service::get(const string& path) {
 	if(name == "__index" || name == "__metatable")
 		CRITIC("You should never called a service '__index' or '__metatable', script behavior could become strange quickly!");
 
-	Service* pService = new Service(_pState,_path+"/"+name);
+	Service* pService = new Service(_pState,_path+"/"+name,_registry);
 	_services.insert(it,pair<string,Service*>(name,pService));
 	return pService->get(nextPath);
 }
@@ -97,13 +97,33 @@ int Service::Index(lua_State *pState) {
 	lua_getmetatable(pState,1);
 	
 	if(key != "__index" && key != "__metatable" && key != "__newindex") {
-		// in metatable?
+		// in metatable? (metatable contains children)
 		lua_getfield(pState,-1,key.c_str());
 		if(!lua_isnil(pState,-1)) {
 			lua_replace(pState,-2);
 			return 1;
 		}
 		lua_pop(pState,1);
+		
+		// the service exists, but not created actually?
+		lua_getfield(pState,-1,"//service");
+		if(lua_islightuserdata(pState,-1)) {
+			Service* pService = (Service*)lua_touserdata(pState,-1);
+			lua_pop(pState,1);
+			if(pService) {
+				pService = pService->get("/"+key);
+				if(pService) {
+					lua_getfield(pState,-1,key.c_str());
+					if(!lua_isnil(pState,-1)) {
+						lua_replace(pState,-2);
+						return 1;
+					}
+					lua_pop(pState,1);
+				}
+			}
+		} else
+			lua_pop(pState,1);
+		
 	}
 
 	// search parent
@@ -119,44 +139,54 @@ int Service::Index(lua_State *pState) {
 }
 
 int Service::NewIndex(lua_State *pState) {
-	if(_VolatileObjectsRecording && _PVolatileObjectsThreadRecording==Thread::current() && lua_isstring(pState,2)) {
+	if(lua_isstring(pState,2)) {
 		string key = lua_tostring(pState,2);
-		if(lua_getmetatable(pState,3)!=0) { // stay
-			// Is Cumulus object?
-			lua_getfield(pState,-1,"__this"); // stay
-			if(!lua_isnil(pState,-1)) {
+		if(lua_isfunction(pState,3)) {
+			lua_getfield(pState,1,"//service");
+			if(lua_islightuserdata(pState,-1)) {
+				Service* pService = (Service*)lua_touserdata(pState,-1);
+				pService->_registry.addFunction(*pService,key);
+			}
+			lua_pop(pState,1);
+		}
+		if(_VolatileObjectsRecording && _PVolatileObjectsThreadRecording==Thread::current()) {
+			if(lua_getmetatable(pState,3)!=0) { // stay
+				// Is Cumulus object?
+				lua_getfield(pState,-1,"__this"); // stay
+				if(!lua_isnil(pState,-1)) {
 
-				// persistent?
-				lua_getfield(pState,-2,"//running"); // stay
-				if(lua_isnil(pState,-1)) {
-
-					lua_getfield(pState,-3,"__gcThis"); // has destructor?
+					// persistent?
+					lua_getfield(pState,-2,"//running"); // stay
 					if(lua_isnil(pState,-1)) {
 
-						// volatile object 
-						lua_getmetatable(pState,LUA_GLOBALSINDEX); // stay
-						lua_getfield(pState,-1,"//volatileObjects"); // stay
-
-						lua_pushvalue(pState,1); // environment
-						lua_rawget(pState,-2); // search environment key in "volatileObjects"
+						lua_getfield(pState,-3,"__gcThis"); // has destructor?
 						if(lua_isnil(pState,-1)) {
-							lua_pop(pState,1);
-							lua_newtable(pState); // stay
-							lua_pushvalue(pState,1);
-							lua_pushvalue(pState,-2);
-							lua_rawset(pState,-4); // add environment key in "volatileObjects"
+
+							// volatile object 
+							lua_getmetatable(pState,LUA_GLOBALSINDEX); // stay
+							lua_getfield(pState,-1,"//volatileObjects"); // stay
+
+							lua_pushvalue(pState,1); // environment
+							lua_rawget(pState,-2); // search environment key in "volatileObjects"
+							if(lua_isnil(pState,-1)) {
+								lua_pop(pState,1);
+								lua_newtable(pState); // stay
+								lua_pushvalue(pState,1);
+								lua_pushvalue(pState,-2);
+								lua_rawset(pState,-4); // add environment key in "volatileObjects"
+							}
+							lua_pushvalue(pState,2); // key
+							lua_pushnumber(pState,1); // value, useless
+							lua_rawset(pState,-3);
+							lua_pop(pState,3);
 						}
-						lua_pushvalue(pState,2); // key
-						lua_pushnumber(pState,1); // value, useless
-						lua_rawset(pState,-3);
-						lua_pop(pState,3);
+						lua_pop(pState,1);
 					}
 					lua_pop(pState,1);
-				}
-				lua_pop(pState,1);
 
+				}
+				lua_pop(pState,2);
 			}
-			lua_pop(pState,2);
 		}
 	}
 	lua_rawset(pState,1); // consumes key and value
@@ -200,38 +230,41 @@ void Service::StopVolatileObjectsRecording(lua_State* pState) {
 
 void Service::InitGlobalTable(lua_State* pState,bool pushMetatable) {
 	// metatable of _G
-	if(lua_getmetatable(pState,LUA_GLOBALSINDEX)==0) {
-		// global metatable
-		lua_newtable(pState);
+	if(lua_getmetatable(pState,LUA_GLOBALSINDEX)!=0) {
+		if(!pushMetatable)
+			lua_pop(pState,1);
+		return;
+	}
+	// global metatable
+	lua_newtable(pState);
 
-		// hide metatable
-		lua_pushstring(pState,"change metatable of global environment is prohibited");
-		lua_setfield(pState,-2,"__metatable");
+	// hide metatable
+	lua_pushstring(pState,"change metatable of global environment is prohibited");
+	lua_setfield(pState,-2,"__metatable");
 
-		lua_pushcfunction(pState,&Service::Index);
-		lua_setfield(pState,-2,"__index");
+	lua_pushcfunction(pState,&Service::Index);
+	lua_setfield(pState,-2,"__index");
 
-		lua_pushcfunction(pState,&Service::NewIndex);
-		lua_setfield(pState,-2,"__newindex");
+	lua_pushcfunction(pState,&Service::NewIndex);
+	lua_setfield(pState,-2,"__newindex");
 
-		if(pushMetatable)
-			lua_pushvalue(pState,-1);
-		lua_setmetatable(pState,LUA_GLOBALSINDEX);
-	} else if(!pushMetatable)
-		lua_pop(pState,1);
+	if(pushMetatable)
+		lua_pushvalue(pState,-1);
+	lua_setmetatable(pState,LUA_GLOBALSINDEX);
 }
 
 lua_State* Service::open() {
 	if(!_running)
 		return NULL;
+
+	InitGlobalTable(_pState,true);
 	bool result = open(true);
-	lua_pop(_pState,1);
+	lua_setfield(_pState,-2,"//env");
+
 	return result ? _pState : NULL;
 }
 
 bool Service::open(bool create) {
-
-	InitGlobalTable(_pState,true);
 
 	lua_pushvalue(_pState,LUA_GLOBALSINDEX); // _G
 	StringTokenizer::Iterator it;
@@ -264,16 +297,24 @@ bool Service::open(bool create) {
 			// set parent
 			lua_pushvalue(_pState,-4);
 			lua_setfield(_pState,-2,"//parent");
+			lua_pushvalue(_pState,-4);
+			lua_setfield(_pState,-2,"super");
 			if(precPackage) {
 				lua_pushvalue(_pState,-4);
 				lua_setfield(_pState,-2,precPackage);
 			}
 
+			// set service
+			lua_pushlightuserdata(_pState,this);
+			lua_setfield(_pState,-2,"//service");
+
 			// set self
 			lua_pushvalue(_pState,-2);
 			lua_setfield(_pState,-2,package);
+			lua_pushvalue(_pState,-2);
+			lua_setfield(_pState,-2,"self");
 
-			// set __index=parent
+			// set __index=Service::Index
 			lua_pushcfunction(_pState,&Service::Index);
 			lua_setfield(_pState,-2,"__index");
 
@@ -294,16 +335,17 @@ bool Service::open(bool create) {
 		precPackage = package;
 	}
 
-	lua_pushvalue(_pState,-1);
-	lua_setfield(_pState,-3,"//env");
-
-	lua_replace(_pState,-2);
-
 	return true;
 }
 
 void Service::load() {
+
+	InitGlobalTable(_pState,true);
 	open(true);
+	lua_pushvalue(_pState,-1);
+	lua_setfield(_pState,-3,"//env");
+	lua_replace(_pState,-2);
+
 	(string&)lastError = "";
 
 	if(luaL_loadfile(_pState,path.c_str())!=0) {
@@ -352,7 +394,11 @@ void Service::clear() {
 	_running=false;
 	(string&)lastError = "";
 
+	InitGlobalTable(_pState,true);
+
 	if(open(false)) {
+		lua_pushvalue(_pState,-1);
+		lua_setfield(_pState,-2,"//env");
 
 		SCRIPT_BEGIN(_pState)
 			SCRIPT_FUNCTION_BEGIN("onStop")
@@ -364,6 +410,11 @@ void Service::clear() {
 		if(_deleting) {
 			// Delete environment
 			lua_getmetatable(_pState,-1);
+
+			// erase service
+			lua_pushnil(_pState);
+			lua_setfield(_pState,-2,"//service");
+
 			lua_getfield(_pState,-1,"//parent");
 
 			if(!lua_isnil(_pState,-1)) {
@@ -387,5 +438,7 @@ void Service::clear() {
 
 		lua_pop(_pState,1);
 	}
-	
+	lua_pop(_pState,1);
+	_registry.clear(*this);
+	lua_gc(_pState, LUA_GCCOLLECT, 0);
 }

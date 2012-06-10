@@ -26,8 +26,6 @@
 
 namespace Cumulus {
 
-#define SESSION_BY_EDGE 1
-
 
 class Attempt {
 public:
@@ -63,7 +61,7 @@ public:
 	void				manage();
 	void				kill();
 
-	void				p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag,Session* pSession);
+	void				p2pHandshake(const Poco::Net::SocketAddress& address,const std::string& tag,Poco::UInt32 times,Session* pSession);
 
 	Poco::UInt32	helloAttempt(const std::string& tag);
 	template<class AttemptType>

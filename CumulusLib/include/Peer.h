@@ -22,6 +22,7 @@
 #include "Address.h"
 #include "Poco/Net/SocketAddress.h"
 #include "Poco/Net/DatagramSocket.h"
+#include <set>
 
 namespace Cumulus {
 
@@ -47,6 +48,8 @@ public:
 
 
 // events
+	void onHandshake(Poco::UInt32 attempts,std::set<std::string>& addresses);
+
 	bool onConnection(AMFReader& parameters,AMFObjectWriter& response);
 	void onFailed(const std::string& error);
 	void onDisconnection();
@@ -71,7 +74,6 @@ private:
 	Handler&						_handler;
 	std::map<Group*,Poco::UInt32>	_groups;
 };
-
 
 inline void Peer::setFlowWriter(FlowWriter* pWriter){
 	_pFlowWriter = pWriter;

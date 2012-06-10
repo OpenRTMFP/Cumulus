@@ -25,7 +25,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Peer::Peer(Handler& handler):_handler(handler),connected(false) {
+Peer::Peer(Handler& handler):_handler(handler),connected(false),addresses(1) {
 }
 
 Peer::~Peer() {
@@ -92,6 +92,9 @@ void Peer::unsubscribeGroups() {
 }
 
 /// EVENTS ///
+void Peer::onHandshake(Poco::UInt32 attempts,std::set<std::string>& addresses) {
+	_handler.onHandshake(attempts,address,path,properties,addresses);
+}
 
 bool Peer::onConnection(AMFReader& parameters,AMFObjectWriter& response) {
 	if(!connected) {
@@ -99,11 +102,6 @@ bool Peer::onConnection(AMFReader& parameters,AMFObjectWriter& response) {
 		if(connected) {
 			if(!_handler._clients.insert(pair<const UInt8*,Client*>(id,this)).second)
 				ERROR("Client %s seems already connected!",Util::FormatHex(id,ID_SIZE).c_str())
-			else {
-				Edge* pEdge = _handler.edges(address);
-				if(pEdge)
-					++(UInt32&)pEdge->count;
-			}
 		}
 	} else
 		ERROR("Client %s seems already connected!",Util::FormatHex(id,ID_SIZE).c_str())
@@ -122,11 +120,6 @@ void Peer::onDisconnection() {
 		(bool&)connected = false;
 		if(_handler._clients.erase(id)==0)
 			ERROR("Client %s seems already disconnected!",Util::FormatHex(id,ID_SIZE).c_str())
-		else {
-			Edge* pEdge = _handler.edges(address);
-			if(pEdge)
-				--(UInt32&)pEdge->count;
-		}
 		_handler.onDisconnection(*this);
 	}
 }

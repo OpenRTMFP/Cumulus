@@ -91,16 +91,16 @@ int TCPClient::sendIntern(const UInt8* data,UInt32 size) {
 	return 0;
 }
 
-bool TCPClient::connect(const string& host,UInt16 port) {
+bool TCPClient::connect(const SocketAddress& address) {
 	if(_connected)
 		disconnect();
 	_error.clear();
 	try {
-		_socket.connectNB(Net::SocketAddress(host,port));
+		_socket.connectNB(address);
 		_connected = true;
 		_manager.add(_socket,*this);
 	} catch(Exception& ex) {
-		error(format("Impossible to connect to %s:%hu, %s",host,port,ex.displayText()));
+		error(format("Impossible to connect to %s, %s",address.toString().c_str(),ex.displayText()));
 	}
 	return _connected;
 }

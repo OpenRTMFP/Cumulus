@@ -112,8 +112,6 @@
     <ClCompile Include="sources\BinaryReader.cpp" />
     <ClCompile Include="sources\BinaryStream.cpp" />
     <ClCompile Include="sources\BinaryWriter.cpp" />
-    <ClCompile Include="sources\Edges.cpp" />
-    <ClCompile Include="sources\EdgeSession.cpp" />
     <ClCompile Include="sources\Invoker.cpp" />
     <ClCompile Include="sources\MemoryStream.cpp" />
     <ClCompile Include="sources\PacketReader.cpp" />
@@ -121,8 +119,6 @@
     <ClCompile Include="sources\Address.cpp" />
     <ClCompile Include="sources\RTMFPReceiving.cpp" />
     <ClCompile Include="sources\RTMFPSending.cpp" />
-    <ClCompile Include="sources\RTMFPServerEdge.cpp" />
-    <ClCompile Include="sources\ServerConnection.cpp" />
     <ClCompile Include="sources\ServerSession.cpp" />
     <ClCompile Include="sources\SocketManager.cpp" />
     <ClCompile Include="sources\Startable.cpp" />
@@ -168,8 +164,6 @@
     <ClInclude Include="include\BinaryReader.h" />
     <ClInclude Include="include\BinaryStream.h" />
     <ClInclude Include="include\BinaryWriter.h" />
-    <ClInclude Include="include\Edges.h" />
-    <ClInclude Include="include\EdgeSession.h" />
     <ClInclude Include="include\Entities.h" />
     <ClInclude Include="include\Invoker.h" />
     <ClInclude Include="include\MemoryStream.h" />
@@ -181,8 +175,6 @@
     <ClInclude Include="include\PoolThreads.h" />
     <ClInclude Include="include\RTMFPReceiving.h" />
     <ClInclude Include="include\RTMFPSending.h" />
-    <ClInclude Include="include\RTMFPServerEdge.h" />
-    <ClInclude Include="include\ServerConnection.h" />
     <ClInclude Include="include\ServerSession.h" />
     <ClInclude Include="include\SocketHandler.h" />
     <ClInclude Include="include\SocketManager.h" />

@@ -286,21 +286,6 @@
 					</FileConfiguration>
 				</File>
 				<File
-					RelativePath=".\sources\LUAEdges.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\LUAEdges.h"
-					>
-					<FileConfiguration
-						Name="debug|Win32"
-						>
-						<Tool
-							Name="VCCustomBuildTool"
-						/>
-					</FileConfiguration>
-				</File>
-				<File
 					RelativePath=".\sources\LUAFlowWriter.cpp"
 					>
 				</File>
@@ -423,6 +408,29 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath=".\sources\LUAServer.cpp"
+					>
+					<FileConfiguration
+						Name="debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\sources\LUAServer.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\LUAServers.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\LUAServers.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\LUATCPClient.cpp"
 					>
 				</File>
@@ -444,6 +452,37 @@
 				>
 				<File
 					RelativePath=".\sources\MailHandler.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\ServerConnection.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\ServerConnection.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\ServerMessage.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\ServerMessage.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\Servers.cpp"
+					>
+					<FileConfiguration
+						Name="debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\sources\Servers.h"
 					>
 				</File>
 				<File

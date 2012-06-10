@@ -64,9 +64,15 @@ int	LUATCPClient::Destroy(lua_State* pState) {
 int	LUATCPClient::Connect(lua_State* pState) {
 	SCRIPT_CALLBACK(LUATCPClient,LUATCPClient,client)
 		string host = SCRIPT_READ_STRING("");
-		client.connect(host,SCRIPT_READ_UINT(0));
-		if(client.error())
-			SCRIPT_WRITE_STRING(client.error())
+		UInt16 port = SCRIPT_READ_UINT(0);
+		try {
+			SocketAddress address(host,port);
+			client.connect(address);
+			if(client.error())
+				SCRIPT_WRITE_STRING(client.error())
+		} catch(Exception& ex) {
+			SCRIPT_WRITE_STRING("Understandable TCPClient address, %s",ex.displayText().c_str())
+		}
 	SCRIPT_CALLBACK_RETURN
 }
 

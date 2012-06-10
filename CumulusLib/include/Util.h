@@ -36,6 +36,7 @@ public:
 
 	static void Dump(const Poco::UInt8* in, Poco::UInt32 size,std::vector<Poco::UInt8>& out,const char* header=NULL);
 
+	static void UnpackUrl(const std::string& url,std::string& host,Poco::UInt16& port,std::string& path,std::map<std::string,std::string>& properties);
 	static void UnpackUrl(const std::string& url,std::string& path,std::map<std::string,std::string>& properties);
 	static void UnpackQuery(const std::string& query,std::map<std::string,std::string>& properties);
 

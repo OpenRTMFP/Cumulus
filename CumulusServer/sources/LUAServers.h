@@ -17,38 +17,17 @@
 
 #pragma once
 
-#include "Cumulus.h"
-#include "Session.h"
-#include "Cookie.h"
+#include "Script.h"
 
-namespace Cumulus {
-
-class EdgeSession : public Session {
+class LUAServers {
 public:
-	EdgeSession(ReceivingEngine& receivingEngine,
-			SendingEngine& sendingEngine,
-			Poco::UInt32 id,
-			Poco::UInt32 farId,
-			const Peer& peer,
-			const Poco::UInt8* decryptKey,
-			const Poco::UInt8* encryptKey,
-			Poco::Net::DatagramSocket& serverSocket,
-			Cookie& cookie);
-	~EdgeSession();
+	static const char* Name;
 
-	const Poco::UInt32			farServerId;
+	static int Get(lua_State *pState);
+	static int Set(lua_State *pState);
 
-	void						serverPacketHandler(PacketReader& packet);
-	
+	static void ID(std::string& id){}
 private:
-	void						packetHandler(PacketReader& packet);
-
-	Poco::Net::DatagramSocket&	_serverSocket;
-	Poco::Net::SocketAddress	_sender;
-
-	Cookie*						_pCookie;
-	
+	static int Broadcast(lua_State *pState);
+	static int Pairs(lua_State* pState);
 };
-
-
-} // namespace Cumulus

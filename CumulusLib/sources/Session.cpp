@@ -31,8 +31,8 @@ Session::Session(ReceivingEngine& receivingEngine,
 				 UInt32 farId,
 				 const Peer& peer,
 				 const UInt8* decryptKey,
-				 const UInt8* encryptKey) : 
-	nextDumpAreMiddle(false),_prevAESType(AESEngine::DEFAULT),_pSendingThread(NULL),_pReceivingThread(NULL),_receivingEngine(receivingEngine),_sendingEngine(sendingEngine),flags(0),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pRTMFPSending(new RTMFPSending()) {
+				 const UInt8* encryptKey) :
+	nextDumpAreMiddle(false),_prevAESType(AESEngine::DEFAULT),_pSendingThread(NULL),_pReceivingThread(NULL),_receivingEngine(receivingEngine),_sendingEngine(sendingEngine),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pRTMFPSending(new RTMFPSending()) {
 
 }
 
@@ -46,9 +46,13 @@ void Session::kill() {
 	(bool&)died=true;
 }
 
-void Session::setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address) {
+bool Session::setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address) {
 	_socket=socket;
+	if(address==peer.address)
+		return false;
 	(SocketAddress&)peer.address = address;
+	(*peer.addresses.begin())=address.toString();
+	return true;
 }
 
 void Session::decode(AutoPtr<RTMFPReceiving>& RTMFPReceiving,AESEngine::Type type) {

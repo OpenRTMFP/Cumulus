@@ -15,35 +15,13 @@
 	This file is a part of Cumulus.
 */
 
-#include "Edges.h"
+#include "ServerMessage.h"
 
-using namespace std;
-using namespace Poco;
-using namespace Poco::Net;
+char ServerMessage::_ShiftData[300];
 
-namespace Cumulus {
-
-Edge::Edge() : _raise(0),count(0) {
-	
+ServerMessage::ServerMessage() : Cumulus::BinaryWriter(_stream) {
+	_stream.write(_ShiftData,sizeof(_ShiftData));
+}
+ServerMessage::~ServerMessage() {
 }
 
-Edge::~Edge() {
-	map<UInt32,Session*>::const_iterator it;
-	for(it=_sessions.begin();it!=_sessions.end();++it)
-		it->second->kill();
-}
-
-void Edge::update() {
-	_raise=0;
-	_timeLastExchange.update();
-}
-
-Edge* Edges::operator()(const string& address) {
-	Iterator it = _edges.find(address);
-	if(it==_edges.end())
-		return NULL;
-	return it->second;
-}
-
-
-} // namespace Cumulus

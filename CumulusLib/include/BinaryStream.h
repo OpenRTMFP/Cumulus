@@ -23,12 +23,22 @@
 
 namespace Cumulus {
 
+class StringBuf : public std::stringbuf {
+public:
+	const char*  data();
+};
+
+inline const char* StringBuf::data() {
+	return gptr();
+}
+
 class BinaryBuffer : public Poco::UnbufferedStreamBuf {
        
 public:
 	BinaryBuffer();
 	~BinaryBuffer();
 	Poco::UInt32		size();
+	const Poco::UInt8*	data();
 
 private:
 	std::streampos seekpos(std::streampos sp,std::ios_base::openmode which = std::ios_base::in | std::ios_base::out);
@@ -42,8 +52,12 @@ private:
 	int_type readFromDevice();
 	int_type writeToDevice(char_type);
 
-	std::stringbuf  _buf;
+	StringBuf  _buf;
 };
+
+inline const Poco::UInt8* BinaryBuffer::data() {
+	return (const Poco::UInt8*)_buf.data();
+}
 
 inline BinaryBuffer::int_type BinaryBuffer::writeToDevice(char_type ch) {
 	return _buf.sputc(ch);
@@ -96,15 +110,23 @@ public:
       BinaryStream();
       ~BinaryStream();
 
-	  Poco::UInt32	  size();
+	  Poco::UInt32			size();
+	  const Poco::UInt8*	data();
+
       void            clear();
 	  void            resetReading(Poco::UInt32 position);
+	  void			  resetWriting(Poco::UInt32 position);
       bool            empty();
 private:
 };
 
 inline Poco::UInt32 BinaryStream::size() {
       return rdbuf()->size();
+}
+
+
+inline const Poco::UInt8* BinaryStream::data() {
+	return rdbuf()->data();
 }
 
 

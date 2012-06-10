@@ -17,23 +17,15 @@
 
 #pragma once
 
-#include "Cumulus.h"
-#include "Session.h"
-#include "Cookie.h"
+#include "BinaryWriter.h"
+#include "BinaryStream.h"
 
-namespace Cumulus {
-
-
-class Gateway
-{
+class ServerMessage : public Cumulus::BinaryWriter {
+	friend class ServerConnection;
 public:
-	Gateway(){}
-	virtual ~Gateway(){}
-
-	virtual Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted)=0;
-	virtual Session&		createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie)=0;
-	virtual void			destroySession(Session& session){}
+	ServerMessage();
+	virtual ~ServerMessage();
+private:
+	Cumulus::BinaryStream	_stream;
+	static char				_ShiftData[300];
 };
-
-
-} // namespace Cumulus

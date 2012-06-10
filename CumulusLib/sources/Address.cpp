@@ -30,6 +30,10 @@ namespace Cumulus {
 Address::Address() : host(4),port(0) {
 }
 
+Address::Address(const string& host,UInt16 port) : host(4),port(port) {
+	buildHost(host);
+}
+
 Address::Address(const string& address) : host(4),port(0) {
 	// port
 	size_t pos = address.find_last_of(':');
@@ -39,7 +43,14 @@ Address::Address(const string& address) : host(4),port(0) {
 		pos = address.size();
 
 	string host(address,0,pos);
+	buildHost(host);
+}
 
+Address::~Address() {
+	
+}
+
+void Address::buildHost(const std::string& host) {
 	// host
 	if(host.find_first_of(':')==string::npos) {
 		// IPv4
@@ -93,10 +104,6 @@ Address::Address(const string& address) : host(4),port(0) {
 			}
 		}
 	}
-}
-
-Address::~Address() {
-	
 }
 
 Address& Address::operator=(const Address& other) {

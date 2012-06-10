@@ -15,47 +15,60 @@
 	This file is a part of Cumulus.
 */
 
-#include "LUAEdges.h"
-#include "Edges.h"
+#include "LUAServers.h"
+#include "Servers.h"
+#include "LUAServer.h"
 
 using namespace std;
 using namespace Cumulus;
 
-const char*		LUAEdges::Name="Cumulus::Edges";
+const char*		LUAServers::Name="LUAServers";
 
-int LUAEdges::Pairs(lua_State* pState) {
-	SCRIPT_CALLBACK(Edges,LUAEdges,edges)
+int LUAServers::Pairs(lua_State* pState) {
+	SCRIPT_CALLBACK(Servers,LUAServers,servers)
 		lua_getglobal(pState,"next");
 		if(!lua_iscfunction(pState,-1))
 			SCRIPT_ERROR("'next' should be a LUA function, it should not be overloaded")
 		else {
 			lua_newtable(pState);
-			Edges::Iterator it;
-			for(it=edges.begin();it!=edges.end();++it) {
-				SCRIPT_WRITE_NUMBER(it->second->count)
+			Servers::Iterator it;
+			for(it=servers.begin();it!=servers.end();++it) {
+				SCRIPT_WRITE_PERSISTENT_OBJECT(ServerConnection,LUAServer,*it->second)
 				lua_setfield(pState,-2,it->first.c_str());
 			}
 		}
 	SCRIPT_CALLBACK_RETURN
 }
 
-int LUAEdges::Get(lua_State *pState) {
-	SCRIPT_CALLBACK(Edges,LUAEdges,edges)
+int LUAServers::Broadcast(lua_State* pState) {
+	SCRIPT_CALLBACK(Servers,LUAServers,servers)
+		string handler(SCRIPT_READ_STRING(""));
+		ServerMessage message;
+		AMFWriter writer(message);
+		SCRIPT_READ_AMF(writer)
+		servers.broadcast(handler,message);
+	SCRIPT_CALLBACK_RETURN
+}
+
+int LUAServers::Get(lua_State *pState) {
+	SCRIPT_CALLBACK(Servers,LUAServers,servers)
 		string name = SCRIPT_READ_STRING("");
 		if(name=="pairs")
-			SCRIPT_WRITE_FUNCTION(&LUAEdges::Pairs)
-		else if(name=="count")
-			SCRIPT_WRITE_NUMBER(edges.count())
+			SCRIPT_WRITE_FUNCTION(&LUAServers::Pairs)
+		else if(name == "count")
+			SCRIPT_WRITE_NUMBER(servers.count())
+		else if(name == "broadcast")
+			SCRIPT_WRITE_FUNCTION(&LUAServers::Broadcast)
 		else if(name=="(") {
-			Edge* pEdge = edges(SCRIPT_READ_STRING(""));
-			if(pEdge)
-				SCRIPT_WRITE_NUMBER(pEdge->count)
+			ServerConnection* pServer = servers.find(SCRIPT_READ_STRING(""));
+			if(pServer)
+				SCRIPT_WRITE_PERSISTENT_OBJECT(ServerConnection,LUAServer,*pServer)
 		}
 	SCRIPT_CALLBACK_RETURN
 }
 
-int LUAEdges::Set(lua_State *pState) {
-	SCRIPT_CALLBACK(Edges,LUAEdges,edges)
+int LUAServers::Set(lua_State *pState) {
+	SCRIPT_CALLBACK(Servers,LUAServers,servers)
 		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN

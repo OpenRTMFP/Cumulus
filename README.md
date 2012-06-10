@@ -10,7 +10,7 @@ Actually, the main stable features are:
 - Live streaming
 - RPC, pull, push exchanges, indeed all AMF possible exchanges between client and server
 - Scripting engine to create your own application server or extends Cumulus features
-- Scalability and load-balancing system with CumulusEdge
+- Scalability and load-balancing solution
 
 All the documentation to get, install and use CumulusServer is available through the **[Wiki]**.
 

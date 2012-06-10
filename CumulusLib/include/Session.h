@@ -53,11 +53,10 @@ public:
 	const bool			died;
 
 	bool				nextDumpAreMiddle;
-	Poco::UInt8			flags; // Allow to children class to save some flags (see ServerSession and SESSION_BY_EDGE)
 
 	virtual void		manage(){}
 
-	void				setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address);
+	bool				setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address);
 	void				decode(Poco::AutoPtr<RTMFPReceiving>& pRTMFPSending);
 	void				decode(Poco::AutoPtr<RTMFPReceiving>& pRTMFPSending,AESEngine::Type type);
 	void				receive(PacketReader& packet);

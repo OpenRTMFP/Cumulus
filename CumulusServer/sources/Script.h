@@ -99,7 +99,8 @@ extern "C" {
 #define SCRIPT_READ_UINT(DEFAULT)								(UInt32)((__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? (Poco::UInt32)lua_tonumber(__pState,__args) : DEFAULT))
 #define SCRIPT_READ_INT(DEFAULT)								(Int32)((__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? (Poco::Int32)lua_tointeger(__pState,__args) : DEFAULT))
 #define SCRIPT_READ_DOUBLE(DEFAULT)								(double)((__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? lua_tonumber(__pState,__args) : DEFAULT))
-#define SCRIPT_READ_AMF(WRITER)									Script::ReadAMF(__pState,WRITER,__results-__args);__args=__results;						
+#define SCRIPT_READ_AMF(WRITER)									Script::ReadAMF(__pState,WRITER,__results-__args);__args=__results;
+#define SCRIPT_READ_NEXT										__args++;
 
 #define SCRIPT_END												}
 
@@ -107,9 +108,10 @@ extern "C" {
 class Script {
 public:
 
-	static const char*		LastError(lua_State *pState);
+	static const char*	LastError(lua_State *pState);
 
-	static void				Test(lua_State *pState);
+	static void			Test(lua_State *pState);
+	static bool			CheckType(lua_State *pState,const std::string& type);
 
 	static void			WriteAMF(lua_State *pState,Cumulus::AMFReader& reader,Poco::UInt32 count);
 	static void			ReadAMF(lua_State *pState,Cumulus::AMFWriter& writer,Poco::UInt32 count);

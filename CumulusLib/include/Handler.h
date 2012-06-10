@@ -28,6 +28,8 @@ public:
 	virtual ~Handler(){}
 
 	//events
+	virtual	void			onRendezVousUnknown(const Poco::UInt8* id,std::set<std::string>& addresses){}
+	virtual void			onHandshake(Poco::UInt32 attempts,const Poco::Net::SocketAddress& address,const std::string& path,const std::map<std::string,std::string>& properties,std::set<std::string>& addresses){}
 	virtual bool			onConnection(Client& client,AMFReader& parameters,AMFObjectWriter& response){return true;}
 	virtual void			onFailed(const Client& client,const std::string& error){}
 	virtual void			onDisconnection(const Client& client){}
