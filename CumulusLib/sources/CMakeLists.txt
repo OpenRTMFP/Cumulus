@@ -1,0 +1,55 @@
+SET(OBJECTS
+	Address
+	AESEngine
+	AMFObjectWriter
+	AMFReader
+	AMFSimpleObject
+	AMFWriter
+	BinaryReader
+	BinaryStream
+	BinaryWriter
+	Client
+	CookieComputing
+	Cookie
+	Cumulus
+	Flow
+	FlowConnection
+	FlowGroup
+	FlowNull
+	FlowStream
+	FlowWriter
+	Handshake
+	Invoker
+	Listener
+	Logs
+	MemoryStream
+	Message
+	Middle
+	PacketReader
+	PacketWriter
+	Peer
+	PoolThread
+	PoolThreads
+	Publication
+	Publications
+	QualityOfService
+	RTMFP
+	RTMFPReceiving
+	RTMFPSending
+	RTMFPServer
+	ServerSession
+	Session
+	Sessions
+	SocketManager
+	Startable
+	Streams
+	Target
+	Task
+	TaskHandler
+	Trigger
+	Util
+)
+
+ADD_LIBRARY(CumulusLib STATIC ${OBJECTS})
+
+# vim:ft=cmake
