@@ -18,33 +18,16 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "AESEngine.h"
-#include "PacketReader.h"
-#include "Task.h"
-#include "WorkThread.h"
-#include "Poco/Net/DatagramSocket.h"
-
+#include "Poco/RefCountedObject.h"
+#include "Poco/Thread.h"
 
 namespace Cumulus {
 
-class RTMFPServer;
-class RTMFPReceiving : public WorkThread, private Task {
+class WorkThread : public Poco::RefCountedObject {
 public:
-	RTMFPReceiving(RTMFPServer& server,Poco::Net::DatagramSocket& socket);
-	~RTMFPReceiving();
-
-	Poco::UInt32				id;
-	AESEngine					decoder;
-	Poco::Net::SocketAddress	address;
-	Poco::Net::DatagramSocket	socket;
-	PacketReader*				pPacket;
-
-private:
-	void						handle();
-	void						run();
-
-	RTMFPServer&				_server;
-	Poco::UInt8					_buff[PACKETRECV_SIZE];
+	WorkThread() : priority(Poco::Thread::PRIO_NORMAL) {}
+	Poco::Thread::Priority priority;
+	virtual void run() = 0;
 };
 
 } // namespace Cumulus

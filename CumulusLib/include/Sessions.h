@@ -55,7 +55,7 @@ private:
 
 	struct Compare {
 	   bool operator()(const Poco::Net::SocketAddress& a,const Poco::Net::SocketAddress& b) const {
-		   return a==b ? 0 : (a.port()<b.port());
+		   return (a.host()==b.host() && a.port()==b.port()) ? 0 : (a.port()<b.port());
 	   }
 	};
 

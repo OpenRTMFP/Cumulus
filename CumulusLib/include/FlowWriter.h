@@ -61,10 +61,10 @@ public:
 	void			close();
 	bool			consumed();
 
-	void			cancel(Poco::UInt32 index);
-	Poco::UInt32	queue();
-
 	Poco::UInt64	stage();
+
+	void			beginTransaction();
+	void			endTransaction(Poco::UInt32 numberOfCancel=0);
 
 	void			writeUnbufferedMessage(const Poco::UInt8* data,Poco::UInt32 size,const Poco::UInt8* memAckData=NULL,Poco::UInt32 memAckSize=0);
 
@@ -97,7 +97,8 @@ private:
 	bool					_closed;
 	Trigger					_trigger;
 
-	
+	bool					_transaction;
+	std::list<Message*>		_tempMessages;
 	std::list<Message*>		_messages;
 	Poco::UInt64			_stage;
 	std::list<Message*>		_messagesSent;
@@ -116,10 +117,6 @@ private:
 
 inline void FlowWriter::writeAbandonMessage() {
 	createBufferedMessage();
-}
-
-inline Poco::UInt32 FlowWriter::queue() {
-	return _messages.size();
 }
 
 inline bool FlowWriter::closed() {

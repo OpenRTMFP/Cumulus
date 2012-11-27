@@ -26,10 +26,15 @@ using namespace Poco;
 using namespace Poco::Net;
 
 
-ServerConnection::ServerConnection(const string& address,SocketManager& socketManager,ServerHandler& handler,ServersHandler& serversHandler) : address(address),_size(0),_handler(handler),TCPClient(socketManager),_connected(false),_serversHandler(serversHandler) {
+ServerConnection::ServerConnection(const string& target,SocketManager& socketManager,ServerHandler& handler,ServersHandler& serversHandler) : address(target),_size(0),_handler(handler),TCPClient(socketManager),_connected(false),_serversHandler(serversHandler),isTarget(true) {
+	size_t found = target.find("?");
+	if(found!=string::npos) {
+		Util::UnpackQuery(target.substr(found+1),(map<string,string>&)properties);
+		((string&)address).assign(target.substr(0,found));
+	}
 }
 
-ServerConnection::ServerConnection(const StreamSocket& socket,SocketManager& socketManager,ServerHandler& handler,ServersHandler& serversHandler) : address(socket.peerAddress().toString()),_size(0),_handler(handler),TCPClient(socket,socketManager),_connected(false),_serversHandler(serversHandler) {
+ServerConnection::ServerConnection(const StreamSocket& socket,SocketManager& socketManager,ServerHandler& handler,ServersHandler& serversHandler) : address(socket.peerAddress().toString()),_size(0),_handler(handler),TCPClient(socket,socketManager),_connected(false),_serversHandler(serversHandler),isTarget(false) {
 	sendPublicAddress();
 }
 
@@ -46,6 +51,11 @@ void ServerConnection::sendPublicAddress() {
 	} else {
 		message.write8(1);
 		message << _handler.publicAddress();
+	}
+	map<string,string>::const_iterator it;
+	for(it=properties.begin();it!=properties.end();++it) {
+		message << it->first;
+		message << it->second;
 	}
 	send("",message);
 }
@@ -86,7 +96,6 @@ void ServerConnection::send(const string& handler,ServerMessage& message) {
 	shift = 300-(shift+5);
 
 	BinaryStream& stream = message._stream;
-
 	stream.resetReading(shift);
 	UInt32 size = stream.size();
 	stream.resetWriting(shift);
@@ -98,12 +107,12 @@ void ServerConnection::send(const string& handler,ServerMessage& message) {
 		message.write8(0);
 	stream.resetWriting(size+shift);
 
-	Logs::Dump(stream.data()+4,stream.size()-4,format("To %s server",address).c_str(),true);
+	DUMP_MIDDLE(stream.data()+4,stream.size()-4,format("To %s server",address).c_str());
 	TCPClient::send(stream.data(),stream.size());
 }
 
 
-UInt32 ServerConnection::onReception(const UInt8* data,UInt32 size){
+UInt32 ServerConnection::onReception(const UInt8* data,UInt32 size) {
 	if(_size==0 && size<4)
 		return size;
 
@@ -116,7 +125,7 @@ UInt32 ServerConnection::onReception(const UInt8* data,UInt32 size){
 	size = reader.available()-_size;
 	reader.shrink(_size);
 	
-	Logs::Dump(reader,format("From %s server",address).c_str(),true);
+	DUMP_MIDDLE(reader,format("From %s server",address).c_str());
 
 	string handler;
 	UInt8 handlerSize = reader.read8();
@@ -140,16 +149,22 @@ UInt32 ServerConnection::onReception(const UInt8* data,UInt32 size){
 			reader >> ((string&)publicAddress);
 		else
 			(string&)publicAddress = format("%s:%hu",peerAddress().host().toString(),reader.read16());
+		while(reader.available()) {
+			string key,value;
+			reader >> key;
+			reader >> value;
+			((map<string,string>&)properties).insert(pair<string,string>(key,value));
+		}
 		if(!_connected) {
 			_connected=true;
 			_serversHandler.connection(*this);
 			_handler.connection(*this);
 		}
-		return size;
-	}
-	_handler.message(*this,handler,reader);
+	} else
+		_handler.message(*this,handler,reader);
 
-	return size;
+	reader.next(reader.available());
+	return onReception(reader.current(),size);
 }
 
 void ServerConnection::onDisconnection(){
@@ -157,7 +172,9 @@ void ServerConnection::onDisconnection(){
 	_receivingRefs.clear();
 	if(_connected) {
 		_connected=false;
+		bool autoDelete = _serversHandler.disconnection(*this);
 		_handler.disconnection(*this,error());
-		_serversHandler.disconnection(*this);
+		if(autoDelete)
+			delete this;
 	}
 }

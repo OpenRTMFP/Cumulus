@@ -24,9 +24,9 @@ using namespace Poco;
 namespace Cumulus {
 
 
-Invoker::Invoker() : sockets(*this),clients(_clients),groups(_groups),udpBufferSize(0),_streams(_publications),publications(_publications),
+Invoker::Invoker(UInt32 threads) : poolThreads(threads),sockets(*this),clients(_clients),groups(_groups),udpBufferSize(0),_streams(_publications),publications(_publications),
 	keepAliveServer(0),keepAlivePeer(0) {
-
+	DEBUG("%u threads available in the server poolthreads",poolThreads.threadsAvailable());
 }
 
 

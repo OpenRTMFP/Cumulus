@@ -32,24 +32,22 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Middle::Middle(ReceivingEngine& receivingEngine,
-			   SendingEngine& sendingEngine,
-			    UInt32 id,
+Middle::Middle(UInt32 id,
 				UInt32 farId,
 				const Peer& peer,
 				const UInt8* decryptKey,
 				const UInt8* encryptKey,
 				Handler& handler,
 				const Sessions&	sessions,
-				Target& target) : ServerSession(receivingEngine,sendingEngine,id,farId,peer,decryptKey,encryptKey,(Invoker&)handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
+				Target& target) : ServerSession(id,farId,peer,decryptKey,encryptKey,(Invoker&)handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
 					_middleId(0),_sessions(sessions),_firstResponse(false),_queryUrl("rtmfp://"+target.address.toString()+peer.path),_middlePeer(peer),_target(target) {
 
 	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.properties);
 
 	// connection to target
-	_socket.setReceiveBufferSize(_invoker.udpBufferSize);_socket.setSendBufferSize(_invoker.udpBufferSize);
+	_socket.setReceiveBufferSize(invoker.udpBufferSize);_socket.setSendBufferSize(invoker.udpBufferSize);
 	_socket.connect(target.address);
-	_invoker.sockets.add(_socket,*this);
+	invoker.sockets.add(_socket,*this);
 
 	INFO("Handshake Target");
 
@@ -89,7 +87,7 @@ Middle::~Middle() {
 		delete _pMiddleAesDecrypt;
 	if(_pMiddleAesEncrypt)
 		delete _pMiddleAesEncrypt;
-	_invoker.sockets.remove(_socket);
+	invoker.sockets.remove(_socket);
 }
 
 PacketWriter& Middle::handshaker() {
@@ -111,16 +109,15 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 			packet.readString8(cookie);
 
 			string targetCertificat;
-			UInt8 nonce[KEY_SIZE+4]={0x81,0x02,0x1D,0x02};
+			vector<UInt8> nonce;
 			if(_isPeer) {
-				packet.next(4);
-				memcpy(&nonce[4],_target.publicKey,KEY_SIZE);
-				RTMFP::ComputeDiffieHellmanSecret(_pMiddleDH,packet.current(),KEY_SIZE,_sharedSecret);
+				nonce = _target.publicKey;
+				RTMFP::ComputeDiffieHellmanSecret(_pMiddleDH,&_target.publicKey[0],_target.publicKey.size(),_sharedSecret);
 				// DEBUG("Middle Shared Secret : %s",Util::FormatHex(_sharedSecret,sizeof(_sharedSecret)).c_str());
 			} else {
 				packet.readRaw(packet.available(),targetCertificat);
-				_pMiddleDH = RTMFP::BeginDiffieHellman(&nonce[4]);
-				EVP_Digest(nonce,sizeof(nonce),(UInt8*)_middlePeer.id,NULL,EVP_sha256(),NULL);
+				_pMiddleDH = RTMFP::BeginDiffieHellman(nonce,true);
+				EVP_Digest(&nonce[0],nonce.size(),(UInt8*)_middlePeer.id,NULL,EVP_sha256(),NULL);
 			}
 
 			
@@ -128,8 +125,8 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 			PacketWriter& request = handshaker();
 			request << id; // id session, we use the same that Cumulus id session for Flash client
 			request.writeString8(cookie); // cookie
-			request.write7BitValue(sizeof(nonce));
-			request.writeRaw(nonce,sizeof(nonce));
+			request.write7BitValue(nonce.size());
+			request.writeRaw(&nonce[0],nonce.size());
 			request.write7BitValue(sizeof(_middleCertificat));
 			request.writeRaw(_middleCertificat,sizeof(_middleCertificat));
 			request.write8(0x58);
@@ -186,7 +183,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 			_pMiddleAesEncrypt = new AESEngine(requestKey,AESEngine::ENCRYPT);
 			_pMiddleAesDecrypt = new AESEngine(responseKey,AESEngine::DECRYPT);
 
-			DEBUG("Middle Shared Secret : %s",Util::FormatHex(_sharedSecret,sizeof(_sharedSecret)).c_str());
+			DEBUG("Middle Shared Secret : %s",Util::FormatHex(&_sharedSecret[0],_sharedSecret.size()).c_str());
 
 			// DEBUG("Peer/Middle/Target id : %s/%s/%s",Util::FormatHex(this->peer().id,ID_SIZE).c_str(),Util::FormatHex(_middlePeer.id,ID_SIZE).c_str(),Util::FormatHex(_target.peerId,ID_SIZE).c_str());
 			break;
@@ -206,7 +203,7 @@ void Middle::sendHandshakeToTarget(UInt8 type) {
 	packet << type;
 	packet.write16((UInt16)packet.length()-packet.position()-2);
 
-	Logs::Dump(packet,6,format("Middle to %s handshaking",_target.address.toString()).c_str(),true);
+	DUMP_MIDDLE(packet,6,format("Middle to %s handshaking",_target.address.toString()).c_str())
 
 	AESEngine encoder = aesEncrypt.next(AESEngine::SYMMETRIC);
 	RTMFP::Encode(encoder,packet);
@@ -297,7 +294,7 @@ void Middle::packetHandler(PacketReader& packet) {
 							out.writeRaw(content.current(),71);content.next(71);
 							UInt8 result1[AES_KEY_SIZE];
 							UInt8 result2[AES_KEY_SIZE];
-							HMAC(EVP_sha256(),_sharedSecret,KEY_SIZE,&_targetNonce[0],_targetNonce.size(),result1,NULL);
+							HMAC(EVP_sha256(),&_sharedSecret[0],_sharedSecret.size(),&_targetNonce[0],_targetNonce.size(),result1,NULL);
 							HMAC(EVP_sha256(),it->second.c_str(),it->second.size(),result1,AES_KEY_SIZE,result2,NULL);
 							out.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
 							out.writeRaw(content.current(),4);content.next(4);
@@ -341,7 +338,7 @@ void Middle::sendToTarget() {
 	
 	PacketWriter& packet(ServerSession::writer());
 
-	Logs::Dump(packet,6,format("Middle to %s",_target.address.toString()).c_str(),true);
+	DUMP_MIDDLE(packet,6,format("Middle to %s",_target.address.toString()).c_str());
 
 	_firstResponse = true;
 	RTMFP::Encode(*_pMiddleAesEncrypt,packet);
@@ -439,7 +436,7 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 						packetOut.writeRaw(content.current(),68);content.next(68);
 						UInt8 result1[AES_KEY_SIZE];
 						UInt8 result2[AES_KEY_SIZE];
-						HMAC(EVP_sha256(),_target.sharedSecret,KEY_SIZE,&_target.initiatorNonce[0],_target.initiatorNonce.size(),result1,NULL);
+						HMAC(EVP_sha256(),&_target.sharedSecret[0],_target.sharedSecret.size(),&_target.initiatorNonce[0],_target.initiatorNonce.size(),result1,NULL);
 						HMAC(EVP_sha256(),it->second.c_str(),it->second.size(),result1,AES_KEY_SIZE,result2,NULL);
 						packetOut.writeRaw(result2,AES_KEY_SIZE);content.next(AES_KEY_SIZE);
 						packetOut.writeRaw(content.current(),4);content.next(4);
@@ -488,7 +485,7 @@ void Middle::manage() {
 
 void Middle::onReadable(Socket& socket) {
 	if(died) {
-		_invoker.sockets.remove(_socket);
+		invoker.sockets.remove(_socket);
 		_socket.close();
 		return;
 	}
@@ -511,7 +508,7 @@ void Middle::onReadable(Socket& socket) {
 			return;
 		}
 
-		Logs::Dump(packet,format("Middle from %s handshaking",_target.address.toString()).c_str(),true);
+		DUMP_MIDDLE(packet,format("Middle from %s handshaking",_target.address.toString()).c_str());
 
 		UInt8 marker = packet.read8();
 		if(marker!=0x0B) {
@@ -529,12 +526,11 @@ void Middle::onReadable(Socket& socket) {
 	}
 
 	if(!RTMFP::Decode(*_pMiddleAesDecrypt,packet)) {
-		ERROR("Target to middle : Decrypt error");
+		ERROR("Middle from %s : Decrypt error",_target.address.toString().c_str())
 		return;
 	}
 
-//	TRACE("Target to middle : session d'identification '%u'",id);
-	Logs::Dump(packet,format("Middle from %s",_target.address.toString()).c_str(),true);
+	DUMP_MIDDLE(packet,format("Middle from %s",_target.address.toString()).c_str())
 
 	targetPacketHandler(packet);
 }

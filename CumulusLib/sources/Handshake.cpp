@@ -20,7 +20,6 @@
 #include "Util.h"
 #include "Poco/RandomStream.h"
 #include "Poco/Format.h"
-#include <openssl/evp.h>
 #include "string.h"
 
 using namespace std;
@@ -29,7 +28,7 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Handshake::Handshake(ReceivingEngine& receivingEngine,SendingEngine& sendingEngine,Gateway& gateway,Handler& handler,Entity& entity) : ServerSession(receivingEngine,sendingEngine,0,0,Peer(handler),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,(Invoker&)handler),
+Handshake::Handshake(Gateway& gateway,Handler& handler,Entity& entity) : ServerSession(0,0,Peer(handler),RTMFP_SYMETRIC_KEY,RTMFP_SYMETRIC_KEY,(Invoker&)handler),
 	_gateway(gateway) {
 	(bool&)checked=true;
 
@@ -60,18 +59,16 @@ void Handshake::manage() {
 	}
 }
 
-void Handshake::commitCookie(const Session& session) {
-	(bool&)session.checked = true;
-	map<const UInt8*,Cookie*,CompareCookies>::iterator it;
-	for(it=_cookies.begin();it!=_cookies.end();++it) {
-		if(it->second->id==session.id) {
-			eraseHelloAttempt(it->second->tag);
-			delete it->second;
-			_cookies.erase(it);
-			return;
-		}
+void Handshake::commitCookie(const UInt8* value) {
+	map<const UInt8*,Cookie*,CompareCookies>::iterator it = _cookies.find(value);
+	if(it==_cookies.end()) {
+		WARN("Cookie %s not found, maybe becoming obsolete before commiting (congestion?)",Util::FormatHex(value,COOKIE_SIZE).c_str());
+		return;
 	}
-	WARN("Cookie of the session %u not found",session.id);
+	eraseHelloAttempt(it->second->tag);
+	delete it->second;
+	_cookies.erase(it);
+	return;
 }
 
 void Handshake::clear() {
@@ -89,14 +86,14 @@ void Handshake::createCookie(PacketWriter& writer,HelloAttempt& attempt,const st
 	Cookie* pCookie = attempt.pCookie;
 	if(!pCookie) {
 		if(attempt.pTarget)
-			pCookie = new Cookie(tag,*attempt.pTarget);
+			pCookie = new Cookie(invoker,tag,*attempt.pTarget);
 		else
-			pCookie = new Cookie(tag,queryUrl);
-		_cookies[pCookie->value] =  pCookie;
+			pCookie = new Cookie(*this,invoker,tag,queryUrl);
+		_cookies[pCookie->value()] =  pCookie;
 		attempt.pCookie = pCookie;
 	}
 	writer.write8(COOKIE_SIZE);
-	writer.writeRaw(pCookie->value,COOKIE_SIZE);
+	writer.writeRaw(pCookie->value(),COOKIE_SIZE);
 }
 
 
@@ -127,6 +124,44 @@ void Handshake::packetHandler(PacketReader& packet) {
 	(UInt32&)farId=0;
 }
 
+Session* Handshake::createSession(const UInt8* cookieValue) {
+	map<const UInt8*,Cookie*,CompareCookies>::iterator itCookie = _cookies.find(cookieValue);
+	if(itCookie==_cookies.end()) {
+		WARN("Creating session for an unknown cookie '%s' (CPU congestion?)",Util::FormatHex(cookieValue,COOKIE_SIZE).c_str());
+		return NULL;
+	}
+
+	Cookie& cookie(*itCookie->second);
+
+	// Fill peer infos
+	memcpy((void*)peer.id,cookie.peerId,ID_SIZE);
+	Util::UnpackUrl(cookie.queryUrl,(string&)peer.path,(map<string,string>&)peer.properties);
+	(UInt32&)farId = cookie.farId;
+	(SocketAddress&)peer.address = cookie.peerAddress;
+
+	// Create session and write cookie
+	Session& session = _gateway.createSession(peer,cookie);
+	(UInt32&)cookie.id = session.id;
+	cookie.write();
+
+	// Just for middle mode!
+	if(cookie.pTarget) {
+		((vector<UInt8>&)cookie.pTarget->initiatorNonce).resize(cookie.initiatorNonce().size());
+		memcpy(&((vector<UInt8>&)cookie.pTarget->initiatorNonce)[0],&cookie.initiatorNonce()[0],cookie.initiatorNonce().size());
+		(vector<UInt8>&)cookie.pTarget->sharedSecret = cookie.sharedSecret();
+	}
+
+	// response!
+	PacketWriter& response(writer());
+	response.write8(0x78);
+	response.write16(cookie.length());
+	cookie.read(response);
+	flush();
+	(UInt32&)farId=0; // reset farid to 0!
+	return &session;
+}
+
+
 
 UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& response) {
 
@@ -151,9 +186,6 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 			if(type == 0x0a){
 				/// Handshake
 				HelloAttempt& attempt = helloAttempt<HelloAttempt>(tag);
-				
-				// New Cookie
-				createCookie(response,attempt,tag,epd);
 
 				// Fill peer infos
 				UInt16 port;
@@ -166,7 +198,7 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 					for(it=addresses.begin();it!=addresses.end();++it) {
 						try {
 							if((*it)=="again")
-								*it = format("%s:%hu",host,port);
+								((string&)*it).assign(format("%s:%hu",host,port));
 							SocketAddress address(*it);
 							response.writeAddress(address,it==addresses.begin());
 						} catch(Exception& ex) {
@@ -176,7 +208,9 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 					return 0x71;
 				}
 
-				 
+				// New Cookie
+				createCookie(response,attempt,tag,epd);
+
 				// instance id (certificat in the middle)
 				response.writeRaw(_certificat,sizeof(_certificat));
 				return 0x70;
@@ -194,44 +228,36 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 	
 			map<const UInt8*,Cookie*,CompareCookies>::iterator itCookie = _cookies.find(request.current());
 			if(itCookie==_cookies.end()) {
-				ERROR("Handshake cookie '%s' unknown",Util::FormatHex(request.current(),COOKIE_SIZE).c_str());
+				WARN("Cookie %s unknown, maybe already connected (udpBuffer congested?)",Util::FormatHex(request.current(),COOKIE_SIZE).c_str());
 				return 0;
 			}
 
 			Cookie& cookie(*itCookie->second);
+			(SocketAddress&)cookie.peerAddress = peer.address;
 
-			if(cookie.id==0) {
-
-				UInt8 decryptKey[AES_KEY_SIZE];UInt8* pDecryptKey=&decryptKey[0];
-				UInt8 encryptKey[AES_KEY_SIZE];UInt8* pEncryptKey=&encryptKey[0];
-
-
+			if(cookie.farId==0) {
+				((UInt32&)cookie.farId) = farId;
 				request.next(COOKIE_SIZE);
+
 				size_t size = (size_t)request.read7BitLongValue();
 				// peerId = SHA256(farPubKey)
-				EVP_Digest(request.current(),size,(UInt8*)peer.id,NULL,EVP_sha256(),NULL);
+				EVP_Digest(request.current(),size,(UInt8*)cookie.peerId,NULL,EVP_sha256(),NULL);
 
-				vector<UInt8> publicKey(request.read7BitValue()-2);
+				cookie.initiatorKey().resize(request.read7BitValue()-2);
 				request.next(2); // unknown
-				request.readRaw(&publicKey[0],publicKey.size());
+				request.readRaw(&cookie.initiatorKey()[0],cookie.initiatorKey().size());
 
-				size = request.read7BitValue();
+				cookie.initiatorNonce().resize(request.read7BitValue());
+				request.readRaw(&cookie.initiatorNonce()[0],cookie.initiatorNonce().size());
 
-				cookie.computeKeys(&publicKey[0],publicKey.size(),request.current(),(UInt16)size,decryptKey,encryptKey);
-
-				// Fill peer infos
-				Util::UnpackUrl(cookie.queryUrl,(string&)peer.path,(map<string,string>&)peer.properties);
-
-				// RESPONSE
-				Session& session = _gateway.createSession(farId,peer,pDecryptKey,pEncryptKey,cookie);
-				(UInt32&)cookie.id = session.id;
-
-				cookie.write();
-			}
-			if(cookie.response)
+				cookie.computeKeys();
+			} else if(cookie.id>0) {
+				// Repeat cookie reponse!
 				cookie.read(response);
+				return 0x78;
+			} // else Keys are computing (multi-thread)
 
-			return cookie.response;
+			break;
 		}
 		default:
 			ERROR("Unkown handshake packet id %u",id);

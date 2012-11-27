@@ -29,9 +29,7 @@ namespace Cumulus {
 
 class Middle : public ServerSession, public SocketHandler {
 public:
-	Middle(ReceivingEngine& receivingEngine,
-		   SendingEngine& sendingEngine,
-			Poco::UInt32 id,
+	Middle(Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
 			const Poco::UInt8* decryptKey,
@@ -74,7 +72,7 @@ private:
 	Target&						_target;
 	std::vector<Poco::UInt8>	_targetNonce;
 	bool						_isPeer;
-	Poco::UInt8					_sharedSecret[KEY_SIZE];
+	std::vector<Poco::UInt8>	_sharedSecret;
 
 	Poco::Net::DatagramSocket	_socket;
 	Poco::UInt8					_buffer[PACKETRECV_SIZE];

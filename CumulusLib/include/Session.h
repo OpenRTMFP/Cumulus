@@ -23,26 +23,22 @@
 #include "AESEngine.h"
 #include "RTMFP.h"
 #include "Peer.h"
-#include "RTMFPSending.h"
+#include "Invoker.h"
 #include "RTMFPReceiving.h"
-#include "PoolThreads.h"
+#include "RTMFPSending.h"
 #include "Poco/Net/DatagramSocket.h"
 
 namespace Cumulus {
 
-typedef PoolThreads<RTMFPReceiving>	ReceivingEngine;
-typedef PoolThreads<RTMFPSending>	SendingEngine;
-
 class Session {
 public:
 
-	Session(ReceivingEngine& receivingEngine,
-		    SendingEngine&	 sendingEngine,
-			Poco::UInt32 id,
+	Session(Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
 			const Poco::UInt8* decryptKey,
-			const Poco::UInt8* encryptKey);
+			const Poco::UInt8* encryptKey,
+			Invoker& invoker);
 
 	virtual ~Session();
 
@@ -70,20 +66,18 @@ protected:
 
 	AESEngine			aesDecrypt;
 	AESEngine			aesEncrypt;
-	
+	Invoker&			invoker;
 
 private:
 	virtual void	packetHandler(PacketReader& packet)=0;
 	
-	SendingEngine&				    _sendingEngine;
+	PoolThread*						_pReceivingThread;
 	Poco::AutoPtr<RTMFPSending>	    _pRTMFPSending;
-	PoolThread<RTMFPSending>*	    _pSendingThread;
+	PoolThread*						_pSendingThread;
 
 	Poco::FastMutex					_mutex;
 	AESEngine::Type					_prevAESType;
 
-	ReceivingEngine&				_receivingEngine;
-	PoolThread<RTMFPReceiving>*		_pReceivingThread;
 
 	Poco::Net::DatagramSocket	_socket;
 };
@@ -93,8 +87,8 @@ inline AESEngine::Type Session::prevAESType() {
 	return _prevAESType;
 }
 
-inline void Session::decode(Poco::AutoPtr<RTMFPReceiving>& pRTMFPSending) {
-	decode(pRTMFPSending,farId==0 ? AESEngine::SYMMETRIC : AESEngine::DEFAULT);
+inline void Session::decode(Poco::AutoPtr<RTMFPReceiving>& pRTMFPReceiving) {
+	decode(pRTMFPReceiving,farId==0 ? AESEngine::SYMMETRIC : AESEngine::DEFAULT);
 }
 
 inline void Session::send() {

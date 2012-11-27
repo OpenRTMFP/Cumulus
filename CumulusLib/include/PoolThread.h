@@ -19,79 +19,30 @@
 
 #include "Cumulus.h"
 #include "Startable.h"
+#include "WorkThread.h"
 #include "Poco/AtomicCounter.h"
 #include "Poco/AutoPtr.h"
-#include "Poco/NumberFormatter.h"
 #include <list>
 
 namespace Cumulus {
 
-template <class RunnableType>
 class PoolThread : private Startable {
 public:
-	PoolThread() : Startable("PoolThread"+Poco::NumberFormatter::format(++_Id))  {
-	}
-	~PoolThread() {
-		clear();
-	}
+	PoolThread();
+	virtual ~PoolThread();
 
-	void clear() {
-		stop();
-	}
-	void push(Poco::AutoPtr<RunnableType>& pRunnable) {
-		++_queue;
-		Poco::ScopedLock<Poco::FastMutex> lock(_mutex);
-		_runnables.push_back(pRunnable);
-		start();
-		wakeUp();
-	}
-
-	int queue() const {
-		return _queue.value();
-	}
-
+	void	clear();
+	void	push(Poco::AutoPtr<WorkThread>& pWork);
+	int		queue() const;
 private:
-	void run() {
+	void	run();
 
-		for(;;) {
-
-			WakeUpType wakeUpType = sleep(40000); // 40 sec of timeout
-			
-			for(;;) {
-				RunnableType* pRunnable;
-				{
-					Poco::ScopedLock<Poco::FastMutex> lock(_mutex);
-					if(_runnables.empty()) {
-						if(wakeUpType!=WAKEUP) { // STOP or TIMEOUT
-							if(wakeUpType==TIMEOUT)
-								stop();
-							return;
-						}
-						break;
-					}
-					pRunnable = _runnables.front();
-				}
-
-				pRunnable->run();
-				
-				{
-					Poco::ScopedLock<Poco::FastMutex> lock(_mutex);
-					_runnables.pop_front();
-				}
-				--_queue;
-			}
-		}
-	}
-
-	mutable Poco::FastMutex					_mutex;
-	std::list<Poco::AutoPtr<RunnableType> >	_runnables;
+	Poco::FastMutex							_mutex;
+	std::list<Poco::AutoPtr<WorkThread> >	_jobs;
 	Poco::AtomicCounter						_queue;
 	
 	static Poco::UInt32						_Id;
 };
-
-template<class RunnableType> Poco::UInt32 PoolThread<RunnableType>::_Id = 0;
-
 
 
 } // namespace Cumulus

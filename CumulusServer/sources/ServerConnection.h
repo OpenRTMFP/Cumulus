@@ -35,22 +35,25 @@ public:
 class ServersHandler {
 public:
 	virtual void connection(ServerConnection& server)=0;
-	virtual void disconnection(ServerConnection& server)=0;
+	virtual bool disconnection(ServerConnection& server)=0;
 };
 
 
 class ServerConnection : private TCPClient  {
 public:
-	ServerConnection(const std::string& address,Cumulus::SocketManager& socketManager,ServerHandler& handler,ServersHandler& serversHandler);
+	ServerConnection(const std::string& target,Cumulus::SocketManager& socketManager,ServerHandler& handler,ServersHandler& serversHandler);
 	ServerConnection(const Poco::Net::StreamSocket& socket,Cumulus::SocketManager& socketManager,ServerHandler& handler,ServersHandler& serversHandler);
 	virtual ~ServerConnection();
 
-	const std::string address;
-	const std::string publicAddress;
+	const std::string							address;
+	const std::string							publicAddress;
+	const std::map<std::string,std::string>		properties;
+	const bool			isTarget;
 
 	void			connect();
 
 	void			send(const std::string& handler,ServerMessage& message);
+
 private:
 	void			sendPublicAddress();
 

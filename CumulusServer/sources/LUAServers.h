@@ -27,7 +27,7 @@ public:
 	static int Set(lua_State *pState);
 
 	static void ID(std::string& id){}
-private:
+protected:
 	static int Broadcast(lua_State *pState);
-	static int Pairs(lua_State* pState);
+	static int IPairs(lua_State* pState);
 };

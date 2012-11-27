@@ -20,12 +20,12 @@
 #include "Cumulus.h"
 #include "AESEngine.h"
 #include "PacketWriter.h"
-#include "Poco/RefCountedObject.h"
+#include "WorkThread.h"
 #include "Poco/Net/DatagramSocket.h"
 
 namespace Cumulus {
 
-class RTMFPSending : public Poco::RefCountedObject {
+class RTMFPSending : public WorkThread {
 public:
 	RTMFPSending();
 	~RTMFPSending();
@@ -37,8 +37,9 @@ public:
 	Poco::Net::SocketAddress	address;
 	PacketWriter				packet;
 
-	void						run();
 private:
+	void						run();
+
 	Poco::UInt8					_buffer[PACKETSEND_SIZE];
 };
 

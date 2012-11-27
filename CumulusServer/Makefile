@@ -1,4 +1,4 @@
-OBJECTS = main Blacklist FileWatcher LUAAMFObjectWriter LUAByteReader LUAByteWriter LUAClient LUAClients LUAEdges LUAFlowWriter LUAGroup LUAGroups LUAInvoker LUAListener LUAListeners LUAMail LUAPublication LUAPublications LUAQualityOfService LUAServer LUAServers LUATCPClient LUATCPServer Script Server ServerConnection ServerMessage Servers Service SMTPSession TCPClient TCPServer
+OBJECTS = main Blacklist FileWatcher LUABroadcaster LUAByteReader LUAByteWriter LUAClient LUAClients LUAFlowWriter LUAGroup LUAGroups LUAInvoker LUAListener LUAListeners LUAMail LUAMember LUAPublication LUAPublications LUAQualityOfService LUAServer LUAServers LUATCPClient LUATCPServer Script Server ServerConnection ServerMessage Servers Service SMTPSession TCPClient TCPServer
 
 CC=g++
 EXEC=CumulusServer

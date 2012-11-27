@@ -16,52 +16,28 @@
 */
 
 #include "Cookie.h"
-#include "Util.h"
-#include "Poco/RandomStream.h"
-#include "string.h"
 
 using namespace std;
 using namespace Poco;
 
 namespace Cumulus {
 
-Cookie::Cookie(const string& tag,const string& queryUrl) : tag(tag),value(),response(0x78),_pDH(NULL),_nonce(KEY_SIZE+11),pTarget(NULL),id(0),queryUrl(queryUrl),_writer(_buffer,sizeof(_buffer)) {
-	RandomInputStream().read((char*)value,COOKIE_SIZE);
-	memcpy(&_nonce[0],"\x03\x1A\x00\x00\x02\x1E\x00\x81\x02\x0D\x02",11);
-	_pDH = RTMFP::BeginDiffieHellman(&_nonce[11]);
+Cookie::Cookie(Handshake& handshake,Invoker& invoker,const string& tag,const string& queryUrl) : peerId(),_invoker(invoker), _pComputingThread(NULL),_pCookieComputing(new CookieComputing(invoker,&handshake)),tag(tag),pTarget(NULL),id(0),farId(0),queryUrl(queryUrl),_writer(_buffer,sizeof(_buffer)) {
+	_pComputingThread = invoker.poolThreads.enqueue(_pCookieComputing.cast<WorkThread>(),_pComputingThread);
 }
 
-Cookie::Cookie(const string& tag,Target& target) : tag(tag),value(),response(0x78),_nonce(73),_pDH(target.pDH),pTarget(&target),id(0),_writer(_buffer,sizeof(_buffer)) {
-	RandomInputStream().read((char*)value,COOKIE_SIZE);
-	memcpy(&_nonce[0],"\x03\x1A\x00\x00\x02\x1E\x00\x41\x0E",9);
-	RandomInputStream().read((char*)&_nonce[9],64);
+Cookie::Cookie(Invoker& invoker,const string& tag,Target& target) : peerId(),_invoker(invoker),_pComputingThread(NULL),_pCookieComputing(new CookieComputing(invoker,NULL)),tag(tag),pTarget(&target),id(0),farId(0),_writer(_buffer,sizeof(_buffer)) {
+	_pCookieComputing->pDH = target.pDH;
 }
 
 Cookie::~Cookie() {
-	if(!pTarget && _pDH)
-		RTMFP::EndDiffieHellman(_pDH);
 }
-
-void Cookie::computeKeys(const UInt8* initiatorKey,UInt16 initKeySize,const UInt8* initiatorNonce,UInt16 initNonceSize,UInt8* decryptKey,UInt8* encryptKey) {
-	// Compute Diffie-Hellman secret
-	UInt8 sharedSecret[KEY_SIZE];
-	RTMFP::ComputeDiffieHellmanSecret(_pDH,initiatorKey,initKeySize,sharedSecret);
-	//DEBUG("Shared Secret : %s",Util::FormatHex(sharedSecret,sizeof(sharedSecret)).c_str());
-	// Compute Keys
-	RTMFP::ComputeAsymetricKeys(sharedSecret,initiatorNonce,initNonceSize,&_nonce[0],_nonce.size(),decryptKey,encryptKey);
-	if(pTarget) {
-		((vector<UInt8>&)pTarget->initiatorNonce).resize(initNonceSize);
-		memcpy(&((vector<UInt8>&)pTarget->initiatorNonce)[0],initiatorNonce,initNonceSize);
-		memcpy((UInt8*)pTarget->sharedSecret,sharedSecret,KEY_SIZE);
-	}
-}
-
 
 void Cookie::write() {
 	if(_writer.length()==0) {
 		_writer.write32(id);
-		_writer.write7BitLongValue(_nonce.size());
-		_writer.writeRaw(&_nonce[0],_nonce.size());
+		_writer.write7BitLongValue(_pCookieComputing->nonce.size());
+		_writer.writeRaw(&_pCookieComputing->nonce[0],_pCookieComputing->nonce.size());
 		_writer.write8(0x58);
 	}
 }

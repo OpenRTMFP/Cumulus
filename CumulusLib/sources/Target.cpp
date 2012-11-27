@@ -27,15 +27,15 @@ using namespace std;
 
 namespace Cumulus {
 
-Target::Target(const SocketAddress& address,Cookie* pCookie) : address(address),publicKey(),sharedSecret(),isPeer(pCookie?true:false),peerId(),pDH(pCookie?pCookie->_pDH:NULL) {
+Target::Target(const SocketAddress& address,Cookie* pCookie) : address(address),isPeer(pCookie?true:false),peerId(),pDH(pCookie?pCookie->_pCookieComputing->pDH:NULL) {
 	if(address.port()==0)
 		((SocketAddress&)this->address) = SocketAddress(address.host(),RTMFP_DEFAULT_PORT);
 	if(isPeer) {
-		memcpy((UInt8*)publicKey,&pCookie->_nonce[11],KEY_SIZE);
-		((vector<UInt8>&)pCookie->_nonce)[9] = 0x1D;
-		EVP_Digest(&pCookie->_nonce[7],pCookie->_nonce.size()-7,(UInt8*)id,NULL,EVP_sha256(),NULL);
-		((vector<UInt8>&)pCookie->_nonce)[9] = 0x0D;
-		pCookie->_pDH = NULL;
+		((vector<UInt8>&)publicKey).resize(pCookie->_pCookieComputing->nonce.size()-7);
+		memcpy((void*)&publicKey[0],&pCookie->_pCookieComputing->nonce[7],publicKey.size());
+		((vector<UInt8>&)publicKey)[3] = 0x1D;
+		EVP_Digest(&publicKey[0],publicKey.size(),(UInt8*)id,NULL,EVP_sha256(),NULL);
+		pCookie->_pCookieComputing->pDH = NULL;
 	}
 }
 

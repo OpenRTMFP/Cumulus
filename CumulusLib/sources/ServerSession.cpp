@@ -23,6 +23,7 @@
 #include "FlowStream.h"
 #include "Poco/URI.h"
 #include "Poco/Format.h"
+#include "Poco/NumberFormatter.h"
 #include "string.h"
 
 using namespace std;
@@ -31,14 +32,12 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-ServerSession::ServerSession(ReceivingEngine& receivingEngine,
-				SendingEngine& sendingEngine,
-				 UInt32 id,
+ServerSession::ServerSession(UInt32 id,
 				 UInt32 farId,
 				 const Peer& peer,
 				 const UInt8* decryptKey,
 				 const UInt8* encryptKey,
-				 Invoker& invoker) : Session(receivingEngine,sendingEngine,id,farId,peer,decryptKey,encryptKey),pTarget(NULL),_invoker(invoker),_failed(false),_timesFailed(0),_timeSent(0),_nextFlowWriterId(0),_timesKeepalive(0),_pLastFlowWriter(NULL) {
+				 Invoker& invoker) : Session(id,farId,peer,decryptKey,encryptKey,invoker),pTarget(NULL),_failed(false),_timesFailed(0),_timeSent(0),_nextFlowWriterId(0),_timesKeepalive(0),_pLastFlowWriter(NULL) {
 	_pFlowNull = new FlowNull(this->peer,invoker,*this);
 	Session::writer().clear(11);
 }
@@ -153,7 +152,7 @@ void ServerSession::manage() {
 	map<UInt64,FlowWriter*>::iterator it2=_flowWriters.begin();
 	while(it2!=_flowWriters.end()) {
 		try {
-			it2->second->manage(_invoker);
+			it2->second->manage(invoker);
 		} catch(const Exception& ex) {
 			if(it2->second->critical) {
 				fail(ex.message());
@@ -542,11 +541,11 @@ Flow* ServerSession::createFlow(UInt64 id,const string& signature) {
 	Flow* pFlow=NULL;
 
 	if(signature==FlowConnection::Signature)
-		pFlow = new FlowConnection(id,peer,_invoker,*this);	
+		pFlow = new FlowConnection(id,peer,invoker,*this);	
 	else if(signature==FlowGroup::Signature)
-		pFlow = new FlowGroup(id,peer,_invoker,*this);
+		pFlow = new FlowGroup(id,peer,invoker,*this);
 	else if(signature.compare(0,FlowStream::Signature.length(),FlowStream::Signature)==0)
-		pFlow = new FlowStream(id,signature,peer,_invoker,*this);
+		pFlow = new FlowStream(id,signature,peer,invoker,*this);
 	else
 		ERROR("New unknown flow '%s' on session %u",Util::FormatHex((const UInt8*)signature.c_str(),signature.size()).c_str(),this->id);
 	if(pFlow) {

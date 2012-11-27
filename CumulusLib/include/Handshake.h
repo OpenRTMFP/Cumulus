@@ -36,13 +36,14 @@ public:
 
 class Handshake : public ServerSession {
 public:
-	Handshake(ReceivingEngine& receivingEngine,SendingEngine& sendingEngine,Gateway& gateway,Handler& handler,Entity& entity);
+	Handshake(Gateway& gateway,Handler& handler,Entity& entity);
 	~Handshake();
 
-	void	createCookie(PacketWriter& writer,HelloAttempt& attempt,const std::string& tag,const std::string& queryUrl);
-	void	commitCookie(const Session& session);
-	void	manage();
-	void	clear();
+	void		createCookie(PacketWriter& writer,HelloAttempt& attempt,const std::string& tag,const std::string& queryUrl);
+	void		commitCookie(const Poco::UInt8* value);
+	void		manage();
+	void		clear();
+	Session*	createSession(const Poco::UInt8* cookieValue);
 
 private:
 	void		flush();

@@ -55,7 +55,7 @@ private:
 };
 
 
-RTMFPServer::RTMFPServer(UInt32 cores) : Startable("RTMFPServer"),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(UInt32 threads) : Startable("RTMFPServer"),_pCirrus(NULL),_handshake(*this,*this,*this),_sessions(*this),Handler(threads) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -63,7 +63,7 @@ RTMFPServer::RTMFPServer(UInt32 cores) : Startable("RTMFPServer"),_sendingEngine
 	DEBUG("Id of this RTMFP server : %s",Util::FormatHex(id,ID_SIZE).c_str());
 }
 
-RTMFPServer::RTMFPServer(const string& name,UInt32 cores) : Startable(name),_sendingEngine(cores),_receivingEngine(cores),_pCirrus(NULL),_handshake(_receivingEngine,_sendingEngine,*this,*this,*this),_sessions(*this) {
+RTMFPServer::RTMFPServer(const string& name,UInt32 threads) : Startable(name),_pCirrus(NULL),_handshake(*this,*this,*this),_sessions(*this),Handler(threads) {
 #ifndef POCO_OS_FAMILY_WINDOWS
 //	static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 //	RAND_seed(rnd_seed, sizeof(rnd_seed));
@@ -131,14 +131,21 @@ void RTMFPServer::run() {
 		FATAL("RTMFPServer, unknown error");
 	}
 
+	_mainSockets.remove(_socket);
+
+	// terminate handle
+	terminate();
+	
+	// clean sessions, and send died message if need
 	_handshake.clear();
 	_sessions.clear();
-	_sendingEngine.clear();
-	_mainSockets.remove(_socket);
+
+	// stop receiving and sending engine (it waits the end of sending last session messages)
+	poolThreads.clear();
+
+	// close UDP socket
 	_socket.close();
 
-	terminate();
-	_receivingEngine.clear(); // have to be done after the terminate()
 	sockets.clear();
 	_mainSockets.clear();
 	_port=0;
@@ -154,10 +161,11 @@ void RTMFPServer::run() {
 
 
 void RTMFPServer::onError(const Poco::Net::Socket& socket,const std::string& error) {
-	ERROR("RTMFPServer, %s",error.c_str());
+	WARN("RTMFPServer, %s",error.c_str());
 }
 
 void RTMFPServer::onReadable(Socket& socket) {
+	// Running on the thread of manager socket
 	AutoPtr<RTMFPReceiving> pRTMFPReceiving(new RTMFPReceiving(*this,(DatagramSocket&)socket));
 	if(!pRTMFPReceiving->pPacket)
 		return;
@@ -192,8 +200,12 @@ void RTMFPServer::receive(RTMFPReceiving& rtmfpReceiving) {
 		pSession = _sessions.find(rtmfpReceiving.id);
 	if(!pSession)
 		return; // No warn because can have been deleted during decoding threading process
-	if(!pSession->checked)
-		_handshake.commitCookie(*pSession);
+	if(!pSession->checked) {
+		(bool&)pSession->checked = true;
+		CookieComputing* pCookieComputing = pSession->peer.object<CookieComputing>();
+		_handshake.commitCookie(pCookieComputing->value);
+		pCookieComputing->release();
+	}
 	SocketAddress oldAddress = pSession->peer.address;
 	if(pSession->setEndPoint(rtmfpReceiving.socket,rtmfpReceiving.address))
 		_sessions.changeAddress(oldAddress,*pSession);
@@ -227,7 +239,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 
 	
 	if(!pSessionWanted) {
-		DEBUG("UDP Hole punching : session wanted not found");
+		DEBUG("UDP Hole punching : session %s wanted not found",Util::FormatHex(peerIdWanted,ID_SIZE).c_str())
 		
 		set<string> addresses;
 		onRendezVousUnknown(peerIdWanted,addresses);
@@ -255,8 +267,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 			HelloAttempt& attempt = _handshake.helloAttempt<HelloAttempt>(tag);
 			attempt.pTarget = pSessionWanted->pTarget;
 			_handshake.createCookie(response,attempt,tag,"");
-			response.writeRaw("\x81\x02\x1D\x02");
-			response.writeRaw(pSessionWanted->pTarget->publicKey,KEY_SIZE);
+			response.writeRaw(&pSessionWanted->pTarget->publicKey[0],pSessionWanted->pTarget->publicKey.size());
 			result = 0x70;
 		} else
 			ERROR("Peer/peer dumped exchange impossible : no corresponding 'Target' with the session wanted");
@@ -266,7 +277,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 	if(result==0x00) {
 		/// Udp hole punching normal process
 		UInt32 times = pSessionWanted->helloAttempt(tag);
-		pSessionWanted->p2pHandshake(address,tag,times,(times>0 || address==pSessionWanted->peer.address) ? _sessions.find(address) : NULL);
+		pSessionWanted->p2pHandshake(address,tag,times,(times>0 || address.host()==pSessionWanted->peer.address.host()) ? _sessions.find(address) : NULL);
 
 		bool first=true;
 		list<Address>::const_iterator it2;
@@ -286,7 +297,7 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 
 }
 
-Session& RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* decryptKey,const UInt8* encryptKey,Cookie& cookie) {
+Session& RTMFPServer::createSession(const Peer& peer,Cookie& cookie) {
 
 	Target* pTarget=_pCirrus;
 
@@ -302,19 +313,26 @@ Session& RTMFPServer::createSession(UInt32 farId,const Peer& peer,const UInt8* d
 
 	ServerSession* pSession;
 	if(pTarget) {
-		pSession = new Middle(_receivingEngine,_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this,_sessions,*pTarget);
+		pSession = new Middle(_sessions.nextId(),cookie.farId,peer,cookie.decryptKey(),cookie.encryptKey(),*this,_sessions,*pTarget);
 		if(_pCirrus==pTarget)
 			pSession->pTarget = cookie.pTarget;
 		DEBUG("Wait cirrus handshaking");
 		pSession->manage(); // to wait the cirrus handshake
 	} else {
-		pSession = new ServerSession(_receivingEngine,_sendingEngine,_sessions.nextId(),farId,peer,decryptKey,encryptKey,*this);
+		pSession = new ServerSession(_sessions.nextId(),cookie.farId,peer,cookie.decryptKey(),cookie.encryptKey(),*this);
 		pSession->pTarget = cookie.pTarget;
 	}
 
 	_sessions.add(pSession);
 
 	return *pSession;
+}
+
+void RTMFPServer::destroySession(Session& session) {
+	if(!session.checked) {
+		(bool&)session.checked = true;
+		session.peer.object<CookieComputing>()->release();
+	}
 }
 
 void RTMFPServer::manage() {

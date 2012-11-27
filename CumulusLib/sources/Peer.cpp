@@ -25,6 +25,13 @@ using namespace Poco;
 
 namespace Cumulus {
 
+class Member {
+public:
+	Member(Poco::UInt32	index,FlowWriter* pWriter) : index(index),pWriter(pWriter){}
+	const Poco::UInt32	index;
+	FlowWriter*			pWriter;
+};
+
 Peer::Peer(Handler& handler):_handler(handler),connected(false),addresses(1) {
 }
 
@@ -32,8 +39,8 @@ Peer::~Peer() {
 	unsubscribeGroups();
 }
 
-Group& Peer::joinGroup(const UInt8* id) {
-	// create group is need
+Group& Peer::joinGroup(const UInt8* id,FlowWriter* pWriter) {
+	// create group if need
 	Entities<Group>::Map::iterator it = _handler._groups.lower_bound(id);
 	Group* pGroup = NULL;
 	if(it==_handler._groups.end() || it->first!=id) {
@@ -43,52 +50,81 @@ Group& Peer::joinGroup(const UInt8* id) {
 		_handler._groups.insert(it,pair<const UInt8*,Group*>(pGroup->id,pGroup));
 	} else
 		pGroup = it->second;
-	joinGroup(*pGroup);
+	joinGroup(*pGroup,pWriter);
 	return *pGroup;
 }
 
-void Peer::joinGroup(Group& group) {
-	map<Group*,UInt32>::iterator it = _groups.lower_bound(&group);
+bool Peer::writeId(Group& group,Peer& peer,FlowWriter* pWriter) {
+	if(pWriter) {
+		BinaryWriter& response(pWriter->writeRawMessage(true));
+		response.write8(0x0b); // unknown
+		response.writeRaw(peer.id,ID_SIZE);
+	} else {
+		map<Group*,Member*>::const_iterator it = peer._groups.find(&group);
+		if(it==peer._groups.end()) {
+			CRITIC("A peer in a group without have its _groups collection associated")
+			return false;
+		}
+		if(!it->second->pWriter)
+			return false;
+		BinaryWriter& response(it->second->pWriter->writeRawMessage(true));
+		response.write8(0x0b); // unknown
+		response.writeRaw(id,ID_SIZE);
+	}
+	return true;
+}
+
+void Peer::joinGroup(Group& group,FlowWriter* pWriter) {
+	UInt16 count=6;
+	Group::Iterator it0=group.end();
+	while(group.size()>0) {
+		if(group.begin()==it0)
+			break;
+		--it0;
+		Client& client = **it0;
+		if(client==this->id)
+			continue;
+		if(!writeId(group,(Peer&)client,pWriter))
+			continue;
+		if(--count==0)
+			break;
+	}
+
+	map<Group*,Member*>::iterator it = _groups.lower_bound(&group);
 	if(it!=_groups.end() && it->first==&group)
 		return;
 
 	if(it!=_groups.begin())
 		--it;
 
-	// TODO What do you do if no more index available? make a reset of the map?
-	UInt32 index = group._peers.size()==0 ? 0 : (group._peers.rbegin()->first+1);
+	UInt32 index = 0;
+	if(!group._peers.empty()){
+		index = group._peers.rbegin()->first+1;
+		if(index<group._peers.rbegin()->first) {
+			// max index reached, rewritten index!
+			index=0;
+			map<UInt32,Peer*>::iterator it1;
+			for(it1=group._peers.begin();it1!=group._peers.end();++it1)
+				(UInt32&)it1->first = index++;
+		}
+	}
 	group._peers[index] = this;
-	_groups.insert(it,pair<Group*,UInt32>(&group,index));
+	_groups.insert(it,pair<Group*,Member*>(&group,new Member(index,pWriter)));
 	onJoinGroup(group);
 }
 
 
 void Peer::unjoinGroup(Group& group) {
-	map<Group*,UInt32>::iterator it = _groups.lower_bound(&group);
+	map<Group*,Member*>::iterator it = _groups.lower_bound(&group);
 	if(it==_groups.end() || it->first!=&group)
 		return;
-
-	group._peers.erase(it->second);
-	_groups.erase(it);
-	onUnjoinGroup(group);
-	if(group.size()==0) {
-		_handler._groups.erase(group.id);
-		delete &group;
-	}
+	onUnjoinGroup(it);
 }
 
 void Peer::unsubscribeGroups() {
-	map<Group*,UInt32>::const_iterator it=_groups.begin();
-	for(it=_groups.begin();it!=_groups.end();++it) {
-		Group& group = *it->first;
-		group._peers.erase(it->second);
-		onUnjoinGroup(group);
-		if(group.size()==0) {
-			_handler._groups.erase(group.id);
-			delete &group;
-		}
-	}
-	_groups.clear();
+	map<Group*,Member*>::iterator it=_groups.begin();
+	while(it!=_groups.end())
+		onUnjoinGroup(it++);
 }
 
 /// EVENTS ///
@@ -140,19 +176,33 @@ void Peer::onManage() {
 }
 
 void Peer::onJoinGroup(Group& group) {
-	if(connected) {
-		_handler.onJoinGroup(*this,group);
+	if(!connected)
 		return;
-	}
-	WARN("Group joining client before connection")
+	_handler.onJoinGroup(*this,group);
 }
 
-void Peer::onUnjoinGroup(Group& group) {
-	if(connected) {
+void Peer::onUnjoinGroup(map<Group*,Member*>::iterator it) {
+	Group& group = *it->first;
+	map<UInt32,Peer*>::iterator itPeer = group._peers.find(it->second->index);
+	group._peers.erase(itPeer++);
+	delete it->second;
+	_groups.erase(it);
+
+	if(connected)
 		_handler.onUnjoinGroup(*this,group);
-		return;
+
+	if(group.size()==0) {
+		_handler._groups.erase(group.id);
+		delete &group;
+	} else if(itPeer!=group._peers.end()) {
+		// if a peer disconnects of one group, give to its following peer the 6th preceding peer
+		Peer& followingPeer = *itPeer->second;
+		UInt8 count=7;
+		while(--count!=0 && itPeer!=group._peers.begin())
+			--itPeer;
+		if(count==0)
+			itPeer->second->writeId(group,followingPeer,NULL);
 	}
-	WARN("Group unjoining client before connection")
 }
 
 bool Peer::onPublish(const Publication& publication,string& error) {

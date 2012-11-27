@@ -42,10 +42,10 @@ public:
 	static DumpMode				GetDump();
 	static Logger*				GetLogger();
 	static Poco::UInt8			GetLevel();
-	static void					Dump(const Poco::UInt8* data,Poco::UInt32 size,const char* header=NULL,bool middle=false);
-	static void					Dump(PacketReader& packet,const char* header=NULL,bool middle=false);
-	static void					Dump(PacketWriter& packet,const char* header=NULL,bool middle=false);
-	static void					Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header=NULL,bool middle=false);
+	static void					Dump(const Poco::UInt8* data,Poco::UInt32 size,const char* header=NULL);
+	static void					Dump(PacketReader& packet,const char* header=NULL);
+	static void					Dump(PacketWriter& packet,const char* header=NULL);
+	static void					Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header=NULL);
 #endif
 	
 	
@@ -77,14 +77,14 @@ inline void Logs::SetLogger(Logger& logger) {
 		return _DumpMode;
 	}
 
-	inline void Logs::Dump(PacketReader& packet,const char* header,bool middle) {
-		Dump(packet.current(),packet.available(),header,middle);
+	inline void Logs::Dump(PacketReader& packet,const char* header) {
+		Dump(packet.current(),packet.available(),header);
 	}
-	inline void Logs::Dump(PacketWriter& packet,const char* header,bool middle) {
-		Dump(packet.begin(),packet.length(),header,middle);
+	inline void Logs::Dump(PacketWriter& packet,const char* header) {
+		Dump(packet.begin(),packet.length(),header);
 	}
-	inline void Logs::Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header,bool middle) {
-		Dump(packet.begin()+offset,packet.length()-offset,header,middle);
+	inline void Logs::Dump(PacketWriter& packet,Poco::UInt16 offset,const char* header) {
+		Dump(packet.begin()+offset,packet.length()-offset,header);
 	}
 
 	inline Poco::UInt8 Logs::GetLevel() {
@@ -117,6 +117,9 @@ inline void Logs::SetLogger(Logger& logger) {
 	#define INFO(FMT, ...) LOG(Cumulus::Logger::PRIO_INFO,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
 	#define DEBUG(FMT, ...) LOG(Cumulus::Logger::PRIO_DEBUG,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
 	#define TRACE(FMT, ...) LOG(Cumulus::Logger::PRIO_TRACE,__FILE__,__LINE__,FMT, ## __VA_ARGS__)
+
+	#define DUMP_MIDDLE(...) { if(Cumulus::Logs::GetLogger() && (Cumulus::Logs::GetDump()&Cumulus::Logs::MIDDLE)) {Cumulus::Logs::Dump(__VA_ARGS__);} }
+	#define DUMP(...) { if(Cumulus::Logs::GetLogger() && (Cumulus::Logs::GetDump()&Cumulus::Logs::EXTERNAL)) {Cumulus::Logs::Dump(__VA_ARGS__);} }
 
 #endif
 

@@ -30,6 +30,9 @@ public:
 	static int Set(lua_State *pState);
 
 private:
+	static int  Split(lua_State *pState);
+	static int	Md5(lua_State *pState);
+	static int	Sha256(lua_State *pState);
 	static int	ToAMF(lua_State *pState);
 	static int	ToAMF0(lua_State *pState);
 	static int	FromAMF(lua_State *pState);

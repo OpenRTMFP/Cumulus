@@ -148,6 +148,7 @@ private:
 		ScopedLock<FastMutex> lock(_logMutex);
 		cout.write((const char*)data,size);
 		_logStream.write((const char*)data,size);
+		_logStream.flush();
 		manageLogFile();
 	}
 
@@ -157,7 +158,8 @@ private:
 		Path path(filePath);
 		string file,shortName;
 		if(path.getExtension() == "lua") {
-			file.assign(path.directory(path.depth()-1) + "/");
+			if(path.depth()>0)
+				file.assign(path.directory(path.depth()-1) + "/");
 			shortName.assign(file + path.getFileName());
 		} else
 			shortName.assign(path.getBaseName());

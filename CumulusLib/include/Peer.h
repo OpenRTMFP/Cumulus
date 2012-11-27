@@ -26,10 +26,12 @@
 
 namespace Cumulus {
 
+
 class Group;
 class Handler;
 class Publication;
 class Listener;
+class Member;
 class Peer : public Client {
 public:
 	Peer(Handler& handler);
@@ -42,8 +44,8 @@ public:
 	void setFlowWriter(FlowWriter* pWriter);
 
 	void unsubscribeGroups();
-	void joinGroup(Group& group);
-	Group& joinGroup(const Poco::UInt8* id);
+	void joinGroup(Group& group,FlowWriter* pWriter);
+	Group& joinGroup(const Poco::UInt8* id,FlowWriter* pWriter);
 	void unjoinGroup(Group& group);
 
 
@@ -69,10 +71,11 @@ public:
 
 private:
 	void onJoinGroup(Group& group);
-	void onUnjoinGroup(Group& group);
+	void onUnjoinGroup(std::map<Group*,Member*>::iterator it);
+	bool writeId(Group& group,Peer& peer,FlowWriter* pWriter);
 
 	Handler&						_handler;
-	std::map<Group*,Poco::UInt32>	_groups;
+	std::map<Group*,Member*>		_groups;
 };
 
 inline void Peer::setFlowWriter(FlowWriter* pWriter){

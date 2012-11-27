@@ -19,58 +19,28 @@
 
 #include "Cumulus.h"
 #include "PoolThread.h"
-#include "Poco/Environment.h"
+#include <vector>
 
 namespace Cumulus {
 
-
-template <class RunnableType>
 class PoolThreads {
 public:
-	PoolThreads(Poco::UInt32 numberOfThreads=0):_threads(numberOfThreads==0 ? Poco::Environment::processorCount() : numberOfThreads)  {
-		typename std::vector<PoolThread<RunnableType>* >::iterator it;
-		for(Poco::UInt16 i=0;i<_threads.size();++i)
-			_threads[i] = new PoolThread<RunnableType>();
-	}
+	PoolThreads(Poco::UInt32 threadsAvailable=0);
+	virtual ~PoolThreads();
 
-	~PoolThreads() {
-		typename std::vector<PoolThread<RunnableType>* >::iterator it;
-		for(it=_threads.begin();it!=_threads.end();++it)
-			delete *it;
-	}
+	void			clear();
+	Poco::UInt32	threadsAvailable();
 
-	void clear() {
-		typename std::vector<PoolThread<RunnableType>* >::iterator it;
-		for(it=_threads.begin();it!=_threads.end();++it)
-			(*it)->clear();
-	}
-
-	PoolThread<RunnableType>* enqueue(Poco::AutoPtr<RunnableType>& pRunnable,PoolThread<RunnableType>* pThread) {
-
-		Poco::UInt32 queue=0;
-		if(!pThread) {
-			typename std::vector<PoolThread<RunnableType>* >::const_iterator it;
-			for(it=_threads.begin();it!=_threads.end();++it) {
-				Poco::UInt32 newQueue = (*it)->queue();
-				if(!pThread || newQueue<=queue) {
-					pThread = *it;
-					if((queue=newQueue)==0)
-						break;
-				}
-			}
-		}
-
-		if (queue >= 10000)
-			throw Poco::Exception("PoolThreads 10000 limit runnable entries for every thread reached");
-
-		pThread->push(pRunnable);
-		return pThread;
-	}
+	PoolThread*	enqueue(Poco::AutoPtr<WorkThread> pWork,PoolThread* pThread=NULL);
 
 private:
-	std::vector<PoolThread<RunnableType>* >	_threads;
-	Poco::FastMutex							_mutex;
+	std::vector<PoolThread*>	_threads;
+	Poco::FastMutex				_mutex;
 };
+
+inline Poco::UInt32	PoolThreads::threadsAvailable() {
+	return _threads.size();
+}
 
 
 } // namespace Cumulus

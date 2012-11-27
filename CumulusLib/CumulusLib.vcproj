@@ -372,6 +372,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\CookieComputing.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\include\CookieComputing.h"
+					>
+				</File>
+				<File
 					RelativePath=".\include\Gateway.h"
 					>
 				</File>
@@ -595,7 +603,15 @@
 				Name="Threading"
 				>
 				<File
+					RelativePath=".\sources\PoolThread.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\include\PoolThread.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\PoolThreads.cpp"
 					>
 				</File>
 				<File
@@ -624,6 +640,10 @@
 				</File>
 				<File
 					RelativePath=".\include\TaskHandler.h"
+					>
+				</File>
+				<File
+					RelativePath=".\include\WorkThread.h"
 					>
 				</File>
 			</Filter>

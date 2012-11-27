@@ -35,14 +35,13 @@ Logs::~Logs() {
 }
 
 
-void Logs::Dump(const UInt8* data,UInt32 size,const char* header,bool middle) {
-	UInt8 type = middle ? MIDDLE : EXTERNAL;
-	if(GetLogger() && _DumpMode&type) {
-		vector<UInt8> out;
-		Util::Dump(data,size,out,header);
-		if(out.size()>0)
-			GetLogger()->dumpHandler(&out[0],out.size());
-	}
+void Logs::Dump(const UInt8* data,UInt32 size,const char* header) {
+	if(!GetLogger())
+		return;
+	vector<UInt8> out;
+	Util::Dump(data,size,out,header);
+	if(out.size()>0)
+		GetLogger()->dumpHandler(&out[0],out.size());
 }
 
 

@@ -15,27 +15,26 @@
 	This file is a part of Cumulus.
 */
 
-#include "LUAServers.h"
-#include "Servers.h"
-#include "LUAServer.h"
 #include "LUABroadcaster.h"
+#include "Broadcaster.h"
+#include "LUAServer.h"
 
 using namespace std;
 using namespace Cumulus;
 using namespace Poco;
 
-const char*		LUAServers::Name="LUAServers";
+const char*		LUABroadcaster::Name="LUABroadcaster";
 
-int LUAServers::IPairs(lua_State* pState) {
-	SCRIPT_CALLBACK(Servers,LUAServers,servers)
+int LUABroadcaster::IPairs(lua_State* pState) {
+	SCRIPT_CALLBACK(Broadcaster,LUABroadcaster,broadcaster)
 		lua_getglobal(pState,"next");
 		if(!lua_iscfunction(pState,-1))
 			SCRIPT_ERROR("'next' should be a LUA function, it should not be overloaded")
 		else {
 			lua_newtable(pState);
-			Servers::Iterator it;
+			Broadcaster::Iterator it;
 			UInt32 i=0;
-			for(it=servers.begin();it!=servers.end();++it) {
+			for(it=broadcaster.begin();it!=broadcaster.end();++it) {
 				SCRIPT_WRITE_PERSISTENT_OBJECT(ServerConnection,LUAServer,(**it))
 				lua_rawseti(pState,-2,++i);
 			}
@@ -43,8 +42,8 @@ int LUAServers::IPairs(lua_State* pState) {
 	SCRIPT_CALLBACK_RETURN
 }
 
-int LUAServers::Broadcast(lua_State* pState) {
-	SCRIPT_CALLBACK(Servers,LUAServers,servers)
+int LUABroadcaster::Broadcast(lua_State* pState) {
+	SCRIPT_CALLBACK(Broadcaster,LUABroadcaster,broadcaster)
 		string handler(SCRIPT_READ_STRING(""));
 		if(handler.empty() || handler==".") {
 			ERROR("handler of one sending server message can't be null or equal to '.'")
@@ -52,41 +51,38 @@ int LUAServers::Broadcast(lua_State* pState) {
 			ServerMessage message;
 			AMFWriter writer(message);
 			SCRIPT_READ_AMF(writer)
-			servers.broadcast(handler,message);
+			broadcaster.broadcast(handler,message);
 		}
 	SCRIPT_CALLBACK_RETURN
 }
 
-int LUAServers::Get(lua_State *pState) {
-	SCRIPT_CALLBACK(Servers,LUAServers,servers)
+int LUABroadcaster::Get(lua_State *pState) {
+	SCRIPT_CALLBACK(Broadcaster,LUABroadcaster,broadcaster)
 		string name = SCRIPT_READ_STRING("");
 		if(name=="ipairs")
-			SCRIPT_WRITE_FUNCTION(&LUAServers::IPairs)
+			SCRIPT_WRITE_FUNCTION(&LUABroadcaster::IPairs)
 		else if(name == "count")
-			SCRIPT_WRITE_NUMBER(servers.count())
+			SCRIPT_WRITE_NUMBER(broadcaster.count())
 		else if(name == "broadcast")
-			SCRIPT_WRITE_FUNCTION(&LUAServers::Broadcast)
-		else if(name == "initiators")
-			SCRIPT_WRITE_PERSISTENT_OBJECT(Broadcaster,LUABroadcaster,servers.initiators)
-		else if(name == "targets")
-			SCRIPT_WRITE_PERSISTENT_OBJECT(Broadcaster,LUABroadcaster,servers.targets)
+			SCRIPT_WRITE_FUNCTION(&LUABroadcaster::Broadcast)
 		else if(name=="(") {
 			ServerConnection* pServer = NULL;
 			if(SCRIPT_NEXT_TYPE==LUA_TNUMBER) {
 				UInt32 index = SCRIPT_READ_UINT(0);
 				if(index>0)
-					pServer = servers[--index];
+					pServer = broadcaster[--index];
 			} else
-				pServer = servers[SCRIPT_READ_STRING("")];
+				pServer = broadcaster[SCRIPT_READ_STRING("")];
 			if(pServer)
 				SCRIPT_WRITE_PERSISTENT_OBJECT(ServerConnection,LUAServer,*pServer)
 		}
 	SCRIPT_CALLBACK_RETURN
 }
 
-int LUAServers::Set(lua_State *pState) {
-	SCRIPT_CALLBACK(Servers,LUAServers,servers)
+int LUABroadcaster::Set(lua_State *pState) {
+	SCRIPT_CALLBACK(Broadcaster,LUABroadcaster,broadcaster)
 		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }
+

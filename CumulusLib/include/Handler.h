@@ -24,9 +24,6 @@ namespace Cumulus {
 
 class Handler : public Invoker {
 public:
-	Handler():_myself(*this) {(bool&)_myself.connected=true;}
-	virtual ~Handler(){}
-
 	//events
 	virtual	void			onRendezVousUnknown(const Poco::UInt8* id,std::set<std::string>& addresses){}
 	virtual void			onHandshake(Poco::UInt32 attempts,const Poco::Net::SocketAddress& address,const std::string& path,const std::map<std::string,std::string>& properties,std::set<std::string>& addresses){}
@@ -49,6 +46,9 @@ public:
 	virtual void			onUnsubscribe(Client& client,const Listener& listener){}
 
 	virtual void			onManage(Client& client){}
+protected:
+	Handler(Poco::UInt32 threads):_myself(*this),Invoker(threads) {(bool&)_myself.connected=true;}
+	virtual ~Handler(){}
 private:
 	Peer&					myself();
 	Peer					_myself;

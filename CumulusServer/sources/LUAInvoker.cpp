@@ -23,16 +23,30 @@
 #include "LUATCPClient.h"
 #include "LUATCPServer.h"
 #include "LUAMail.h"
+#include "LUAServers.h"
 #include "Server.h"
 #include "Poco/Net/StreamSocket.h"
+#include <openssl/evp.h>
 #include "math.h"
-#include "LUAServers.h"
 
 using namespace Cumulus;
 using namespace Poco;
 using namespace std;
 
 const char*		LUAInvoker::Name="Cumulus::Invoker";
+
+
+int	LUAInvoker::Split(lua_State *pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		string expression = SCRIPT_READ_STRING("");
+		string separator = SCRIPT_READ_STRING("");
+		StringTokenizer split(expression,separator,SCRIPT_READ_UINT(0));
+		StringTokenizer::Iterator it;
+		for(it=split.begin();it!=split.end();++it)
+			SCRIPT_WRITE_STRING(it->c_str())
+	SCRIPT_CALLBACK_RETURN
+}
+
 
 int	LUAInvoker::Publish(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
@@ -67,6 +81,38 @@ int	LUAInvoker::CreateTCPServer(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
 		SCRIPT_WRITE_OBJECT(LUATCPServer,LUATCPServer,*(new LUATCPServer(invoker.sockets,pState)))
 		SCRIPT_ADD_DESTRUCTOR(&LUATCPServer::Destroy);
+	SCRIPT_CALLBACK_RETURN
+}
+
+int	LUAInvoker::Md5(lua_State *pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		while(SCRIPT_CAN_READ) {
+			SCRIPT_READ_BINARY(data,size)
+			if(data) {
+				UInt8 result[32];
+				EVP_Digest(data,size,(unsigned char *)result,NULL,EVP_md5(),NULL);
+				SCRIPT_WRITE_BINARY(result,32);
+			} else {
+				SCRIPT_ERROR("Input MD5 value have to be a string expression")
+				SCRIPT_WRITE_NIL
+			}
+		}
+	SCRIPT_CALLBACK_RETURN
+}
+
+int	LUAInvoker::Sha256(lua_State *pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		while(SCRIPT_CAN_READ) {
+			SCRIPT_READ_BINARY(data,size)
+			if(data) {
+				UInt8 result[32];
+				EVP_Digest(data,size,(unsigned char *)result,NULL,EVP_sha256(),NULL);
+				SCRIPT_WRITE_BINARY(result,32);
+			} else {
+				SCRIPT_ERROR("Input SHA256 value have to be a string expression")
+				SCRIPT_WRITE_NIL
+			}
+		}
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -143,12 +189,18 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::AbsolutePath)
 		} else if(name=="epochTime") {
 			SCRIPT_WRITE_NUMBER(ROUND(Timestamp().epochMicroseconds()/1000))
+		} else if(name=="split") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::Split)
 		} else if(name=="createTCPClient") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPClient)
 		} else if(name=="createTCPServer") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPServer)
 		} else if(name=="configs") {
 			lua_getglobal(pState,"cumulus.configs");
+		} else if(name=="md5") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::Md5)
+		} else if(name=="sha256") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::Sha256)
 		} else if(name=="sendMail") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::SendMail)
 		}

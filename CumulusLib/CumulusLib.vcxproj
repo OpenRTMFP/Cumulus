@@ -105,6 +105,7 @@
   <ItemGroup>
     <ClCompile Include="sources\AMFSimpleObject.cpp" />
     <ClCompile Include="sources\Client.cpp" />
+    <ClCompile Include="sources\CookieComputing.cpp" />
     <ClCompile Include="sources\Cumulus.cpp" />
     <ClCompile Include="sources\AMFObjectWriter.cpp" />
     <ClCompile Include="sources\AMFReader.cpp" />
@@ -117,6 +118,8 @@
     <ClCompile Include="sources\PacketReader.cpp" />
     <ClCompile Include="sources\PacketWriter.cpp" />
     <ClCompile Include="sources\Address.cpp" />
+    <ClCompile Include="sources\PoolThread.cpp" />
+    <ClCompile Include="sources\PoolThreads.cpp" />
     <ClCompile Include="sources\RTMFPReceiving.cpp" />
     <ClCompile Include="sources\RTMFPSending.cpp" />
     <ClCompile Include="sources\ServerSession.cpp" />
@@ -156,6 +159,7 @@
     <ClInclude Include="include\AMF.h" />
     <ClInclude Include="include\AMFSimpleObject.h" />
     <ClInclude Include="include\Client.h" />
+    <ClInclude Include="include\CookieComputing.h" />
     <ClInclude Include="include\Cumulus.h" />
     <ClInclude Include="include\AMFObjectWriter.h" />
     <ClInclude Include="include\AMFReader.h" />
@@ -210,6 +214,7 @@
     <ClInclude Include="include\Publications.h" />
     <ClInclude Include="include\QualityOfService.h" />
     <ClInclude Include="include\Streams.h" />
+    <ClInclude Include="include\WorkThread.h" />
     <CustomBuildStep Include="include\Middle.h" />
     <ClInclude Include="include\Target.h" />
   </ItemGroup>

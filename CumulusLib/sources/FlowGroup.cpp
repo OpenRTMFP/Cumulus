@@ -57,32 +57,10 @@ void FlowGroup::rawHandler(UInt8 type,PacketReader& data) {
 		
 			_pGroup = invoker.groups(groupId);
 		
-			if(_pGroup) {
-				UInt16 count=6;
-				Group::Iterator it;
-				Client* pClient=NULL;
-				for(it=_pGroup->begin();it!=_pGroup->end();++it) {
-					if(peer==(*it)->id)
-						continue;
-					BinaryWriter& response(writer.writeRawMessage(true));
-					response.write8(0x0b); // unknown
-					response.writeRaw((*it)->id,ID_SIZE);
-					if((*it)->ping>=1000) {
-						if(!pClient || (*it)->ping<pClient->ping)
-							pClient = *it;
-						continue;
-					}
-					if(--count==0)
-						break;
-				}
-				if(count==6 && pClient) {
-					BinaryWriter& response(writer.writeRawMessage(true));
-					response.write8(0x0b); // unknown
-					response.writeRaw(pClient->id,ID_SIZE);
-				}
-				peer.joinGroup(*_pGroup);
-			} else
-				_pGroup = &peer.joinGroup(groupId);
+			if(_pGroup)
+				peer.joinGroup(*_pGroup,&writer);
+			else
+				_pGroup = &peer.joinGroup(groupId,&writer);
 		}
 	} else
 		Flow::rawHandler(type,data);

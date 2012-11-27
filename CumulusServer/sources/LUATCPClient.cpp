@@ -71,7 +71,7 @@ int	LUATCPClient::Connect(lua_State* pState) {
 			if(client.error())
 				SCRIPT_WRITE_STRING(client.error())
 		} catch(Exception& ex) {
-			SCRIPT_WRITE_STRING("Understandable TCPClient address, %s",ex.displayText().c_str())
+			SCRIPT_WRITE_STRING(format("Understandable TCPClient address, %s",ex.displayText().c_str()).c_str())
 		}
 	SCRIPT_CALLBACK_RETURN
 }

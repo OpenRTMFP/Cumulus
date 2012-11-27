@@ -23,10 +23,11 @@
 #include "Entities.h"
 #include "SocketManager.h"
 #include "TaskHandler.h"
+#include "PoolThreads.h"
 
 namespace Cumulus {
 
-class Invoker : public Entity,protected TaskHandler {
+class Invoker : public Entity,public TaskHandler {
 	friend class Peer; // Peer manage _clients and _groups list!
 	friend class FlowStream; // FlowStream manage _streams list!
 	friend class FlowConnection; // FlowConnection manage _streams list!
@@ -36,6 +37,7 @@ public:
 	Entities<Group>			groups;
 	Publications			publications;
 	SocketManager			sockets;
+	PoolThreads				poolThreads;
 
 
 	Publication&			publish(const std::string& name);
@@ -45,13 +47,15 @@ public:
 	void					clearBannedList();
 	bool					isBanned(const Poco::Net::IPAddress& ip);
 
+	
+
 	// properties
 	const Poco::UInt32		udpBufferSize;
 	const Poco::UInt32		keepAlivePeer;
 	const Poco::UInt32		keepAliveServer;
 
 protected:
-	Invoker();
+	Invoker(Poco::UInt32 threads);
 	virtual ~Invoker();
 
 private:

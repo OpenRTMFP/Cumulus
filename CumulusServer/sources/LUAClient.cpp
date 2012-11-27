@@ -55,7 +55,7 @@ int LUAClient::Get(lua_State *pState) {
 		} else {
 			map<string,string>::const_iterator it = client.properties.find(name);
 			if(it!=client.properties.end())
-				SCRIPT_WRITE_STRING(it->second.c_str())
+				SCRIPT_WRITE_BINARY(it->second.c_str(),it->second.size())
 		}
 	SCRIPT_CALLBACK_RETURN
 }

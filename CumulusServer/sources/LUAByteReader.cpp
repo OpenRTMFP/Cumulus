@@ -152,7 +152,7 @@ int	LUAByteReader::ReadUTF(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		string value;
 		reader.reader.readString16(value);
-		SCRIPT_WRITE_STRING(value.c_str())
+		SCRIPT_WRITE_BINARY(value.c_str(),value.size())
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -160,6 +160,6 @@ int	LUAByteReader::ReadUTFBytes(lua_State *pState) {
 	SCRIPT_CALLBACK(AMFReader,LUAByteReader,reader)
 		string value;
 		reader.reader.readRaw(SCRIPT_READ_UINT(0),value);
-		SCRIPT_WRITE_STRING(value.c_str())
+		SCRIPT_WRITE_BINARY(value.c_str(),value.size())
 	SCRIPT_CALLBACK_RETURN
 }

@@ -17,20 +17,36 @@
 
 #pragma once
 
-#include "Script.h"
+#include "Cumulus.h"
+#include "Invoker.h"
+#include <openssl/evp.h>
 
 
-class LUAAMFObjectWriter {
+namespace Cumulus {
+
+#define COOKIE_SIZE 0x40
+
+class Handshake;
+class CookieComputing : public WorkThread, private Task {
 public:
-	static const char* Name;
-	
-	static int Get(lua_State *pState);
-	static int Set(lua_State *pState);
+	CookieComputing(Invoker& invoker,Handshake*	pHandshake);
+	~CookieComputing();
 
-	static void	ID(std::string& id){}
+	const Poco::UInt8			value[COOKIE_SIZE];
+	std::vector<Poco::UInt8>	nonce;
+	DH*							pDH;
+	std::vector<Poco::UInt8>	initiatorKey;
+	std::vector<Poco::UInt8>	initiatorNonce;
+	Poco::UInt8					decryptKey[AES_KEY_SIZE];
+	Poco::UInt8					encryptKey[AES_KEY_SIZE];
+	std::vector<Poco::UInt8>	sharedSecret;
+	
 
 private:
-	static int	Write(lua_State *pState);
+	void						run();
+	void						handle();
+	Handshake*					_pHandshake;
+	
 };
 
-
+} // namespace Cumulus

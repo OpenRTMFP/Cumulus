@@ -68,8 +68,10 @@ private:
 	void					onManage(Cumulus::Client& client);
 
 	// ServiceRegistry implementation
-	void					addFunction(Service& service,const std::string& name);
-	void					clear(Service& service);
+	void					addServiceFunction(Service& service,const std::string& name);
+	void					clearService(Service& service);
+	void					startService(Service& service);
+	void					stopService(Service& service);
 
 	// ServerHandler implementation
 	const std::string&	publicAddress();
@@ -86,13 +88,14 @@ private:
 	ApplicationKiller&		_applicationKiller;
 	Service*				_pService;
 
-	std::map<std::string,std::set<Service*>>	_scriptEvents;
+	std::set<Service*>							_servicesRunning;
+	std::map<std::string,std::set<Service*> >	_scriptEvents;
 
-	std::string					_serversPublicAddress;
+	std::string					_publicAddress;
 };
 
 inline const std::string& Server::publicAddress() {
-	return _serversPublicAddress;
+	return _publicAddress;
 }
 
 inline Poco::UInt16 Server::port() {

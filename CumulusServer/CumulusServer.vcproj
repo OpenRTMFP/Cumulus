@@ -239,11 +239,11 @@
 				Name="LUAClass"
 				>
 				<File
-					RelativePath=".\sources\LUAAMFObjectWriter.cpp"
+					RelativePath=".\sources\LUABroadcaster.cpp"
 					>
 				</File>
 				<File
-					RelativePath=".\sources\LUAAMFObjectWriter.h"
+					RelativePath=".\sources\LUABroadcaster.h"
 					>
 				</File>
 				<File
@@ -363,6 +363,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\sources\LUAMember.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\LUAMember.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\LUAPublication.cpp"
 					>
 				</File>
@@ -410,13 +418,6 @@
 				<File
 					RelativePath=".\sources\LUAServer.cpp"
 					>
-					<FileConfiguration
-						Name="debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
 				</File>
 				<File
 					RelativePath=".\sources\LUAServer.h"
@@ -451,6 +452,10 @@
 				Name="Net"
 				>
 				<File
+					RelativePath=".\sources\Broadcaster.h"
+					>
+				</File>
+				<File
 					RelativePath=".\sources\MailHandler.h"
 					>
 				</File>
@@ -473,13 +478,6 @@
 				<File
 					RelativePath=".\sources\Servers.cpp"
 					>
-					<FileConfiguration
-						Name="debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
 				</File>
 				<File
 					RelativePath=".\sources\Servers.h"

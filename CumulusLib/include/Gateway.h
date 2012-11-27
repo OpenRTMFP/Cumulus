@@ -31,8 +31,8 @@ public:
 	virtual ~Gateway(){}
 
 	virtual Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted)=0;
-	virtual Session&		createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie)=0;
-	virtual void			destroySession(Session& session){}
+	virtual Session&		createSession(const Peer& peer,Cookie& cookie)=0;
+	virtual void			destroySession(Session& session)=0;
 };
 
 

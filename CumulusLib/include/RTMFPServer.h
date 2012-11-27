@@ -56,7 +56,7 @@ class RTMFPServer : private Gateway,protected Handler,private Startable,private 
 	friend class RTMFPManager;
 	friend class RTMFPReceiving;
 public:
-	RTMFPServer(Poco::UInt32 cores=0);
+	RTMFPServer(Poco::UInt32 threads=0);
 	virtual ~RTMFPServer();
 
 	void start();
@@ -78,14 +78,13 @@ private:
 	void			receive(RTMFPReceiving& rtmfpReceiving);
 	void			run();
 	Poco::UInt8		p2pHandshake(const std::string& tag,PacketWriter& response,const Poco::Net::SocketAddress& address,const Poco::UInt8* peerIdWanted);
-	Session&		createSession(Poco::UInt32 farId,const Peer& peer,const Poco::UInt8* decryptKey,const Poco::UInt8* encryptKey,Cookie& cookie);
+	Session&		createSession(const Peer& peer,Cookie& cookie);
+	void			destroySession(Session& session);
 
 	void			onReadable(Poco::Net::Socket& socket);
 	void			onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	Handshake					_handshake;
-	SendingEngine				_sendingEngine;
-	ReceivingEngine				_receivingEngine;
 
 	Poco::UInt16				_port;
 	Poco::Net::DatagramSocket	_socket;

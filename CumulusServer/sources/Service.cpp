@@ -26,7 +26,7 @@ using namespace Cumulus;
 Thread* Service::_PVolatileObjectsThreadRecording(NULL);
 bool	Service::_VolatileObjectsRecording(false);
 
-Service::Service(lua_State* pState,const string& path,ServiceRegistry& registry) : _registry(registry),_pState(pState), FileWatcher(Server::WWWPath+path+"/main.lua"),_packages("www"+path,"/",StringTokenizer::TOK_IGNORE_EMPTY | StringTokenizer::TOK_TRIM),_running(false),_deleting(false),_path(path),count(0) {
+Service::Service(lua_State* pState,const string& path,ServiceRegistry& registry) : path(path),_registry(registry),_pState(pState), FileWatcher(Server::WWWPath+path+"/main.lua"),_packages("www"+path,"/",StringTokenizer::TOK_IGNORE_EMPTY | StringTokenizer::TOK_TRIM),_running(false),_deleting(false),count(0) {
 	if(!refresh()) {
 		open(true); // open even if no file
 		lua_pop(_pState,1);
@@ -35,7 +35,7 @@ Service::Service(lua_State* pState,const string& path,ServiceRegistry& registry)
 
 
 Service::~Service() {
-	// delete services
+	// delete services children
 	map<string,Service*>::const_iterator it;
 	for(it=_services.begin();it!=_services.end();++it)
 		delete it->second;
@@ -62,7 +62,7 @@ Service* Service::get(const string& path) {
 	name = name.substr(0,pos);
 	
 	// Folder exists?
-	File file(Path(this->path).parent().toString()+name);
+	File file(Path(FileWatcher::path).parent().toString()+name);
 	bool exists = (file.exists() && file.isDirectory());
 
 	map<string,Service*>::iterator it = _services.lower_bound(name);
@@ -86,7 +86,7 @@ Service* Service::get(const string& path) {
 	if(name == "__index" || name == "__metatable")
 		CRITIC("You should never called a service '__index' or '__metatable', script behavior could become strange quickly!");
 
-	Service* pService = new Service(_pState,_path+"/"+name,_registry);
+	Service* pService = new Service(_pState,this->path+"/"+name,_registry);
 	_services.insert(it,pair<string,Service*>(name,pService));
 	return pService->get(nextPath);
 }
@@ -145,7 +145,7 @@ int Service::NewIndex(lua_State *pState) {
 			lua_getfield(pState,1,"//service");
 			if(lua_islightuserdata(pState,-1)) {
 				Service* pService = (Service*)lua_touserdata(pState,-1);
-				pService->_registry.addFunction(*pService,key);
+				pService->_registry.addServiceFunction(*pService,key);
 			}
 			lua_pop(pState,1);
 		}
@@ -260,6 +260,7 @@ lua_State* Service::open() {
 	InitGlobalTable(_pState,true);
 	bool result = open(true);
 	lua_setfield(_pState,-2,"//env");
+	lua_pop(_pState,1);
 
 	return result ? _pState : NULL;
 }
@@ -348,7 +349,7 @@ void Service::load() {
 
 	(string&)lastError = "";
 
-	if(luaL_loadfile(_pState,path.c_str())!=0) {
+	if(luaL_loadfile(_pState,FileWatcher::path.c_str())!=0) {
 		SCRIPT_BEGIN(_pState)
 			const char* error = Script::LastError(_pState);
 			SCRIPT_ERROR("%s",error)
@@ -366,9 +367,10 @@ void Service::load() {
 			_running=true;
 			
 			SCRIPT_FUNCTION_BEGIN("onStart")
-				SCRIPT_WRITE_STRING(_path.c_str())
+				SCRIPT_WRITE_STRING(path.c_str())
 				SCRIPT_FUNCTION_CALL
 			SCRIPT_FUNCTION_END
+			_registry.startService(*this);
 		} else {
 			const char* error = Script::LastError(_pState);
 			SCRIPT_ERROR("%s",error)
@@ -399,10 +401,11 @@ void Service::clear() {
 	if(open(false)) {
 		lua_pushvalue(_pState,-1);
 		lua_setfield(_pState,-2,"//env");
-
+		
+		_registry.stopService(*this);
 		SCRIPT_BEGIN(_pState)
 			SCRIPT_FUNCTION_BEGIN("onStop")
-				SCRIPT_WRITE_STRING(_path.c_str())
+				SCRIPT_WRITE_STRING(path.c_str())
 				SCRIPT_FUNCTION_CALL
 			SCRIPT_FUNCTION_END
 		SCRIPT_END
@@ -439,6 +442,6 @@ void Service::clear() {
 		lua_pop(_pState,1);
 	}
 	lua_pop(_pState,1);
-	_registry.clear(*this);
+	_registry.clearService(*this);
 	lua_gc(_pState, LUA_GCCOLLECT, 0);
 }

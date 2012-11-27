@@ -39,8 +39,10 @@ void Sessions::clear() {
 	if(!_sessions.empty())
 		WARN("sessions are deleting");
 	Iterator it;
-	for(it=begin();it!=end();++it)
+	for(it=begin();it!=end();++it) {
+		_gateway.destroySession(*it->second);
 		delete it->second;
+	}
 	_sessions.clear();
 }
 

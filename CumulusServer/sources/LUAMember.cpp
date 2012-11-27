@@ -15,36 +15,43 @@
 	This file is a part of Cumulus.
 */
 
-#include "LUAAMFObjectWriter.h"
-#include "AMFObjectWriter.h"
+#include "LUAMember.h"
+#include "Peer.h"
+#include "Util.h"
 
 using namespace Cumulus;
 using namespace std;
 
-const char*		LUAAMFObjectWriter::Name="Cumulus::AMFObjectWriter";
+const char*		LUAMember::Name="LUAMember";
 
-int LUAAMFObjectWriter::Get(lua_State *pState) {
-	SCRIPT_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
-		string name = SCRIPT_READ_STRING("");
-		if(name=="write")
-			SCRIPT_WRITE_FUNCTION(&LUAAMFObjectWriter::Write)
+
+int LUAMember::Destroy(lua_State* pState) {
+	SCRIPT_DESTRUCTOR_CALLBACK(Peer,LUAMember,member)
+		delete &member;
 	SCRIPT_CALLBACK_RETURN
 }
 
-int LUAAMFObjectWriter::Set(lua_State *pState) {
-	SCRIPT_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
+int LUAMember::Release(lua_State* pState) {
+	SCRIPT_CALLBACK(Peer,LUAMember,member)
+		member.unsubscribeGroups();
+	SCRIPT_CALLBACK_RETURN
+}
+
+int LUAMember::Get(lua_State *pState) {
+	SCRIPT_CALLBACK(Peer,LUAMember,member)
+		string name = SCRIPT_READ_STRING("");
+		if(name=="id")
+			SCRIPT_WRITE_STRING(Util::FormatHex(member.id,ID_SIZE).c_str())
+		else if(name=="rawId")
+			SCRIPT_WRITE_BINARY(member.id,ID_SIZE)
+		else if(name=="release")
+			SCRIPT_WRITE_FUNCTION(&LUAMember::Release);
+	SCRIPT_CALLBACK_RETURN
+}
+
+int LUAMember::Set(lua_State *pState) {
+	SCRIPT_CALLBACK(Peer,LUAMember,member)
 		string name = SCRIPT_READ_STRING("");
 		lua_rawset(pState,1); // consumes key and value
-	SCRIPT_CALLBACK_RETURN
-}
-
-int LUAAMFObjectWriter::Write(lua_State* pState) {
-	SCRIPT_CALLBACK(AMFObjectWriter,LUAAMFObjectWriter,writer)
-		string name = SCRIPT_READ_STRING("");
-		if(SCRIPT_CAN_READ) {
-			writer.writer.writePropertyName(name);
-			Script::ReadAMF(pState,writer.writer,1);
-		} else
-			SCRIPT_ERROR("This function takes 2 parameters: name and value")
 	SCRIPT_CALLBACK_RETURN
 }

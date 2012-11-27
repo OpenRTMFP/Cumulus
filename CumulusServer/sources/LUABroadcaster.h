@@ -17,34 +17,17 @@
 
 #pragma once
 
-#include "Cumulus.h"
-#include "AESEngine.h"
-#include "PacketReader.h"
-#include "Task.h"
-#include "WorkThread.h"
-#include "Poco/Net/DatagramSocket.h"
+#include "Script.h"
 
-
-namespace Cumulus {
-
-class RTMFPServer;
-class RTMFPReceiving : public WorkThread, private Task {
+class LUABroadcaster {
 public:
-	RTMFPReceiving(RTMFPServer& server,Poco::Net::DatagramSocket& socket);
-	~RTMFPReceiving();
+	static const char* Name;
 
-	Poco::UInt32				id;
-	AESEngine					decoder;
-	Poco::Net::SocketAddress	address;
-	Poco::Net::DatagramSocket	socket;
-	PacketReader*				pPacket;
+	static int Get(lua_State *pState);
+	static int Set(lua_State *pState);
 
-private:
-	void						handle();
-	void						run();
-
-	RTMFPServer&				_server;
-	Poco::UInt8					_buff[PACKETRECV_SIZE];
+	static void ID(std::string& id){}
+protected:
+	static int Broadcast(lua_State *pState);
+	static int IPairs(lua_State* pState);
 };
-
-} // namespace Cumulus

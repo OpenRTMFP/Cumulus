@@ -18,6 +18,7 @@
 #include "Session.h"
 #include "Logs.h"
 #include "Poco/Format.h"
+#include <errno.h> // TODO remove this line!!
 
 using namespace std;
 using namespace Poco;
@@ -25,14 +26,13 @@ using namespace Poco::Net;
 
 namespace Cumulus {
 
-Session::Session(ReceivingEngine& receivingEngine,
-				 SendingEngine& sendingEngine,
-				 UInt32 id,
+Session::Session(UInt32 id,
 				 UInt32 farId,
 				 const Peer& peer,
 				 const UInt8* decryptKey,
-				 const UInt8* encryptKey) :
-	nextDumpAreMiddle(false),_prevAESType(AESEngine::DEFAULT),_pSendingThread(NULL),_pReceivingThread(NULL),_receivingEngine(receivingEngine),_sendingEngine(sendingEngine),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pRTMFPSending(new RTMFPSending()) {
+				 const UInt8* encryptKey,
+				 Invoker& invoker) :
+	invoker(invoker),nextDumpAreMiddle(false),_prevAESType(AESEngine::DEFAULT),_pSendingThread(NULL),_pReceivingThread(NULL),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pRTMFPSending(new RTMFPSending()) {
 
 }
 
@@ -48,31 +48,38 @@ void Session::kill() {
 
 bool Session::setEndPoint(Poco::Net::DatagramSocket& socket,const Poco::Net::SocketAddress& address) {
 	_socket=socket;
-	if(address==peer.address)
+	if(address.host()==peer.address.host() && address.port()==peer.address.port())
 		return false;
 	(SocketAddress&)peer.address = address;
 	(*peer.addresses.begin())=address.toString();
 	return true;
 }
 
-void Session::decode(AutoPtr<RTMFPReceiving>& RTMFPReceiving,AESEngine::Type type) {
-	RTMFPReceiving->decoder = aesDecrypt.next(type);
+void Session::decode(AutoPtr<RTMFPReceiving>& pRTMFPReceiving,AESEngine::Type type) {
+	pRTMFPReceiving->decoder = aesDecrypt.next(type);
 	try {
-		_pReceivingThread = _receivingEngine.enqueue(RTMFPReceiving,_pReceivingThread);
+		_pReceivingThread = invoker.poolThreads.enqueue(pRTMFPReceiving.cast<WorkThread>(),_pReceivingThread);
 	} catch(Exception& ex) {
 		WARN("Receiving message impossible on session %u : %s",id,ex.displayText().c_str());
+		ERROR("Error %d : %s", errno, strerror(errno)); // TODO remove this line!!
 	}
 	ScopedLock<FastMutex> lock(_mutex);
 	_prevAESType = type;
 }
 
 void Session::receive(PacketReader& packet) {
-	Logs::Dump(packet,format("Request from %s",peer.address.toString()).c_str(),nextDumpAreMiddle);
+	if(nextDumpAreMiddle)
+		DUMP_MIDDLE(packet,format("Request from %s",peer.address.toString()).c_str())
+	else
+		DUMP(packet,format("Request from %s",peer.address.toString()).c_str())
 	packetHandler(packet);
 }
 
 void Session::send(UInt32 farId,DatagramSocket& socket,const SocketAddress& receiver,AESEngine::Type type) {
-	Logs::Dump(_pRTMFPSending->packet,6,format("Response to %s",receiver.toString()).c_str(),nextDumpAreMiddle);
+	if(nextDumpAreMiddle)
+		DUMP_MIDDLE(_pRTMFPSending->packet,6,format("Response to %s",receiver.toString()).c_str())
+	else
+		DUMP(_pRTMFPSending->packet,6,format("Response to %s",receiver.toString()).c_str())
 	nextDumpAreMiddle=false;
 	
 	_pRTMFPSending->packet.limit(); // no limit for sending!
@@ -82,7 +89,7 @@ void Session::send(UInt32 farId,DatagramSocket& socket,const SocketAddress& rece
 	_pRTMFPSending->address = receiver;
 	_pRTMFPSending->encoder = aesEncrypt.next(type);
 	try {
-		_pSendingThread = _sendingEngine.enqueue(_pRTMFPSending,_pSendingThread);
+		_pSendingThread = invoker.poolThreads.enqueue(_pRTMFPSending.cast<WorkThread>(),_pSendingThread);
 	} catch(Exception& ex) {
 		WARN("Sending message refused on session %u : %s",id,ex.displayText().c_str());
 	}

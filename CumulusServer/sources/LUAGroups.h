@@ -28,6 +28,7 @@ public:
 
 	static void ID(std::string& id){}
 private:
+	static int Join(lua_State* pState);
 	static int Pairs(lua_State* pState);
 };
 

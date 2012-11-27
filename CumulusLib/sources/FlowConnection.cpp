@@ -59,7 +59,7 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 
 		// Check if the client is authorized
 		peer.setFlowWriter(&writer);
-		UInt32 queue = writer.queue();
+		writer.beginTransaction();
 		bool accept=true;
 		{
 			AMFObjectWriter response(writer.writeSuccessResponse("Connect.Success","Connection succeeded"));
@@ -67,9 +67,10 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 			accept = peer.onConnection(message,response);
 		}
 		if(!accept) {
-			writer.cancel(queue);
+			writer.endTransaction(1);
 			writer.close();
-		}
+		} else
+			writer.endTransaction();
 
 	} else if(name == "setPeerInfo") {
 

@@ -25,7 +25,6 @@
 #include "LUAClients.h"
 #include "LUAGroups.h"
 #include "LUAGroup.h"
-#include "LUAAMFObjectWriter.h"
 #include "LUAServer.h"
 #include "LUAServers.h"
 
@@ -36,9 +35,9 @@ using namespace Cumulus;
 
 const string Server::WWWPath;
 
-Server::Server(ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : RTMFPServer(configurations.getInt("cores",0)),_pState(Script::CreateState()),_blacklist(configurations.getString("application.dir","./")+"blacklist",*this),_applicationKiller(applicationKiller),_pService(NULL),
-	servers(configurations.getInt("servers.port",0),*this,sockets,configurations.getString("servers.addresses","")),
-	_serversPublicAddress(configurations.getString("servers.publicAddress","")),
+Server::Server(ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : RTMFPServer(configurations.getInt("threads",0)),_pState(Script::CreateState()),_blacklist(configurations.getString("application.dir","./")+"blacklist",*this),_applicationKiller(applicationKiller),_pService(NULL),
+	servers(configurations.getInt("servers.port",0),*this,sockets,configurations.getString("servers.targets","")),
+	_publicAddress(configurations.getString("publicAddress","")),
 	mails(*this,configurations.getString("smtp.host","localhost"),configurations.getInt("smtp.port",SMTPSession::SMTP_PORT),configurations.getInt("smtp.timeout",60)) {
 	
 	File((string&)WWWPath = configurations.getString("application.dir","./")+"www").createDirectory();
@@ -66,7 +65,7 @@ bool Server::readNextConfig(lua_State* pState,const Util::AbstractConfiguration&
 				if(value=="false")
 					lua_pushboolean(_pState,0);
 				else
-					lua_pushstring(_pState,value.c_str());
+					lua_pushlstring(_pState,value.c_str(),value.size());
 			} catch(Exception& ex) {
 				DEBUG("Configuration scripting conversion: %s",ex.displayText().c_str());
 				lua_pushnil(_pState);
@@ -83,14 +82,43 @@ Server::~Server() {
 	Script::CloseState(_pState);
 }
 
-
-void Server::addFunction(Service& service,const std::string& name) {
-	if(name=="onManage" || name=="onServerConnection" || name=="onServerDisconnection" || name=="onRendezVousUnknown")
+void Server::addServiceFunction(Service& service,const std::string& name) {
+	if(name=="onManage" || name=="onRendezVousUnknown" || name=="onServerConnection" || name=="onServerDisconnection")
 		_scriptEvents[name].insert(&service);
 }
+void Server::startService(Service& service) {
+	_servicesRunning.insert(&service);
+	// Send running information for all connected servers
+	ServerMessage message;
+	message << service.path;
+	servers.broadcast(".",message);
+	
+	SCRIPT_BEGIN(_pState)
+		Servers::Iterator it;
+		for(it=servers.begin();it!=servers.end();++it) {
+			SCRIPT_FUNCTION_BEGIN("onServerConnection")
+				SCRIPT_WRITE_PERSISTENT_OBJECT(ServerConnection,LUAServer,**it)
+				SCRIPT_FUNCTION_CALL
+			SCRIPT_FUNCTION_END
+		}
+	SCRIPT_END
+}
+void Server::stopService(Service& service) {
+	_servicesRunning.erase(&service);
 
-void Server::clear(Service& service) {
-	map<string,set<Service*>>::iterator it;
+	// Call all the onServerDisconnection event for every services where service.path is running
+	SCRIPT_BEGIN(_pState)
+		Servers::Iterator it;
+		for(it=servers.begin();it!=servers.end();++it) {
+			SCRIPT_FUNCTION_BEGIN("onServerDisconnection")
+				SCRIPT_WRITE_PERSISTENT_OBJECT(ServerConnection,LUAServer,**it)
+				SCRIPT_FUNCTION_CALL
+			SCRIPT_FUNCTION_END
+		}
+	SCRIPT_END
+}
+void Server::clearService(Service& service) {
+	map<string,set<Service*> >::iterator it;
 	for(it=_scriptEvents.begin();it!=_scriptEvents.end();++it)
 		it->second.erase(&service);
 }
@@ -100,12 +128,12 @@ void Server::onStart() {
 	servers.start();
 }
 void Server::onStop() {
-	servers.stop();
-	// delete service
+	// delete service before servers.stop() to avoid a crash bug
 	if(_pService) {
 		delete _pService;
 		_pService=NULL;
 	}
+	servers.stop();
 	_applicationKiller.kill();
 }
 
@@ -141,7 +169,7 @@ void Server::readLUAAddress(set<string>& addresses) {
 		if(Script::CheckType(_pState,"LUAServers")) {
 			Servers::Iterator it;
 			for(it=servers.begin();it!=servers.end();++it)
-				addresses.insert(it->first);
+				addresses.insert((*it)->publicAddress);
 		} else if(Script::CheckType(_pState,"LUAServer")) {
 			lua_getfield(_pState,-1,"publicAddress");
 			if(lua_isstring(_pState,-1))
@@ -184,7 +212,7 @@ void Server::onHandshake(UInt32 attempts,const SocketAddress& address,const stri
 			lua_newtable(_pState);
 			map<string,string>::const_iterator it;
 			for(it=properties.begin();it!=properties.end();++it) {
-				lua_pushstring(_pState,it->second.c_str());
+				lua_pushlstring(_pState,it->second.c_str(),it->second.size());
 				lua_setfield(_pState,-2,it->first.c_str());
 			}
 			SCRIPT_WRITE_STRING(address.toString().c_str())
@@ -202,7 +230,7 @@ void Server::onHandshake(UInt32 attempts,const SocketAddress& address,const stri
 //// CLIENT_HANDLER /////
 bool Server::onConnection(Client& client,AMFReader& parameters,AMFObjectWriter& response) {
 	// Here you can read custom client http parameters in reading "client.parameters".
-	Service* pService = _pService->get(client.path);
+	Service* pService = _pService->get(client.path); 
 	if(!pService) {
 		client.writer().writeErrorResponse("Connect.InvalidApp","Applicaton " + client.path + " doesn't exist");
 		return false;
@@ -211,19 +239,22 @@ bool Server::onConnection(Client& client,AMFReader& parameters,AMFObjectWriter& 
 	SCRIPT_BEGIN(pService->open())
 		SCRIPT_FUNCTION_BEGIN("onConnection")
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,client)
-			SCRIPT_WRITE_OBJECT(AMFObjectWriter,LUAAMFObjectWriter,response)
 			SCRIPT_WRITE_AMF(parameters,0)
 			SCRIPT_FUNCTION_CALL
-			if(SCRIPT_CAN_READ && (SCRIPT_NEXT_TYPE==LUA_TSTRING || !SCRIPT_READ_BOOL(true))) {
-				string rejected("client rejected");
-				if(SCRIPT_CAN_READ)
-					rejected = SCRIPT_READ_STRING("client rejected");
-				pService=NULL;
-				client.writer().writeErrorResponse("Connect.Rejected",rejected);
+			if(SCRIPT_CAN_READ && SCRIPT_NEXT_TYPE==LUA_TTABLE) {
+				lua_pushnil(_pState);  // first key 
+				while (lua_next(_pState, -2) != 0) {
+					// uses 'key' (at index -2) and 'value' (at index -1) 
+					// remove the raw!
+					response.writer.writePropertyName(lua_tostring(_pState,-2));
+					Script::ReadAMF(_pState,response.writer,1);
+					lua_pop(_pState,1);
+				}
+				SCRIPT_READ_NEXT
 			}
 		SCRIPT_FUNCTION_END
 		if(SCRIPT_LAST_ERROR) {
-			client.writer().writeErrorResponse("Connect.Error",SCRIPT_LAST_ERROR);
+			client.writer().writeErrorResponse("Connect.Rejected",strlen(SCRIPT_LAST_ERROR)>0 ? SCRIPT_LAST_ERROR : "client rejected");
 			pService=NULL;
 		}
 		if(!pService)
@@ -432,10 +463,17 @@ void Server::onManage(Client& client) {
 
 
 void Server::connection(ServerConnection& server) {
-	set<Service*>& events = _scriptEvents["onServerConnection"];
+	// sends actual services online to every connected servers
 	set<Service*>::const_iterator it;
-	for(it=events.begin();it!=events.end();++it) {
-		SCRIPT_BEGIN((*it)->open())
+	ServerMessage message;
+	for(it=_servicesRunning.begin();it!=_servicesRunning.end();++it)
+		message << (*it)->path;
+	servers.broadcast(".",message);
+
+	set<Service*>& events = _scriptEvents["onServerConnection"];
+	set<Service*>::const_iterator it2;
+	for(it2=events.begin();it2!=events.end();++it2) {
+		SCRIPT_BEGIN((*it2)->open())
 			SCRIPT_FUNCTION_BEGIN("onServerConnection")
 				SCRIPT_WRITE_PERSISTENT_OBJECT(ServerConnection,LUAServer,server)
 				SCRIPT_FUNCTION_CALL
@@ -445,22 +483,27 @@ void Server::connection(ServerConnection& server) {
 }
 
 void Server::message(ServerConnection& server,const std::string& handler,Cumulus::PacketReader& reader) {
+	if(handler==".") {
+		while(reader.available()) {
+			string path;
+			reader >> path;
+			_pService->get(path);
+		}
+		return;
+	}
 	SCRIPT_BEGIN(_pState)
-		bool called=false;
 		SCRIPT_MEMBER_FUNCTION_BEGIN(ServerConnection,LUAServer,server,handler.c_str())
 			AMFReader amf(reader);
 			SCRIPT_WRITE_AMF(amf,0)
 			SCRIPT_FUNCTION_CALL
-			called=true;
 		SCRIPT_FUNCTION_END
-		if(!called)
-			WARN("Server %s has called the non-existent '%s' handler",server.publicAddress.c_str(),handler.c_str())
 	SCRIPT_END
 }
 
 void Server::disconnection(const ServerConnection& server,const char* error) {
 	if(error)
 		ERROR("Servers error, %s",error)
+
 	set<Service*>& events = _scriptEvents["onServerDisconnection"];
 	set<Service*>::const_iterator it;
 	for(it=events.begin();it!=events.end();++it) {

@@ -13,8 +13,9 @@
   <ItemGroup>
     <ClInclude Include="sources\ApplicationKiller.h" />
     <ClInclude Include="sources\Blacklist.h" />
+    <ClInclude Include="sources\Broadcaster.h" />
     <ClInclude Include="sources\FileWatcher.h" />
-    <ClInclude Include="sources\LUAAMFObjectWriter.h" />
+    <ClInclude Include="sources\LUABroadcaster.h" />
     <ClInclude Include="sources\LUAByteReader.h" />
     <ClInclude Include="sources\LUAByteWriter.h" />
     <ClInclude Include="sources\LUAClient.h" />
@@ -27,6 +28,7 @@
     <ClInclude Include="sources\LUAListener.h" />
     <ClInclude Include="sources\LUAListeners.h" />
     <ClInclude Include="sources\LUAMail.h" />
+    <ClInclude Include="sources\LUAMember.h" />
     <ClInclude Include="sources\LUAPublication.h" />
     <ClInclude Include="sources\LUAPublications.h" />
     <ClInclude Include="sources\LUAQualityOfService.h" />
@@ -48,7 +50,7 @@
   <ItemGroup>
     <ClCompile Include="sources\Blacklist.cpp" />
     <ClCompile Include="sources\FileWatcher.cpp" />
-    <ClCompile Include="sources\LUAAMFObjectWriter.cpp" />
+    <ClCompile Include="sources\LUABroadcaster.cpp" />
     <ClCompile Include="sources\LUAByteReader.cpp" />
     <ClCompile Include="sources\LUAByteWriter.cpp" />
     <ClCompile Include="sources\LUAClient.cpp" />
@@ -61,6 +63,7 @@
     <ClCompile Include="sources\LUAListener.cpp" />
     <ClCompile Include="sources\LUAListeners.cpp" />
     <ClCompile Include="sources\LUAMail.cpp" />
+    <ClCompile Include="sources\LUAMember.cpp" />
     <ClCompile Include="sources\LUAPublication.cpp" />
     <ClCompile Include="sources\LUAPublications.cpp" />
     <ClCompile Include="sources\LUAQualityOfService.cpp" />

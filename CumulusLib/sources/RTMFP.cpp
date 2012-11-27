@@ -127,7 +127,7 @@ void RTMFP::Pack(PacketWriter& packet,UInt32 farId) {
 	packet.write32(reader.read32()^reader.read32()^farId);
 }
 
-DH* RTMFP::BeginDiffieHellman(UInt8* pubKey) {
+DH* RTMFP::BeginDiffieHellman(vector<UInt8>& pubKey,bool initiator) {
 	DH*	pDH = DH_new();
 	pDH->p = BN_new();
 	pDH->g = BN_new();
@@ -138,23 +138,41 @@ DH* RTMFP::BeginDiffieHellman(UInt8* pubKey) {
 		CRITIC("Generation DH key failed!");
 
 	// It's our key public part
-	BN_bn2bin(pDH->pub_key,pubKey);
+	int size = BN_num_bytes(pDH->pub_key);
+	int index = pubKey.size();
+	pubKey.resize(index+4+size);
+	UInt8 byte2 = KEY_SIZE-size;
+	if(byte2>2) {
+		CRITIC("Generation DH key with less of 126 bytes!");
+		byte2=2;
+	}
+	byte2 = 2-byte2;
+	pubKey[index++] = 0x81;
+	pubKey[index++] = byte2;
+	pubKey[index++] = initiator ? 0x1D : 0x0D;
+	pubKey[index++] = 0x02;
+
+	BN_bn2bin(pDH->pub_key,&pubKey[index]);
 	return pDH;
 }
 
-void RTMFP::ComputeDiffieHellmanSecret(DH* pDH,const UInt8* farPubKey,UInt16 farPubKeySize,UInt8* sharedSecret) {
+void RTMFP::ComputeDiffieHellmanSecret(DH* pDH,const UInt8* farPubKey,UInt16 farPubKeySize,vector<UInt8>& sharedSecret) {
 	BIGNUM *bnFarPubKey = BN_bin2bn(farPubKey,farPubKeySize,NULL);
-	if(DH_compute_key(sharedSecret, bnFarPubKey,pDH)<=0)
-		ERROR("Diffie Hellman exchange failed : dh compute key error");
+	sharedSecret.resize(KEY_SIZE);
+	int size = DH_compute_key(&sharedSecret[0], bnFarPubKey,pDH);
+	if(size<=0)
+		CRITIC("Diffie Hellman exchange failed : dh compute key error")
+	else if(size!=KEY_SIZE)
+		sharedSecret.resize(size);
 	BN_free(bnFarPubKey);
 }
 
-void RTMFP::EndDiffieHellman(DH* pDH,const UInt8* farPubKey,UInt16 farPubKeySize,UInt8* sharedSecret) {
+void RTMFP::EndDiffieHellman(DH* pDH,const UInt8* farPubKey,UInt16 farPubKeySize,vector<UInt8>& sharedSecret) {
 	ComputeDiffieHellmanSecret(pDH,farPubKey,farPubKeySize,sharedSecret);
 	EndDiffieHellman(pDH);
 }
 
-void RTMFP::ComputeAsymetricKeys(const UInt8* sharedSecret, const UInt8* initiatorNonce,UInt16 initNonceSize,
+void RTMFP::ComputeAsymetricKeys(const vector<UInt8>& sharedSecret, const UInt8* initiatorNonce,UInt16 initNonceSize,
 														    const UInt8* responderNonce,UInt16 respNonceSize,
 														    UInt8* requestKey,UInt8* responseKey) {
 	UInt8 mdp1[AES_KEY_SIZE];
@@ -166,8 +184,8 @@ void RTMFP::ComputeAsymetricKeys(const UInt8* sharedSecret, const UInt8* initiat
 	HMAC(EVP_sha256(),initiatorNonce,initNonceSize,responderNonce,respNonceSize,mdp2,NULL);
 
 	// now doing HMAC-sha256 of both result with the shared secret DH key
-	HMAC(EVP_sha256(),sharedSecret,KEY_SIZE,mdp1,AES_KEY_SIZE,requestKey,NULL);
-	HMAC(EVP_sha256(),sharedSecret,KEY_SIZE,mdp2,AES_KEY_SIZE,responseKey,NULL);
+	HMAC(EVP_sha256(),&sharedSecret[0],sharedSecret.size(),mdp1,AES_KEY_SIZE,requestKey,NULL);
+	HMAC(EVP_sha256(),&sharedSecret[0],sharedSecret.size(),mdp2,AES_KEY_SIZE,responseKey,NULL);
 }
 
 UInt16 RTMFP::Time(Timestamp::TimeVal timeVal) {

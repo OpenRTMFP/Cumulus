@@ -25,10 +25,14 @@ const char*		LUAServer::Name="LUAServer";
 int LUAServer::Send(lua_State* pState) {
 	SCRIPT_CALLBACK(ServerConnection,LUAServer,server)
 		string handler(SCRIPT_READ_STRING(""));
-		ServerMessage message;
-		AMFWriter writer(message);
-		SCRIPT_READ_AMF(writer)
-		server.send(handler,message);
+		if(handler.empty() || handler==".") {
+			ERROR("handler of one sending server message can't be null or equal to '.'")
+		} else {
+			ServerMessage message;
+			AMFWriter writer(message);
+			SCRIPT_READ_AMF(writer)
+			server.send(handler,message);
+		}
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -40,8 +44,15 @@ int LUAServer::Get(lua_State* pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAServer::Send)
 		} else if(name=="publicAddress") {
 			SCRIPT_WRITE_STRING(server.publicAddress.c_str())
-		} else if(name=="address")
+		} else if(name=="isTarget") {
+			SCRIPT_WRITE_BOOL(server.isTarget)
+		} else if(name=="address") {
 			SCRIPT_WRITE_STRING(server.address.c_str())
+		} else {
+			map<string,string>::const_iterator it = server.properties.find(name);
+			if(it!=server.properties.end())
+				SCRIPT_WRITE_BINARY(it->second.c_str(),it->second.size())
+		}
 	SCRIPT_CALLBACK_RETURN
 }
 

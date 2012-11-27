@@ -95,7 +95,7 @@ extern "C" {
 #define SCRIPT_NEXT_TYPE										(SCRIPT_CAN_READ ? lua_type(__pState,__args+1) : LUA_TNIL)
 #define SCRIPT_READ_BOOL(DEFAULT)								((__results-(__args++))<=0 ? DEFAULT : (lua_toboolean(__pState,__args)==0 ? false : true))
 #define SCRIPT_READ_STRING(DEFAULT)								((__results-(__args++))<=0 ? DEFAULT : (lua_isstring(__pState,__args) ? lua_tostring(__pState,__args) : DEFAULT))
-#define SCRIPT_READ_BINARY(VALUE,SIZE)							bool __yes = ((__results-(__args++))>0 && lua_isstring(__pState,__args)); Poco::UInt32 SIZE = __yes ? lua_objlen(__pState,__args) : 0; const Poco::UInt8* VALUE = __yes ? (const Poco::UInt8*)lua_tostring(__pState,__args) : NULL;
+#define SCRIPT_READ_BINARY(VALUE,SIZE)							Poco::UInt32 SIZE = 0;const Poco::UInt8* VALUE = NULL;if((__results-(__args++))>0 && lua_isstring(__pState,__args)) { VALUE = (const Poco::UInt8*)lua_tostring(__pState,__args);SIZE = lua_objlen(__pState,__args);}
 #define SCRIPT_READ_UINT(DEFAULT)								(UInt32)((__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? (Poco::UInt32)lua_tonumber(__pState,__args) : DEFAULT))
 #define SCRIPT_READ_INT(DEFAULT)								(Int32)((__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? (Poco::Int32)lua_tointeger(__pState,__args) : DEFAULT))
 #define SCRIPT_READ_DOUBLE(DEFAULT)								(double)((__results-(__args++))<=0 ? DEFAULT : (lua_isnumber(__pState,__args) ? lua_tonumber(__pState,__args) : DEFAULT))

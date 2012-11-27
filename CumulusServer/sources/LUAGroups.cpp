@@ -18,6 +18,7 @@
 #include "LUAGroups.h"
 #include "Invoker.h"
 #include "LUAGroup.h"
+#include "LUAMember.h"
 #include "Util.h"
 #include "Poco/HexBinaryDecoder.h"
 
@@ -44,6 +45,61 @@ int LUAGroups::Pairs(lua_State* pState) {
 	SCRIPT_CALLBACK_RETURN
 }
 
+int LUAGroups::Join(lua_State* pState) {
+	SCRIPT_CALLBACK(Entities<Group>,LUAGroups,groups)
+
+		lua_getglobal(pState,"cumulus");
+		Handler* pHandler = NULL;
+		if(lua_getmetatable(pState,-1)!=0) {
+			lua_getfield(pState,-1,"__this");
+			if(lua_islightuserdata(pState,-1))
+				pHandler = (Handler*) lua_touserdata(pState, -1);
+			lua_pop(pState,2);
+		}
+		lua_pop(pState,1);
+
+		if(pHandler) {
+			SCRIPT_READ_BINARY(peerId,size)
+			if(size==(ID_SIZE*2)) {
+				stringstream ss;
+				ss.write((const char*)peerId,size);
+				HexBinaryDecoder(ss).read((char*)peerId,ID_SIZE);
+			} else if(size!=ID_SIZE) {
+				pHandler=NULL;
+				if(peerId)
+					SCRIPT_ERROR("Bad member format id %s",Cumulus::Util::FormatHex(peerId,ID_SIZE).c_str())
+				else
+					SCRIPT_ERROR("Member id argument missing")
+			}
+
+			if(pHandler) {
+				SCRIPT_READ_BINARY(groupId,size)
+				if(size==(ID_SIZE*2)) {
+					stringstream ss;
+					ss.write((const char*)groupId,size);
+					HexBinaryDecoder(ss).read((char*)groupId,ID_SIZE);
+				} else if(size!=ID_SIZE) {
+					pHandler=NULL;
+					if(groupId)
+						SCRIPT_ERROR("Bad group format id %s",Cumulus::Util::FormatHex(groupId,ID_SIZE).c_str())
+					else
+						SCRIPT_ERROR("Group id argument missing")
+				}
+
+				if(pHandler) {
+					Peer* pPeer = new Peer(*pHandler);
+					memcpy((void*)pPeer->id,peerId,ID_SIZE);
+					pPeer->joinGroup(groupId,NULL);
+					SCRIPT_WRITE_OBJECT(Peer,LUAMember,*pPeer)
+					SCRIPT_ADD_DESTRUCTOR(&LUAMember::Destroy)
+				}
+			}
+			
+		} else
+			SCRIPT_CRITIC("Impossible to find the handler associated")
+	SCRIPT_CALLBACK_RETURN
+}
+
 
 int LUAGroups::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Entities<Group>,LUAGroups,groups)
@@ -52,6 +108,8 @@ int LUAGroups::Get(lua_State *pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAGroups::Pairs)
 		else if(name=="count")
 			SCRIPT_WRITE_NUMBER(groups.count())
+		else if(name=="join")
+			SCRIPT_WRITE_FUNCTION(&LUAGroups::Join)
 		else if(name=="(") {
 			SCRIPT_READ_BINARY(id,size)
 			Group* pGroup = NULL;
@@ -60,11 +118,12 @@ int LUAGroups::Get(lua_State *pState) {
 			else if(size==(ID_SIZE*2)) {
 				stringstream ss;
 				ss.write((const char*)id,size);
-				UInt8 groupId[ID_SIZE];
-				HexBinaryDecoder(ss).read((char*)groupId,ID_SIZE);
-				pGroup = groups(groupId);
-			} else
-				SCRIPT_ERROR("Bad group format id %s",id)
+				HexBinaryDecoder(ss).read((char*)id,ID_SIZE);
+				pGroup = groups(id);
+			} else if(id)
+				SCRIPT_ERROR("Bad group format id %s",Cumulus::Util::FormatHex(id,ID_SIZE).c_str())
+			else
+				SCRIPT_ERROR("Group id argument missing")
 			if(pGroup)
 				SCRIPT_WRITE_PERSISTENT_OBJECT(Group,LUAGroup,*pGroup)
 		}

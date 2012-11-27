@@ -29,12 +29,12 @@ namespace Cumulus {
 MessageNull FlowWriter::_MessageNull;
 
 
-FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),id(0),_stage(0),_stageAck(0),_closed(false),_callbackHandle(0),_resetCount(0),flowId(0),_band(band),signature(signature),_repeatable(0),_lostCount(0),_ackCount(0) {
+FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),id(0),_stage(0),_stageAck(0),_closed(false),_callbackHandle(0),_resetCount(0),_transaction(false),flowId(0),_band(band),signature(signature),_repeatable(0),_lostCount(0),_ackCount(0) {
 	band.initFlowWriter(*this);
 }
 
 FlowWriter::FlowWriter(FlowWriter& flowWriter) :
-		id(flowWriter.id),critical(false),
+		id(flowWriter.id),critical(false),_transaction(false),
 		_stage(flowWriter._stage),_stageAck(flowWriter._stageAck),
 		_ackCount(flowWriter._ackCount),_lostCount(flowWriter._lostCount),
 		_closed(false),_callbackHandle(0),_resetCount(0),
@@ -44,6 +44,7 @@ FlowWriter::FlowWriter(FlowWriter& flowWriter) :
 
 FlowWriter::~FlowWriter() {
 	_closed=true;
+	endTransaction();
 	clear();
 	if(!signature.empty())
 		DEBUG("FlowWriter %s consumed",NumberFormatter::format(id).c_str());
@@ -506,15 +507,22 @@ void FlowWriter::flush(bool full) {
 		_band.flush();
 }
 
-void FlowWriter::cancel(UInt32 index) {
-	if(index>=queue()) {
-		ERROR("Impossible to cancel %u message on flowWriter %s",index,NumberFormatter::format(id).c_str());
-		return;
+void FlowWriter::beginTransaction() {
+	if(_transaction)
+		CRITIC("beginTransaction seems have been called without have call a endTransaction after")
+	_transaction=true;
+}
+
+void FlowWriter::endTransaction(UInt32 numberOfCancel) {
+	list<Message*>::iterator it;
+	for(it=_tempMessages.begin();it!=_tempMessages.end();++it) {
+		if((numberOfCancel--)>0)
+			delete *it;
+		else
+			_messages.push_back(*it);	
 	}
-	list<Message*>::iterator it = _messages.begin();
-	advance(it,index);
-	delete *it;
-	_messages.erase(it);
+	_tempMessages.clear();
+	_transaction=false;
 }
 
 void FlowWriter::writeUnbufferedMessage(const UInt8* data,UInt32 size,const UInt8* memAckData,UInt32 memAckSize) {
@@ -529,7 +537,10 @@ MessageBuffered& FlowWriter::createBufferedMessage() {
 	if(_closed || signature.empty() || _band.failed()) // signature.empty() means that we are on the flowWriter of FlowNull
 		return _MessageNull;
 	MessageBuffered* pMessage = new MessageBuffered();
-	_messages.push_back(pMessage);
+	if(_transaction)
+		_tempMessages.push_back(pMessage);
+	else
+		_messages.push_back(pMessage);
 	return *pMessage;
 }
 BinaryWriter& FlowWriter::writeRawMessage(bool withoutHeader) {

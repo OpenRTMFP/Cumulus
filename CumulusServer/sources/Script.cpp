@@ -194,7 +194,7 @@ void Script::WriteAMF(lua_State *pState,AMF::Type type,AMFReader& reader) {
 		case AMF::String: {
 			string value;
 			reader.read(value);
-			lua_pushstring(pState,value.c_str());
+			lua_pushlstring(pState,value.c_str(),value.size());
 			break;
 		}
 		case AMF::Date: {
@@ -268,7 +268,7 @@ void Script::WriteAMF(lua_State *pState,AMF::Type type,AMFReader& reader) {
 			if(reader.readObject(objectType)) {
 				lua_newtable(pState);
 				if(!objectType.empty()) {
-					lua_pushstring(pState,objectType.c_str());
+					lua_pushlstring(pState,objectType.c_str(),objectType.size());
 					lua_setfield(pState,-2,"__type");
 				}
 				string name;
@@ -281,7 +281,7 @@ void Script::WriteAMF(lua_State *pState,AMF::Type type,AMFReader& reader) {
 					// function
 					SCRIPT_FUNCTION_BEGIN("onTypedObject")
 						// type argument
-						lua_pushstring(pState,objectType.c_str());
+						lua_pushlstring(pState,objectType.c_str(),objectType.size());
 						// table argument
 						lua_pushvalue(pState,top);
 						SCRIPT_FUNCTION_CALL
@@ -508,7 +508,8 @@ void Script::ReadAMF(lua_State* pState,AMFWriter& writer,UInt32 count,map<UInt64
 				break;
 			}
 			case LUA_TSTRING: {
-				writer.write(lua_tostring(pState,args));
+				string data(lua_tostring(pState,args),lua_objlen(pState,args));
+				writer.write(data);
 				break;
 			}
 			case LUA_TBOOLEAN:

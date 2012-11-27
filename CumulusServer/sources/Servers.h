@@ -18,26 +18,19 @@
 #pragma once
 
 #include "TCPServer.h"
-#include "ServerConnection.h"
-#include <set>
+#include "Broadcaster.h"
 
-class Servers : private TCPServer, private ServersHandler {
+class Servers : private TCPServer, private ServersHandler, public Broadcaster {
 public:
-	Servers(Poco::UInt16 port,ServerHandler& handler,Cumulus::SocketManager& manager,const std::string& addresses);
+	Servers(Poco::UInt16 port,ServerHandler& handler,Cumulus::SocketManager& manager,const std::string& targets);
 	virtual ~Servers();
 	
 	void manage();
 	void start();
 	void stop();
 
-	typedef std::map<std::string,ServerConnection*>::const_iterator Iterator;
-	
-	Iterator begin() const;
-	Iterator end() const;
-	ServerConnection* find(const std::string& address);
-	Poco::UInt32 count() const;
-	
-	void broadcast(const std::string& handler,ServerMessage& message);
+	Broadcaster			initiators;
+	Broadcaster			targets;
 
 private:
 	Poco::UInt32		flush(const std::string& handler);
@@ -45,30 +38,17 @@ private:
 
 	void				clientHandler(Poco::Net::StreamSocket& socket);
 	void				connection(ServerConnection& server);
-	void				disconnection(ServerConnection& server);
+	bool				disconnection(ServerConnection& server);
 
 
 	Poco::UInt8								_manageTimes;
 
-	std::set<ServerConnection*>					_destinators;
-	std::set<ServerConnection*>					_clients;
-	std::map<std::string,ServerConnection*>		_connections;
+	std::set<ServerConnection*>				_targets;
+	std::set<ServerConnection*>				_clients;
 
-	ServerHandler&									_handler;
-	Poco::UInt16									_port;
+	ServerHandler&							_handler;
+	Poco::UInt16							_port;
 };
-
-inline Servers::Iterator Servers::begin() const {
-	return _connections.begin();
-}
-
-inline Poco::UInt32 Servers::count() const {
-	return _connections.size();
-}
-
-inline Servers::Iterator Servers::end() const {
-	return _connections.end();
-}
 
 inline void Servers::clientHandler(Poco::Net::StreamSocket& socket){
 	_clients.insert(new ServerConnection(socket,manager,_handler,*this));

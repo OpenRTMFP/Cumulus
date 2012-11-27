@@ -24,8 +24,10 @@
 class Service;
 class ServiceRegistry {
 public:
-	virtual void addFunction(Service& service,const std::string& name){}
-	virtual void clear(Service& service){}
+	virtual void startService(Service& service){}
+	virtual void stopService(Service& service){}
+	virtual void addServiceFunction(Service& service,const std::string& name){}
+	virtual void clearService(Service& service){}
 };
 
 
@@ -43,6 +45,7 @@ public:
 	bool		refresh();
 	lua_State*	open();
 
+	const std::string	path;
 	Poco::UInt32		count;
 	const std::string	lastError;
 private:
@@ -59,7 +62,6 @@ private:
 	lua_State*				_pState;
 	bool					_deleting;
 	Poco::StringTokenizer	_packages;
-	std::string				_path;
 
 	std::map<std::string,Service*>	_services;
 	ServiceRegistry&				_registry;

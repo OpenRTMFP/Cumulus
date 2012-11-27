@@ -58,11 +58,12 @@ int LUAClients::Get(lua_State *pState) {
 			else if(size==(ID_SIZE*2)) {
 				stringstream ss;
 				ss.write((const char*)id,size);
-				UInt8 clientId[ID_SIZE];
-				HexBinaryDecoder(ss).read((char*)clientId,ID_SIZE);
-				pClient = clients(clientId);
-			} else
-				SCRIPT_ERROR("Bad client format id %s",id)
+				HexBinaryDecoder(ss).read((char*)id,ID_SIZE);
+				pClient = clients(id);
+			} else if(id)
+				SCRIPT_ERROR("Bad client format id %s",Cumulus::Util::FormatHex(id,ID_SIZE).c_str())
+			else
+				SCRIPT_ERROR("Client id argument missing")
 			if(pClient)
 				SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,*pClient)
 		}

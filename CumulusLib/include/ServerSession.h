@@ -21,7 +21,6 @@
 #include "Session.h"
 #include "FlowNull.h"
 #include "Target.h"
-#include "Invoker.h"
 #include "Poco/Timestamp.h"
 
 namespace Cumulus {
@@ -45,9 +44,7 @@ private:
 class ServerSession : public BandWriter,public Session {
 public:
 
-	ServerSession(ReceivingEngine& receivingEngine,
-		     SendingEngine& sendingEngine,
-			Poco::UInt32 id,
+	ServerSession(Poco::UInt32 id,
 			Poco::UInt32 farId,
 			const Peer& peer,
 			const Poco::UInt8* decryptKey,
@@ -90,7 +87,6 @@ protected:
 	void			flush(Poco::UInt8 marker,bool echoTime);
 	void			flush(Poco::UInt8 marker,bool echoTime,AESEngine::Type type);
 
-	Invoker&					_invoker; // Protected for Middle session
 	Poco::Timestamp				_recvTimestamp; // Protected for Middle session
 	Poco::UInt16				_timeSent; // Protected for Middle session
 

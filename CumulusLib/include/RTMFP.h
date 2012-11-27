@@ -47,12 +47,12 @@ public:
 	
 	
 
-	static DH*						BeginDiffieHellman(Poco::UInt8* pubKey);
-	static void						ComputeDiffieHellmanSecret(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt16 farPubKeySize,Poco::UInt8* sharedSecret);
-	static void						EndDiffieHellman(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt16 farPubKeySize,Poco::UInt8* sharedSecret);
+	static DH*						BeginDiffieHellman(std::vector<Poco::UInt8>& pubKey,bool initiator=false);
+	static void						ComputeDiffieHellmanSecret(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt16 farPubKeySize,std::vector<Poco::UInt8>& sharedSecret);
+	static void						EndDiffieHellman(DH* pDH,const Poco::UInt8* farPubKey,Poco::UInt16 farPubKeySize,std::vector<Poco::UInt8>& sharedSecret);
 	static void						EndDiffieHellman(DH* pDH);
 
-	static void						ComputeAsymetricKeys(const Poco::UInt8* sharedSecret,
+	static void						ComputeAsymetricKeys(const std::vector<Poco::UInt8>& sharedSecret,
 														const Poco::UInt8* initiatorNonce,Poco::UInt16 initNonceSize,
 														const Poco::UInt8* responderNonce,Poco::UInt16 respNonceSize,
 														 Poco::UInt8* requestKey,
