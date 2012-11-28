@@ -12,7 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sources\ApplicationKiller.h" />
-    <ClInclude Include="sources\Blacklist.h" />
     <ClInclude Include="sources\Broadcaster.h" />
     <ClInclude Include="sources\FileWatcher.h" />
     <ClInclude Include="sources\LUABroadcaster.h" />
@@ -48,7 +47,6 @@
     <ClInclude Include="sources\TCPServer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="sources\Blacklist.cpp" />
     <ClCompile Include="sources\FileWatcher.cpp" />
     <ClCompile Include="sources\LUABroadcaster.cpp" />
     <ClCompile Include="sources\LUAByteReader.cpp" />

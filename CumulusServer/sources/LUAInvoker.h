@@ -37,6 +37,8 @@ private:
 	static int	ToAMF0(lua_State *pState);
 	static int	FromAMF(lua_State *pState);
 	static int	SendMail(lua_State *pState);
+	static int	AddToBlacklist(lua_State *pState);
+	static int	RemoveFromBlacklist(lua_State *pState);
 
 	static int	CreateTCPServer(lua_State *pState);
 	static int	CreateTCPClient(lua_State *pState);

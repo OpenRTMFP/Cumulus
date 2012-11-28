@@ -192,14 +192,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\sources\Blacklist.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\sources\Blacklist.h"
-				>
-			</File>
-			<File
 				RelativePath=".\sources\FileWatcher.cpp"
 				>
 			</File>

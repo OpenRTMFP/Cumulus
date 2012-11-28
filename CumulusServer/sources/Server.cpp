@@ -35,7 +35,7 @@ using namespace Cumulus;
 
 const string Server::WWWPath;
 
-Server::Server(ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : RTMFPServer(configurations.getInt("threads",0)),_pState(Script::CreateState()),_blacklist(configurations.getString("application.dir","./")+"blacklist",*this),_applicationKiller(applicationKiller),_pService(NULL),
+Server::Server(ApplicationKiller& applicationKiller,const Util::AbstractConfiguration& configurations) : RTMFPServer(configurations.getInt("threads",0)),_pState(Script::CreateState()),_applicationKiller(applicationKiller),_pService(NULL),
 	servers(configurations.getInt("servers.port",0),*this,sockets,configurations.getString("servers.targets","")),
 	_publicAddress(configurations.getString("publicAddress","")),
 	mails(*this,configurations.getString("smtp.host","localhost"),configurations.getInt("smtp.port",SMTPSession::SMTP_PORT),configurations.getInt("smtp.timeout",60)) {

@@ -25,12 +25,12 @@
 #include "LUAMail.h"
 #include "LUAServers.h"
 #include "Server.h"
-#include "Poco/Net/StreamSocket.h"
 #include <openssl/evp.h>
 #include "math.h"
 
 using namespace Cumulus;
 using namespace Poco;
+using namespace Poco::Net;
 using namespace std;
 
 const char*		LUAInvoker::Name="Cumulus::Invoker";
@@ -163,6 +163,30 @@ int	LUAInvoker::SendMail(lua_State* pState) {
 	SCRIPT_CALLBACK_RETURN
 }
 
+int	LUAInvoker::AddToBlacklist(lua_State* pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)	
+		while(SCRIPT_CAN_READ) {
+			try {		
+				invoker.addBanned(IPAddress(SCRIPT_READ_STRING("")));
+			} catch(Exception& ex) {
+				SCRIPT_ERROR("Incomprehensible blacklist entry, %s",ex.displayText().c_str());
+			}
+		}
+	SCRIPT_CALLBACK_RETURN
+}
+
+int	LUAInvoker::RemoveFromBlacklist(lua_State* pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		while(SCRIPT_CAN_READ) {
+			try {
+				invoker.removeBanned(IPAddress(SCRIPT_READ_STRING("")));
+			} catch(Exception& ex) {
+				SCRIPT_ERROR("Incomprehensible blacklist entry, %s",ex.displayText().c_str());
+			}
+		}
+	SCRIPT_CALLBACK_RETURN
+}
+
 
 int LUAInvoker::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
@@ -203,6 +227,10 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::Sha256)
 		} else if(name=="sendMail") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::SendMail)
+		} else if(name=="addToBlacklist") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::AddToBlacklist)
+		} else if(name=="removeFromBlacklist") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::RemoveFromBlacklist)
 		}
 	SCRIPT_CALLBACK_RETURN
 }

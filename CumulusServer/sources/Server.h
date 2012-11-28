@@ -20,7 +20,6 @@
 #include "RTMFPServer.h"
 #include "ApplicationKiller.h"
 #include "Service.h"
-#include "Blacklist.h"
 #include "SMTPSession.h"
 #include "TCPServer.h"
 #include "Servers.h"
@@ -83,7 +82,6 @@ private:
 	void				readLUAAddress(std::set<std::string>& addresses);
 	void				readLUAAddresses(std::set<std::string>& addresses);
 
-	Blacklist				_blacklist;
 	lua_State*				_pState;
 	ApplicationKiller&		_applicationKiller;
 	Service*				_pService;

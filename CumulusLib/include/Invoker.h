@@ -44,6 +44,7 @@ public:
 	void					unpublish(const Publication& name);
 
 	void					addBanned(const Poco::Net::IPAddress& ip);
+	void					removeBanned(const Poco::Net::IPAddress& ip);
 	void					clearBannedList();
 	bool					isBanned(const Poco::Net::IPAddress& ip);
 
@@ -70,6 +71,10 @@ private:
 
 inline void Invoker::addBanned(const Poco::Net::IPAddress& ip) {
 	_bannedList.insert(ip);
+}
+
+inline void Invoker::removeBanned(const Poco::Net::IPAddress& ip) {
+	_bannedList.erase(ip);
 }
 
 inline void Invoker::clearBannedList() {
