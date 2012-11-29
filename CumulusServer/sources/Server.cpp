@@ -202,12 +202,13 @@ void Server::onRendezVousUnknown(const UInt8* id,set<string>& addresses) {
 	}
 }
 
-void Server::onHandshake(UInt32 attempts,const SocketAddress& address,const string& path,const map<string,string>& properties,set<string>& addresses) {
+void Server::onHandshake(const SocketAddress& address,const string& path,const map<string,string>& properties,UInt32 attempts,set<string>& addresses) {
 	Service* pService = _pService->get(path);
 	if(!pService)
 		return;
 	SCRIPT_BEGIN(pService->open())
 		SCRIPT_FUNCTION_BEGIN("onHandshake")
+			SCRIPT_WRITE_STRING(address.toString().c_str())
 			SCRIPT_WRITE_STRING(path.c_str())
 			lua_newtable(_pState);
 			map<string,string>::const_iterator it;
@@ -215,7 +216,6 @@ void Server::onHandshake(UInt32 attempts,const SocketAddress& address,const stri
 				lua_pushlstring(_pState,it->second.c_str(),it->second.size());
 				lua_setfield(_pState,-2,it->first.c_str());
 			}
-			SCRIPT_WRITE_STRING(address.toString().c_str())
 			SCRIPT_WRITE_INT(attempts)
 			SCRIPT_FUNCTION_CALL
 			while(SCRIPT_CAN_READ) {
@@ -263,7 +263,7 @@ bool Server::onConnection(Client& client,AMFReader& parameters,AMFObjectWriter& 
 
 	if(pService) {
 		if(!pService->lastError.empty()) {
-			client.writer().writeErrorResponse("Connect.Error",pService->lastError);
+			client.writer().writeErrorResponse("Connect.Rejected",pService->lastError);
 			return false;
 		}
 		client.pinObject<Service>(*pService);

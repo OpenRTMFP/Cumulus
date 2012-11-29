@@ -68,7 +68,7 @@ void FlowWriter::clear() {
 		_messagesSent.pop_front();
 	}
 	if(_stage>0) {
-		writeAbandonMessage(); // Send a MESSAGE_ABANDONMENT just in the case where the receiver has been created
+		createBufferedMessage(); // Send a MESSAGE_ABANDONMENT just in the case where the receiver has been created
 		flush();
 		_trigger.stop();
 	}
@@ -89,12 +89,10 @@ void FlowWriter::fail(const string& error) {
 void FlowWriter::close() {
 	if(_closed)
 		return;
-	if(_stage>0 && _messages.size()==0)
-		writeAbandonMessage(); // Send a MESSAGE_END just in the case where the receiver has been created
+	if(_stage>0 || _messages.size()>0)
+		createBufferedMessage(); // Send a MESSAGE_END just in the case where the receiver has been created (or will be created)
 	_closed=true;
 	flush();
-	if(critical)
-		_band.close();
 }
 
 void FlowWriter::acknowledgment(PacketReader& reader) {
@@ -309,7 +307,7 @@ void FlowWriter::manage(Invoker& invoker) {
 		}
 	}
 	if(critical && _closed)
-		throw Exception("Critical flow writer closed, session must be closed");
+		throw Exception("Main flow writer closed, session is closing");
 	flush();
 }
 
@@ -329,7 +327,7 @@ void FlowWriter::flush(PacketWriter& writer,UInt64 stage,UInt8 flags,bool header
 		flags |= MESSAGE_HEADER;
 	if(size==0)
 		flags |= MESSAGE_ABANDONMENT;
-	if(_closed)
+	if(_closed && _messages.size()==1) // On LAST message
 		flags |= MESSAGE_END;
 
 	// TRACE("FlowWriter %u stage %u",id,stage);

@@ -53,7 +53,7 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		// Don't support AMF0 forced on NetConnection object because AMFWriter writes in AMF3 format
 		// But it's not a pb because NetConnection RTMFP works since flash player 10.0 only (which supports AMF3)
 		if(obj.getNumber("objectEncoding",0)==0) {
-			writer.writeErrorResponse("Connect.Error","ObjectEncoding client must be in a AMF3 format (not AMF0)");
+			writer.writeErrorResponse("Connect.Rejected","ObjectEncoding client must be in a AMF3 format (not AMF0)");
 			return;
 		}
 
@@ -68,6 +68,7 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 		}
 		if(!accept) {
 			writer.endTransaction(1);
+			writer.writeAMFMessage("close");
 			writer.close();
 		} else
 			writer.endTransaction();

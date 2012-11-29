@@ -129,7 +129,7 @@ void Peer::unsubscribeGroups() {
 
 /// EVENTS ///
 void Peer::onHandshake(Poco::UInt32 attempts,std::set<std::string>& addresses) {
-	_handler.onHandshake(attempts,address,path,properties,addresses);
+	_handler.onHandshake(address,path,properties,attempts,addresses);
 }
 
 bool Peer::onConnection(AMFReader& parameters,AMFObjectWriter& response) {

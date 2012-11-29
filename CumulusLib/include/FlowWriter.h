@@ -91,7 +91,6 @@ private:
 	virtual void			reset(Poco::UInt32 count){}
 	void					raiseMessage();
 	MessageBuffered&		createBufferedMessage();
-	void					writeAbandonMessage();
 
 	BandWriter&				_band;
 	bool					_closed;
@@ -114,10 +113,6 @@ private:
 	Poco::UInt32			_resetCount;
 	static MessageNull		_MessageNull;
 };
-
-inline void FlowWriter::writeAbandonMessage() {
-	createBufferedMessage();
-}
 
 inline bool FlowWriter::closed() {
 	return _closed;

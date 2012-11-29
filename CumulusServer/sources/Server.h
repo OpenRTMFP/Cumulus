@@ -44,7 +44,7 @@ private:
 	void					onStop();
 
 	void					onRendezVousUnknown(const Poco::UInt8* id,std::set<std::string>& addresses);
-	void					onHandshake(Poco::UInt32 attempts,const Poco::Net::SocketAddress& address,const std::string& path,const std::map<std::string,std::string>& properties,std::set<std::string>& addresses);
+	void					onHandshake(const Poco::Net::SocketAddress& address,const std::string& path,const std::map<std::string,std::string>& properties,Poco::UInt32 attempts,std::set<std::string>& addresses);
 
 	bool					onConnection(Cumulus::Client& client,Cumulus::AMFReader& parameters,Cumulus::AMFObjectWriter& response);
 	void					onFailed(const Cumulus::Client& client,const std::string& error);
