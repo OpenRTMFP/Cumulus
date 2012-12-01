@@ -312,8 +312,6 @@ bool Service::open(bool create) {
 			// set self
 			lua_pushvalue(_pState,-2);
 			lua_setfield(_pState,-2,package);
-			lua_pushvalue(_pState,-2);
-			lua_setfield(_pState,-2,"self");
 
 			// set __index=Service::Index
 			lua_pushcfunction(_pState,&Service::Index);
