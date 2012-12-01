@@ -7,7 +7,7 @@ LIBDIR=-L/usr/local/lib/ -L./../CumulusLib/
 SOURCES=./sources/
 CFLAGS+=-D CUMULUS_LOGS
 LDFLAGS+="-Wl,-rpath,./../CumulusLib/,-rpath,/usr/local/lib/"
-LIBS ?= -lCumulus -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lcrypto -lssl -llua5.1
+LIBS ?= -lCumulus -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lcrypto -lssl -lluajit-5.1
 OBJECT = $(OBJECTS:%=%.o)
 
 main: $(OBJECT)

@@ -62,7 +62,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="lua5.1.lib"
+				AdditionalDependencies="lua51.lib"
 				OutputFile="$(OutDir)\$(ProjectName).exe"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="../External/lib;../CumulusLib/lib"
@@ -145,7 +145,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="lua5.1.lib"
+				AdditionalDependencies="lua51.lib"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="../External/lib;../CumulusLib/lib"
 				IgnoreDefaultLibraryNames=""
