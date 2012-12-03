@@ -44,6 +44,7 @@ public:
 	const bool				critical;
 	const Poco::UInt64		flowId;
 	const std::string		signature;
+	bool					reliable;
 
 	template<class FlowWriterType>
 	FlowWriterType& newFlowWriter() {

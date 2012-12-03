@@ -29,7 +29,7 @@ namespace Cumulus {
 MessageNull FlowWriter::_MessageNull;
 
 
-FlowWriter::FlowWriter(const string& signature,BandWriter& band) : critical(false),id(0),_stage(0),_stageAck(0),_closed(false),_callbackHandle(0),_resetCount(0),_transaction(false),flowId(0),_band(band),signature(signature),_repeatable(0),_lostCount(0),_ackCount(0) {
+FlowWriter::FlowWriter(const string& signature,BandWriter& band) : reliable(true),critical(false),id(0),_stage(0),_stageAck(0),_closed(false),_callbackHandle(0),_resetCount(0),_transaction(false),flowId(0),_band(band),signature(signature),_repeatable(0),_lostCount(0),_ackCount(0) {
 	band.initFlowWriter(*this);
 }
 
@@ -37,7 +37,7 @@ FlowWriter::FlowWriter(FlowWriter& flowWriter) :
 		id(flowWriter.id),critical(false),_transaction(false),
 		_stage(flowWriter._stage),_stageAck(flowWriter._stageAck),
 		_ackCount(flowWriter._ackCount),_lostCount(flowWriter._lostCount),
-		_closed(false),_callbackHandle(0),_resetCount(0),
+		_closed(false),_callbackHandle(0),_resetCount(0),reliable(flowWriter.reliable),
 		flowId(0),_band(flowWriter._band),signature(flowWriter.signature) {
 	close();
 }
@@ -527,14 +527,14 @@ void FlowWriter::writeUnbufferedMessage(const UInt8* data,UInt32 size,const UInt
 	if(_closed || signature.empty() || _band.failed()) // signature.empty() means that we are on the flowWriter of FlowNull
 		return;
 	MessageUnbuffered* pMessage = new MessageUnbuffered(data,size,memAckData,memAckSize);
-	_messages.push_back(pMessage); 
+	_messages.push_back(pMessage);
 	flush();
 }
 
 MessageBuffered& FlowWriter::createBufferedMessage() {
 	if(_closed || signature.empty() || _band.failed()) // signature.empty() means that we are on the flowWriter of FlowNull
 		return _MessageNull;
-	MessageBuffered* pMessage = new MessageBuffered();
+	MessageBuffered* pMessage = new MessageBuffered(reliable);
 	if(_transaction)
 		_tempMessages.push_back(pMessage);
 	else

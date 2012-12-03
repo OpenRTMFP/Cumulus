@@ -74,7 +74,7 @@ private:
 
 class MessageBuffered : public Message {
 public:
-	MessageBuffered();
+	MessageBuffered(bool repeatable=true);
 	virtual ~MessageBuffered();
 
 	AMFWriter			amfWriter;

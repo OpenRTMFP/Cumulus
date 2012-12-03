@@ -61,7 +61,7 @@ int LUAClients::Get(lua_State *pState) {
 				HexBinaryDecoder(ss).read((char*)id,ID_SIZE);
 				pClient = clients(id);
 			} else if(id)
-				SCRIPT_ERROR("Bad client format id %s",Cumulus::Util::FormatHex(id,ID_SIZE).c_str())
+				SCRIPT_ERROR("Bad client format id %s",Cumulus::Util::FormatHex(id,size).c_str())
 			else
 				SCRIPT_ERROR("Client id argument missing")
 			if(pClient)

@@ -63,6 +63,8 @@ int LUAFlowWriter::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
 		string name = SCRIPT_READ_STRING("");
 		if(name=="flush") {
+			SCRIPT_WRITE_BOOL(writer.reliable)
+		} else if(name=="reliable") {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::Flush)
 		} else if(name=="writeAMFResult") {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::WriteAMFResult)
@@ -81,7 +83,10 @@ int LUAFlowWriter::Get(lua_State *pState) {
 int LUAFlowWriter::Set(lua_State *pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
 		string name = SCRIPT_READ_STRING("");
-		lua_rawset(pState,1); // consumes key and value
+		if(name=="reliable")
+			writer.reliable = lua_toboolean(pState,-1)==0 ? false : true;
+		else
+			lua_rawset(pState,1); // consumes key and value
 	SCRIPT_CALLBACK_RETURN
 }
 

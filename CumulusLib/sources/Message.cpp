@@ -50,7 +50,7 @@ BinaryReader& Message::memAck(Poco::UInt32& available,Poco::UInt32& size) {
 	return result;
 }
 
-MessageBuffered::MessageBuffered() : rawWriter(_stream),amfWriter(rawWriter),Message(_stream,true) {
+MessageBuffered::MessageBuffered(bool repeatable) : rawWriter(_stream),amfWriter(rawWriter),Message(_stream,repeatable) {
 	
 }
 

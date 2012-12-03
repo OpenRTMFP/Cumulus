@@ -67,7 +67,7 @@ int LUAGroups::Join(lua_State* pState) {
 			} else if(size!=ID_SIZE) {
 				pHandler=NULL;
 				if(peerId)
-					SCRIPT_ERROR("Bad member format id %s",Cumulus::Util::FormatHex(peerId,ID_SIZE).c_str())
+					SCRIPT_ERROR("Bad member format id %s",Cumulus::Util::FormatHex(peerId,size).c_str())
 				else
 					SCRIPT_ERROR("Member id argument missing")
 			}
@@ -81,7 +81,7 @@ int LUAGroups::Join(lua_State* pState) {
 				} else if(size!=ID_SIZE) {
 					pHandler=NULL;
 					if(groupId)
-						SCRIPT_ERROR("Bad group format id %s",Cumulus::Util::FormatHex(groupId,ID_SIZE).c_str())
+						SCRIPT_ERROR("Bad group format id %s",Cumulus::Util::FormatHex(groupId,size).c_str())
 					else
 						SCRIPT_ERROR("Group id argument missing")
 				}
@@ -121,7 +121,7 @@ int LUAGroups::Get(lua_State *pState) {
 				HexBinaryDecoder(ss).read((char*)id,ID_SIZE);
 				pGroup = groups(id);
 			} else if(id)
-				SCRIPT_ERROR("Bad group format id %s",Cumulus::Util::FormatHex(id,ID_SIZE).c_str())
+				SCRIPT_ERROR("Bad group format id %s",Cumulus::Util::FormatHex(id,size).c_str())
 			else
 				SCRIPT_ERROR("Group id argument missing")
 			if(pGroup)
