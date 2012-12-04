@@ -47,7 +47,6 @@ void CookieComputing::run() {
 		return;
 	}
 	// Compute Diffie-Hellman secret
-	vector<UInt8> sharedSecret;
 	RTMFP::ComputeDiffieHellmanSecret(pDH,&initiatorKey[0],initiatorKey.size(),sharedSecret);
 
 	DEBUG("Shared Secret : %s",Util::FormatHex(&sharedSecret[0],sharedSecret.size()).c_str());
