@@ -12,7 +12,7 @@ OBJECT = $(OBJECTS:%=%.o)
 
 main: $(OBJECT)
 	@echo creating CumulusServer executable $(EXEC)
-	@$(CC) $(CFLAGS) $(LDFLAGS) $(LIBDIR) -o $(EXEC) $(OBJECT) $(LIBS)
+	@$(CC) $(CFLAGS) $(LDFLAGS) $(LIBDIR) -o $(EXEC) $(OBJECT) $(LIBS) -pagezero_size 10000 -image_base 100000000
 
 $(OBJECT): 
 	@echo compiling $(@:%.o=%.cpp)
