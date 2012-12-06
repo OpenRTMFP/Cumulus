@@ -8,11 +8,21 @@ SOURCES=./sources/
 CFLAGS+=-D CUMULUS_LOGS
 LDFLAGS+="-Wl,-rpath,./../CumulusLib/,-rpath,/usr/local/lib/"
 LIBS ?= -lCumulus -lPocoFoundation -lPocoXML -lPocoUtil -lPocoNet -lcrypto -lssl -lluajit-5.1
+
+OS := $(shell uname)
+ifeq ($(OS),Darwin)
+	LBITS := $(shell getconf LONG_BIT)
+	ifeq ($(LBITS),64)
+	   # just require for OSX 64 buts
+	LIBS +=  -pagezero_size 10000 -image_base 100000000
+	endif
+endif
+
 OBJECT = $(OBJECTS:%=%.o)
 
 main: $(OBJECT)
 	@echo creating CumulusServer executable $(EXEC)
-	@$(CC) $(CFLAGS) $(LDFLAGS) $(LIBDIR) -o $(EXEC) $(OBJECT) $(LIBS) -pagezero_size 10000 -image_base 100000000
+	@$(CC) $(CFLAGS) $(LDFLAGS) $(LIBDIR) -o $(EXEC) $(OBJECT) $(LIBS)
 
 $(OBJECT): 
 	@echo compiling $(@:%.o=%.cpp)
