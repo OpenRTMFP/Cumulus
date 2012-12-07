@@ -19,7 +19,6 @@
     <ClInclude Include="sources\LUAByteWriter.h" />
     <ClInclude Include="sources\LUAClient.h" />
     <ClInclude Include="sources\LUAClients.h" />
-    <ClInclude Include="sources\LUAEdges.h" />
     <ClInclude Include="sources\LUAFlowWriter.h" />
     <ClInclude Include="sources\LUAGroup.h" />
     <ClInclude Include="sources\LUAGroups.h" />
@@ -53,7 +52,6 @@
     <ClCompile Include="sources\LUAByteWriter.cpp" />
     <ClCompile Include="sources\LUAClient.cpp" />
     <ClCompile Include="sources\LUAClients.cpp" />
-    <ClCompile Include="sources\LUAEdges.cpp" />
     <ClCompile Include="sources\LUAFlowWriter.cpp" />
     <ClCompile Include="sources\LUAGroup.cpp" />
     <ClCompile Include="sources\LUAGroups.cpp" />
