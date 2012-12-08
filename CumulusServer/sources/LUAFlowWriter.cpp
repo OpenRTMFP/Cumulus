@@ -62,9 +62,9 @@ int LUAFlowWriter::Close(lua_State* pState) {
 int LUAFlowWriter::Get(lua_State *pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
 		string name = SCRIPT_READ_STRING("");
-		if(name=="flush") {
+		if(name=="reliable") {
 			SCRIPT_WRITE_BOOL(writer.reliable)
-		} else if(name=="reliable") {
+		} else if(name=="flush") {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::Flush)
 		} else if(name=="writeAMFResult") {
 			SCRIPT_WRITE_FUNCTION(&LUAFlowWriter::WriteAMFResult)
