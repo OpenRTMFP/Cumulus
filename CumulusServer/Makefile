@@ -1,4 +1,4 @@
-OBJECTS = main FileWatcher LUABroadcaster LUAByteReader LUAByteWriter LUAClient LUAClients LUAFlowWriter LUAGroup LUAGroups LUAInvoker LUAListener LUAListeners LUAMail LUAMember LUAPublication LUAPublications LUAQualityOfService LUAServer LUAServers LUATCPClient LUATCPServer Script Server ServerConnection ServerMessage Servers Service SMTPSession TCPClient TCPServer
+OBJECTS = main FileWatcher LUABroadcaster LUAByteReader LUAByteWriter LUAClient LUAClients LUAFlowWriter LUAGroup LUAGroups LUAInvoker LUAListener LUAListeners LUAMail LUAMember LUAPublication LUAPublications LUAQualityOfService LUAServer LUAServers LUATCPClient LUATCPServer LUAUDPSocket Script Server ServerConnection ServerMessage Servers Service SMTPSession TCPClient TCPServer UDPSocket
 
 CC=g++
 EXEC=CumulusServer

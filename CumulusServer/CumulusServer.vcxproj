@@ -34,6 +34,7 @@
     <ClInclude Include="sources\LUAServers.h" />
     <ClInclude Include="sources\LUATCPClient.h" />
     <ClInclude Include="sources\LUATCPServer.h" />
+    <ClInclude Include="sources\LUAUDPSocket.h" />
     <ClInclude Include="sources\MailHandler.h" />
     <ClInclude Include="sources\Script.h" />
     <ClInclude Include="sources\Server.h" />
@@ -44,6 +45,7 @@
     <ClInclude Include="sources\SMTPSession.h" />
     <ClInclude Include="sources\TCPClient.h" />
     <ClInclude Include="sources\TCPServer.h" />
+    <ClInclude Include="sources\UDPSocket.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="sources\FileWatcher.cpp" />
@@ -67,6 +69,7 @@
     <ClCompile Include="sources\LUAServers.cpp" />
     <ClCompile Include="sources\LUATCPClient.cpp" />
     <ClCompile Include="sources\LUATCPServer.cpp" />
+    <ClCompile Include="sources\LUAUDPSocket.cpp" />
     <ClCompile Include="sources\main.cpp" />
     <ClCompile Include="sources\Script.cpp" />
     <ClCompile Include="sources\Server.cpp" />
@@ -77,6 +80,7 @@
     <ClCompile Include="sources\SMTPSession.cpp" />
     <ClCompile Include="sources\TCPClient.cpp" />
     <ClCompile Include="sources\TCPServer.cpp" />
+    <ClCompile Include="sources\UDPSocket.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{21C16553-20EB-4346-B2A5-2018BA8A8C52}</ProjectGuid>

@@ -1,0 +1,222 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="sources\LUAByteReader.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAByteWriter.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAClient.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAClients.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAFlowWriter.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAGroup.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAGroups.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAInvoker.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAListener.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAListeners.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAPublication.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAPublications.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAQualityOfService.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\FileWatcher.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\main.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\Script.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\Server.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\Service.cpp">
+      <Filter>sources</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\TCPClient.cpp">
+      <Filter>sources\Net</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUATCPClient.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\SMTPSession.cpp">
+      <Filter>sources\Net</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAMail.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUATCPServer.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\TCPServer.cpp">
+      <Filter>sources\Net</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAServer.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAServers.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\ServerConnection.cpp">
+      <Filter>sources\Net</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\ServerMessage.cpp">
+      <Filter>sources\Net</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\Servers.cpp">
+      <Filter>sources\Net</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUABroadcaster.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAMember.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\LUAUDPSocket.cpp">
+      <Filter>sources\LUAClass</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\UDPSocket.cpp">
+      <Filter>sources\Net</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="sources\LUAQualityOfService.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAByteReader.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAByteWriter.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAClient.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAClients.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAFlowWriter.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAGroup.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAGroups.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAInvoker.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAListener.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAListeners.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAPublication.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAPublications.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\ApplicationKiller.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\Service.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\FileWatcher.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\Script.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\Server.h">
+      <Filter>sources</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\TCPClient.h">
+      <Filter>sources\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUATCPClient.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\SMTPSession.h">
+      <Filter>sources\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAMail.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUATCPServer.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\TCPServer.h">
+      <Filter>sources\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\MailHandler.h">
+      <Filter>sources\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAServer.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAServers.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\ServerConnection.h">
+      <Filter>sources\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\ServerMessage.h">
+      <Filter>sources\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\Servers.h">
+      <Filter>sources\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUABroadcaster.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAMember.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\Broadcaster.h">
+      <Filter>sources\Net</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\LUAUDPSocket.h">
+      <Filter>sources\LUAClass</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\UDPSocket.h">
+      <Filter>sources\Net</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="sources">
+      <UniqueIdentifier>{446f7c58-d397-46f5-9c0c-2cfe8f6a11d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sources\LUAClass">
+      <UniqueIdentifier>{fa77d193-5a78-4b8b-8020-aab8d24dee6b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sources\Net">
+      <UniqueIdentifier>{93decc75-3449-4c0c-8601-a2f17414a2fd}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

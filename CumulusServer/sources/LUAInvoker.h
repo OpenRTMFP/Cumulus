@@ -40,6 +40,7 @@ private:
 	static int	AddToBlacklist(lua_State *pState);
 	static int	RemoveFromBlacklist(lua_State *pState);
 
+	static int	CreateUDPSocket(lua_State *pState);
 	static int	CreateTCPServer(lua_State *pState);
 	static int	CreateTCPClient(lua_State *pState);
 	static int	Publish(lua_State *pState);

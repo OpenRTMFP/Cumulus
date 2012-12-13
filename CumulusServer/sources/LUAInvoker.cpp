@@ -22,6 +22,7 @@
 #include "LUAGroups.h"
 #include "LUATCPClient.h"
 #include "LUATCPServer.h"
+#include "LUAUDPSocket.h"
 #include "LUAMail.h"
 #include "LUAServers.h"
 #include "Server.h"
@@ -81,6 +82,14 @@ int	LUAInvoker::CreateTCPServer(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
 		SCRIPT_WRITE_OBJECT(LUATCPServer,LUATCPServer,*(new LUATCPServer(invoker.sockets,pState)))
 		SCRIPT_ADD_DESTRUCTOR(&LUATCPServer::Destroy);
+	SCRIPT_CALLBACK_RETURN
+}
+
+int	LUAInvoker::CreateUDPSocket(lua_State *pState) {
+	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
+		bool allowBroadcast = SCRIPT_READ_BOOL(false);
+		SCRIPT_WRITE_OBJECT(LUAUDPSocket,LUAUDPSocket,*(new LUAUDPSocket(invoker,allowBroadcast,pState)))
+		SCRIPT_ADD_DESTRUCTOR(&LUAUDPSocket::Destroy);
 	SCRIPT_CALLBACK_RETURN
 }
 
@@ -215,6 +224,8 @@ int LUAInvoker::Get(lua_State *pState) {
 			SCRIPT_WRITE_NUMBER(ROUND(Timestamp().epochMicroseconds()/1000))
 		} else if(name=="split") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::Split)
+		} else if(name=="createUDPSocket") {
+			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateUDPSocket)
 		} else if(name=="createTCPClient") {
 			SCRIPT_WRITE_FUNCTION(&LUAInvoker::CreateTCPClient)
 		} else if(name=="createTCPServer") {

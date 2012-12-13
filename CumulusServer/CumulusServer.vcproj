@@ -439,6 +439,28 @@
 					RelativePath=".\sources\LUATCPServer.h"
 					>
 				</File>
+				<File
+					RelativePath=".\sources\LUAUDPSocket.cpp"
+					>
+					<FileConfiguration
+						Name="debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="release|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\sources\LUAUDPSocket.h"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="Net"
@@ -497,6 +519,28 @@
 				</File>
 				<File
 					RelativePath=".\sources\TCPServer.h"
+					>
+				</File>
+				<File
+					RelativePath=".\sources\UDPSocket.cpp"
+					>
+					<FileConfiguration
+						Name="debug|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="release|Win32"
+						>
+						<Tool
+							Name="VCCLCompilerTool"
+						/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\sources\UDPSocket.h"
 					>
 				</File>
 			</Filter>

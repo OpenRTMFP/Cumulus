@@ -534,38 +534,42 @@ void Script::ReadAMF(lua_State* pState,AMFWriter& writer,UInt32 count,map<UInt64
 }
 
 const char* Script::ToString(lua_State* pState,string& out) {
-	int type = lua_type(pState, -1);
-	string pointer;
-	switch (lua_type(pState, -1)) {
-		case LUA_TLIGHTUSERDATA:
-			pointer = "userdata_";
-			break;
-		case LUA_TFUNCTION:
-			pointer = "function_";
-			break;
-		case LUA_TUSERDATA:
-			pointer = "userdata_";
-			break;
-		case LUA_TTHREAD:
-			pointer = "thread_";
-			break;
-		case LUA_TTABLE: {
-			pointer = "table_";
-			break;
+	int top = lua_gettop(pState);
+	int args = 0;
+	while(args++<top) {
+		int type = lua_type(pState, args);
+		string pointer;
+		switch (lua_type(pState, args)) {
+			case LUA_TLIGHTUSERDATA:
+				pointer = "userdata_";
+				break;
+			case LUA_TFUNCTION:
+				pointer = "function_";
+				break;
+			case LUA_TUSERDATA:
+				pointer = "userdata_";
+				break;
+			case LUA_TTHREAD:
+				pointer = "thread_";
+				break;
+			case LUA_TTABLE: {
+				pointer = "table_";
+				break;
+			}
+			case LUA_TBOOLEAN: {
+				out += lua_toboolean(pState,args) ? "(true)" : "(false)";
+				continue;
+			}
+			case LUA_TNIL: {
+				out += "(null)";
+				continue;
+			}
 		}
-		case LUA_TBOOLEAN: {
-			out = lua_toboolean(pState,-1) ? "(true)" : "(false)";
-			return out.c_str();
-		}
-		case LUA_TNIL: {
-			out = "(null)";
-			return out.c_str();
-		}
+		if(pointer.empty())
+			out += lua_tostring(pState,args);
+		else
+			out += pointer + NumberFormatter::format(lua_topointer(pState,args));
 	}
-	if(pointer.empty())
-		out = lua_tostring(pState,-1);
-	else
-		out = pointer + NumberFormatter::format(lua_topointer(pState,-1));
 	return out.c_str();
 }
 

@@ -100,7 +100,7 @@ bool TCPClient::connect(const SocketAddress& address) {
 		_connected = true;
 		_manager.add(_socket,*this);
 	} catch(Exception& ex) {
-		error(format("Impossible to connect to %s, %s",address.toString().c_str(),ex.displayText()));
+		error(format("Impossible to connect to %s, %s",address.toString(),ex.displayText()));
 	}
 	return _connected;
 }
