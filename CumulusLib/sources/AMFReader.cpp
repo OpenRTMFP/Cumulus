@@ -198,10 +198,10 @@ Timestamp AMFReader::readDate() {
 				ERROR("AMF3 reference not found")
 				return Timestamp(0);
 			}
-			_reset = reader.position();
+			UInt32 reset = reader.position();
 			reader.reset(_references[flags]);
 			reader >> result;
-			reset();
+			reader.reset(reset);
 		}
 		
 		return Timestamp((Timestamp::TimeVal)result*1000);
@@ -295,8 +295,8 @@ AMF::Type AMFReader::readKey() {
 	}
 
 	if(objectDef.count==0) {
-		_reset=objectDef.reset;
-		reset();
+		if(objectDef.reset>0)
+			reader.reset(objectDef.reset);
 		delete &objectDef;
 		_objectDefs.pop_back();
 		return AMF::End;
@@ -419,11 +419,12 @@ bool AMFReader::readObject(string& type) {
 	// classdef reading
 	isInline = flags&0x01; 
 	flags >>= 1;
+	UInt32 reset=0;
 	if(isInline) {
 		 _classDefReferences.push_back(reference);
 		readString(type);
 	} else if(flags<=_classDefReferences.size()) {
-		_reset = reader.position();
+		reset = reader.position();
 		reader.reset(_classDefReferences[flags]);
 		flags = reader.read7BitValue()>>2;
 		readString(type);
@@ -444,8 +445,9 @@ bool AMFReader::readObject(string& type) {
 		for(it=pObjectDef->hardProperties.begin();it!=pObjectDef->hardProperties.end();++it)
 			readString(*it);
 	}
-
-	reset(); // reset classdef
+	
+	if(reset>0)
+		reader.reset(reset); // reset classdef
 
 	return true;
 }
@@ -506,8 +508,8 @@ AMF::Type AMFReader::readItem(string& name) {
 			if(marker!=AMF_END_OBJECT)
 				ERROR("AMF0 end marker object absent");
 		}
-		_reset=objectDef.reset;
-		reset();
+		if(objectDef.reset>0)
+			reader.reset(objectDef.reset);
 		delete &objectDef;
 		_objectDefs.pop_back();
 		return AMF::End;
@@ -535,10 +537,10 @@ void AMFReader::readString(string& value) {
 			ERROR("AMF3 string reference not found")
 			return;
 		}
-		_reset = reader.position();
+		UInt32 reset = reader.position();
 		reader.reset(_stringReferences[size]);
 		reader.readRaw(reader.read7BitValue()>>1,value);
-		reset();
+		reader.reset(reset);
 	}
 }
 
