@@ -96,8 +96,8 @@ int	LUAUDPSocket::Send(lua_State* pState) {
 		const char* address = SCRIPT_READ_STRING(NULL);
 		try {
 			if(address) {
-				SocketAddress address(address);
-				udp.send(data,size,address);
+				SocketAddress addr(address);
+				udp.send(data,size,addr);
 			} else {
 				udp.send(data,size);
 			}
