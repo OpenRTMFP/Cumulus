@@ -91,11 +91,11 @@ void Peer::joinGroup(Group& group,FlowWriter* pWriter) {
 	}
 	// + 1 random!
 	if(it0!=group.end()) {
-		UInt32 distance = Group::Distance(group.begin(),it0);
+		Group::Iterator itBegin = group.begin();
+		UInt32 distance = Group::Distance(itBegin,it0);
 		if(distance>0) {
-			it0 = group.begin();
-			Group::Advance(it0,rand() % distance);
-			writeId(group,(Peer&)**it0,pWriter);
+			Group::Advance(itBegin,rand() % distance);
+			writeId(group,(Peer&)**itBegin,pWriter);
 		}
 	}
 
