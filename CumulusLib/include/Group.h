@@ -54,9 +54,13 @@ public:
 	Iterator end();
 	Poco::UInt32  size();
 
+	static Poco::UInt32 Distance(Iterator& it0,Iterator& it1);
+	static void Advance(Iterator& it,Poco::UInt32 count);
+
 private:
 	std::map<Poco::UInt32,Peer*> 	_peers;
 };
+
 
 inline Group::Iterator Group::begin() {
 	return GroupIterator(_peers);

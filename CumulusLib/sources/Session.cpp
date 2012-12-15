@@ -17,6 +17,7 @@
 
 #include "Session.h"
 #include "Logs.h"
+#include "Handshake.h"
 #include "Poco/Format.h"
 #include <errno.h> // TODO remove this line!!
 
@@ -33,7 +34,7 @@ Session::Session(UInt32 id,
 				 const UInt8* encryptKey,
 				 Invoker& invoker) :
 	invoker(invoker),nextDumpAreMiddle(false),_prevAESType(AESEngine::DEFAULT),_pSendingThread(NULL),_pReceivingThread(NULL),died(false),checked(false),id(id),farId(farId),peer(peer),aesDecrypt(decryptKey,AESEngine::DECRYPT),aesEncrypt(encryptKey,AESEngine::ENCRYPT),_pRTMFPSending(new RTMFPSending()) {
-
+	(*this->peer.addresses.begin())= peer.address.toString();
 }
 
 Session::~Session() {

@@ -92,7 +92,7 @@ int LUAFlowWriter::Set(lua_State *pState) {
 
 int LUAFlowWriter::Flush(lua_State* pState) {
 	SCRIPT_CALLBACK(FlowWriter,LUAFlowWriter,writer)
-		writer.flush(SCRIPT_READ_BOOL(false));
+		writer.flush(SCRIPT_READ_BOOL(true));
 	SCRIPT_CALLBACK_RETURN
 }
 

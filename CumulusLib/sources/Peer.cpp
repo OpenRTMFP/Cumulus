@@ -75,7 +75,7 @@ bool Peer::writeId(Group& group,Peer& peer,FlowWriter* pWriter) {
 }
 
 void Peer::joinGroup(Group& group,FlowWriter* pWriter) {
-	UInt16 count=6;
+	UInt16 count=5;
 	Group::Iterator it0=group.end();
 	while(group.size()>0) {
 		if(group.begin()==it0)
@@ -88,6 +88,15 @@ void Peer::joinGroup(Group& group,FlowWriter* pWriter) {
 			continue;
 		if(--count==0)
 			break;
+	}
+	// + 1 random!
+	if(it0!=group.end()) {
+		UInt32 distance = Group::Distance(group.begin(),it0);
+		if(distance>0) {
+			it0 = group.begin();
+			Group::Advance(it0,rand() % distance);
+			writeId(group,(Peer&)**it0,pWriter);
+		}
 	}
 
 	map<Group*,Member*>::iterator it = _groups.lower_bound(&group);
@@ -197,7 +206,7 @@ void Peer::onUnjoinGroup(map<Group*,Member*>::iterator it) {
 	} else if(itPeer!=group._peers.end()) {
 		// if a peer disconnects of one group, give to its following peer the 6th preceding peer
 		Peer& followingPeer = *itPeer->second;
-		UInt8 count=7;
+		UInt8 count=6;
 		while(--count!=0 && itPeer!=group._peers.begin())
 			--itPeer;
 		if(count==0)

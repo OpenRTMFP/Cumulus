@@ -207,7 +207,7 @@ void RTMFPServer::receive(RTMFPReceiving& rtmfpReceiving) {
 		pCookieComputing->release();
 	}
 	SocketAddress oldAddress = pSession->peer.address;
-	if(pSession->setEndPoint(rtmfpReceiving.socket,rtmfpReceiving.address))
+	if(pSession->setEndPoint(rtmfpReceiving.socket,rtmfpReceiving.address) && rtmfpReceiving.id!=0)
 		_sessions.changeAddress(oldAddress,*pSession);
 	pSession->receive(*rtmfpReceiving.pPacket);
 }
