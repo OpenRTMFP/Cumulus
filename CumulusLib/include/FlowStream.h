@@ -57,14 +57,8 @@ private:
 	StreamState		_state;
 
 	// Lost Fragments
-	bool			_isVideo;
 	Poco::UInt32	_numberLostFragments;
-
-	BinaryWriter& write();
 };
 
-inline BinaryWriter& FlowStream::write() {
-	return writer.writeRawMessage(true);
-}
 
 } // namespace Cumulus

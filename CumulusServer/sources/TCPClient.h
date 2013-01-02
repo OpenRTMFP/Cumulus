@@ -53,7 +53,7 @@ private:
 	int							sendIntern(const Poco::UInt8* data,Poco::UInt32 size);
 
 	std::string					_error;
-	Poco::Net::StreamSocket		_socket;
+	Poco::Net::StreamSocket*	_pSocket;
 	std::vector<Poco::UInt8>	_recvBuffer;
 	std::vector<Poco::UInt8>	_sendBuffer;
 	bool						_connected;
@@ -61,11 +61,11 @@ private:
 };
 
 inline Poco::Net::SocketAddress	TCPClient::address() {
-	return _connected ? _socket.address() : Poco::Net::SocketAddress();
+	return _connected ? _pSocket->address() : Poco::Net::SocketAddress();
 }
 
 inline Poco::Net::SocketAddress	TCPClient::peerAddress() {
-	return _connected ? _socket.peerAddress() : Poco::Net::SocketAddress();
+	return _connected ? _pSocket->peerAddress() : Poco::Net::SocketAddress();
 }
 
 inline void TCPClient::onError(const Poco::Net::Socket& socket,const std::string& error) {

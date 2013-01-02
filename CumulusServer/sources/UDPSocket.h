@@ -47,7 +47,7 @@ private:
 	void					onError(const Poco::Net::Socket& socket,const std::string& error);
 
 	std::string					_error;
-	Poco::Net::DatagramSocket	_socket;
+	Poco::Net::DatagramSocket*	_pSocket;
 	std::vector<Poco::UInt8>	_recvBuffer;
 	bool						_connected;
 	bool						_bound;
@@ -57,11 +57,11 @@ private:
 };
 
 inline Poco::Net::SocketAddress	UDPSocket::address() {
-	return _connected ? _socket.address() : Poco::Net::SocketAddress();
+	return _connected ? _pSocket->address() : Poco::Net::SocketAddress();
 }
 
 inline Poco::Net::SocketAddress	UDPSocket::peerAddress() {
-	return _connected ? _socket.peerAddress() : Poco::Net::SocketAddress();
+	return _connected ? _pSocket->peerAddress() : Poco::Net::SocketAddress();
 }
 
 inline void UDPSocket::onError(const Poco::Net::Socket& socket,const std::string& error) {

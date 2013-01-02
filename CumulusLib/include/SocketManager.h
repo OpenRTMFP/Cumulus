@@ -31,7 +31,7 @@ public:
 	SocketManager(TaskHandler& handler,const std::string& name="SocketManager");
 	virtual ~SocketManager();
 
-	void add(const Poco::Net::Socket& socket,SocketHandler& handler);
+	void add(Poco::Net::Socket& socket,SocketHandler& handler);
 	void remove(const Poco::Net::Socket& socket);
 	void clear();
 

@@ -27,11 +27,16 @@ namespace Cumulus {
 
 class SocketManagedImpl : public SocketImpl {
 public:
-	SocketManagedImpl(poco_socket_t sockfd,SocketManaged& socketManaged):SocketImpl(sockfd),pSocketManaged(&socketManaged) {}
+	SocketManagedImpl(SocketImpl* pImpl,SocketManaged& socketManaged):pTrueImpl(pImpl),SocketImpl(pImpl->sockfd()),pSocketManaged(&socketManaged) {
+		pTrueImpl->duplicate();
+	}
 	virtual ~SocketManagedImpl(){
 		reset(); // to avoid the "close" on destruction!
+		pTrueImpl->release();
 	}
 	SocketManaged*		pSocketManaged;
+private:
+	SocketImpl*			pTrueImpl;
 };
 
 
@@ -41,11 +46,12 @@ public:
 };
 
 
-class SocketManaged : public Socket {
+class SocketManaged {
 public:
-	SocketManaged(const Socket& socket,SocketHandler& handler):Socket(socket),socketSelectable(new SocketManagedImpl(socket.impl()->sockfd(),*this)),handler(handler) {}
+	SocketManaged(Socket& socket,SocketHandler& handler):socketSelectable(new SocketManagedImpl(socket.impl(),*this)),handler(handler),socket(socket) {}
 	SocketHandler&				handler;
 	PublicSocket				socketSelectable;
+	Socket&						socket;
 };
 
 
@@ -72,7 +78,7 @@ void SocketManager::clear() {
 	stop();
 }
 
-void SocketManager::add(const Socket& socket,SocketHandler& handler) {
+void SocketManager::add(Socket& socket,SocketHandler& handler) {
 	ScopedLock<Mutex> lock(_mutex);
 	map<const Socket*,SocketManaged*>::iterator it = _sockets.lower_bound(&socket);
 	if(it!=_sockets.end() && it->first==&socket)
@@ -102,9 +108,9 @@ void SocketManager::handle() {
 		pSocketManaged = ((SocketManagedImpl*)it->impl())->pSocketManaged;
 		if(pSocketManaged) {
 			try {
-				pSocketManaged->handler.onReadable(*pSocketManaged);
+				pSocketManaged->handler.onReadable(pSocketManaged->socket);
 			} catch(Exception& ex) {
-				pSocketManaged->handler.onError(*pSocketManaged,ex.displayText().c_str());
+				pSocketManaged->handler.onError(pSocketManaged->socket,ex.displayText().c_str());
 			}
 		}
 	}
@@ -113,9 +119,9 @@ void SocketManager::handle() {
 		pSocketManaged = ((SocketManagedImpl*)it->impl())->pSocketManaged;
 		if(pSocketManaged) {
 			try {
-				pSocketManaged->handler.onWritable(*pSocketManaged);
+				pSocketManaged->handler.onWritable(pSocketManaged->socket);
 			} catch(Exception& ex) {
-				pSocketManaged->handler.onError(*pSocketManaged,ex.displayText().c_str());
+				pSocketManaged->handler.onError(pSocketManaged->socket,ex.displayText().c_str());
 			}
 		}
 	}	
@@ -124,9 +130,9 @@ void SocketManager::handle() {
 		pSocketManaged = ((SocketManagedImpl*)it->impl())->pSocketManaged;
 		if(pSocketManaged) {
 			try {
-				error(pSocketManaged->impl()->socketError());
+				error(pSocketManaged->socket.impl()->socketError());
 			} catch(Exception& ex) {
-				pSocketManaged->handler.onError(*pSocketManaged,ex.displayText().c_str());
+				pSocketManaged->handler.onError(pSocketManaged->socket,ex.displayText().c_str());
 			}
 		}
 	}
@@ -152,7 +158,7 @@ void SocketManager::run() {
 				empty=false;
 				SocketManaged& socket = *it->second;
 				_readables[i] = socket.socketSelectable;
-				if(socket.handler.haveToWrite(socket))
+				if(socket.handler.haveToWrite(socket.socket))
 					_writables.push_back(socket.socketSelectable);
 				_errors[i] = socket.socketSelectable;
 				++i;

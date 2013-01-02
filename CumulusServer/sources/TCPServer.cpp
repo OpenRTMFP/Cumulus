@@ -38,11 +38,12 @@ bool TCPServer::start(UInt16 port) {
 		return false;
 	}
 	try {
-		_socket.bind(port);
-		_socket.setLinger(false,0);
-		_socket.setBlocking(false);
-		_socket.listen();
-		manager.add(_socket,*this);
+		_pSocket = new ServerSocket();
+		_pSocket->bind(port);
+		_pSocket->setLinger(false,0);
+		_pSocket->setBlocking(false);
+		_pSocket->listen();
+		manager.add(*_pSocket,*this);
 		_port=port;
 	} catch(Exception& ex) {
 		ERROR("TCPServer starting error: %s",ex.displayText().c_str())
@@ -54,14 +55,14 @@ bool TCPServer::start(UInt16 port) {
 void TCPServer::stop() {
 	if(_port==0)
 		return;
-	manager.remove(_socket);
-	_socket.close();
+	manager.remove(*_pSocket);
+	delete _pSocket;
 	_port=0;
 }
 
 void TCPServer::onReadable(Socket& socket) {
 	try {
-		StreamSocket ss = _socket.acceptConnection();
+		StreamSocket ss = _pSocket->acceptConnection();
 		// enabe nodelay per default: OSX really needs that
 		ss.setNoDelay(true);
 		clientHandler(ss);

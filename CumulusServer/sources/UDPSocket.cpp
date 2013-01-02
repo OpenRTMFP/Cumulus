@@ -58,13 +58,14 @@ private:
 
 
 
-UDPSocket::UDPSocket(PoolThreads& poolThreads,SocketManager& manager,bool allowBroadcast) : _bound(false),_connected(false),_manager(manager),_recvBuffer(8192),_pSendingThread(NULL),_poolThreads(poolThreads) {
-	_socket.setBroadcast(allowBroadcast);
+UDPSocket::UDPSocket(PoolThreads& poolThreads,SocketManager& manager,bool allowBroadcast) : _pSocket(new DatagramSocket()),_bound(false),_connected(false),_manager(manager),_recvBuffer(8192),_pSendingThread(NULL),_poolThreads(poolThreads) {
+	_pSocket->setBroadcast(allowBroadcast);
 	
 }
 
 UDPSocket::~UDPSocket() {
 	close();
+	delete _pSocket;
 }
 
 void UDPSocket::onReadable(Socket& socket) {
@@ -76,13 +77,16 @@ void UDPSocket::onReadable(Socket& socket) {
 		_recvBuffer.resize(available);
 
 	SocketAddress address;
-	onReception(&_recvBuffer[0],_socket.receiveFrom(&_recvBuffer[0],available,address),address);
+	onReception(&_recvBuffer[0],_pSocket->receiveFrom(&_recvBuffer[0],available,address),address);
 }
 
 void UDPSocket::close() {
 	_error.clear();
-	_manager.remove(_socket);
-	_socket.close();
+	_manager.remove(*_pSocket);
+	bool broadcast = _pSocket->getBroadcast();
+	delete _pSocket;
+	_pSocket = new DatagramSocket();
+	_pSocket->setBroadcast(broadcast);
 	_connected = false;
 	_bound = false;
 }
@@ -95,8 +99,8 @@ bool UDPSocket::bind(const Poco::Net::SocketAddress & address) {
 		return false;
 	}
 	try {
-		_socket.bind(address);
-		_manager.add(_socket,*this);
+		_pSocket->bind(address);
+		_manager.add(*_pSocket,*this);
 		_bound = true;
 	} catch(Exception& ex) {
 		_error = format("Impossible to bind to %s, %s",address.toString(),ex.displayText());
@@ -112,7 +116,8 @@ void UDPSocket::connect(const SocketAddress& address) {
 		return;
 	}
 	try {
-		_socket.connect(address);
+		_pSocket->connect(address);
+		_manager.add(*_pSocket,*this);
 		_connected = true;
 	} catch(Exception& ex) {
 		_error = format("Impossible to connect to %s, %s",address.toString(),ex.displayText());
@@ -133,5 +138,5 @@ void UDPSocket::send(const UInt8* data,UInt32 size,const SocketAddress& address)
 	_error.clear();
 	if(size==0)
 		return;
-	_pSendingThread = _poolThreads.enqueue(AutoPtr<UDPSending>(new UDPSending(_socket,data,size,address)),_pSendingThread);
+	_pSendingThread = _poolThreads.enqueue(AutoPtr<UDPSending>(new UDPSending(*_pSocket,data,size,address)),_pSendingThread);
 }

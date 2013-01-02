@@ -27,17 +27,18 @@ using namespace Poco;
 using namespace Cumulus;
 using namespace Poco::Net;
 
-TCPClient::TCPClient(const StreamSocket& socket,SocketManager& manager) : _socket(socket),_connected(true),_manager(manager) {
-	_socket.setBlocking(false);
-	_manager.add(_socket,*this);
+TCPClient::TCPClient(const StreamSocket& socket,SocketManager& manager) : _pSocket(new StreamSocket(socket)),_connected(true),_manager(manager) {
+	_pSocket->setBlocking(false);
+	_manager.add(*_pSocket,*this);
 }
 
-TCPClient::TCPClient(SocketManager& manager) : _connected(false),_manager(manager) {
+TCPClient::TCPClient(SocketManager& manager) : _connected(false),_manager(manager),_pSocket(new StreamSocket()) {
 }
 
 
 TCPClient::~TCPClient() {
 	disconnect();
+	delete _pSocket;
 }
 
 void TCPClient::error(const string& error) {
@@ -55,7 +56,7 @@ void TCPClient::onReadable(Socket& socket) {
 	UInt32 size = _recvBuffer.size();
 	_recvBuffer.resize(size+available);
 
-	int received = _socket.receiveBytes(&_recvBuffer[size],available);
+	int received = _pSocket->receiveBytes(&_recvBuffer[size],available);
 	if(received<=0) {
 		disconnect(); // Graceful disconnection
 		return;
@@ -86,7 +87,7 @@ void TCPClient::onWritable(Socket& socket) {
 
 int TCPClient::sendIntern(const UInt8* data,UInt32 size) {
 	try {
-		return _socket.sendBytes(data,size);	
+		return _pSocket->sendBytes(data,size);	
 	} catch (...) {}
 	return 0;
 }
@@ -96,9 +97,9 @@ bool TCPClient::connect(const SocketAddress& address) {
 		disconnect();
 	_error.clear();
 	try {
-		_socket.connectNB(address);
+		_pSocket->connectNB(address);
 		_connected = true;
-		_manager.add(_socket,*this);
+		_manager.add(*_pSocket,*this);
 	} catch(Exception& ex) {
 		error(format("Impossible to connect to %s, %s",address.toString(),ex.displayText()));
 	}
@@ -108,9 +109,10 @@ bool TCPClient::connect(const SocketAddress& address) {
 void TCPClient::disconnect() {
 	if(!_connected)
 		return;
-	_manager.remove(_socket);
-	try {_socket.shutdown();} catch(...){}
-	_socket.close();
+	_manager.remove(*_pSocket);
+	try {_pSocket->shutdown();} catch(...){}
+	delete _pSocket;
+	_pSocket = new StreamSocket();
 	_connected = false;
 	_recvBuffer.clear();
 	_sendBuffer.clear();

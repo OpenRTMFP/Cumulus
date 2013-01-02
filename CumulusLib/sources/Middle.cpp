@@ -486,7 +486,6 @@ void Middle::manage() {
 void Middle::onReadable(Socket& socket) {
 	if(died) {
 		invoker.sockets.remove(_socket);
-		_socket.close();
 		return;
 	}
 

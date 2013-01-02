@@ -98,8 +98,9 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 	if(_middle)
 		NOTE("RTMFPServer started in man-in-the-middle mode between peers (unstable debug mode)");
 
-	 (UInt32&)udpBufferSize = params.udpBufferSize==0 ? _socket.getReceiveBufferSize() : params.udpBufferSize;
-	_socket.setReceiveBufferSize(udpBufferSize);_socket.setSendBufferSize(udpBufferSize);
+	_pSocket = new DatagramSocket();
+	 (UInt32&)udpBufferSize = params.udpBufferSize==0 ? _pSocket->getReceiveBufferSize() : params.udpBufferSize;
+	_pSocket->setReceiveBufferSize(udpBufferSize);_pSocket->setSendBufferSize(udpBufferSize);
 	DEBUG("Socket buffer receving/sending size = %u/%u",udpBufferSize,udpBufferSize);
 
 	(UInt32&)keepAliveServer = params.keepAliveServer<5 ? 5000 : params.keepAliveServer*1000;
@@ -112,8 +113,8 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 void RTMFPServer::run() {
 
 	try {
-		_socket.bind(SocketAddress("0.0.0.0",_port));
-		_mainSockets.add(_socket,*this);
+		_pSocket->bind(SocketAddress("0.0.0.0",_port));
+		_mainSockets.add(*_pSocket,*this);
 
 		NOTE("RTMFP server starts on %u port",_port);
 		onStart();
@@ -131,7 +132,7 @@ void RTMFPServer::run() {
 		FATAL("RTMFPServer, unknown error");
 	}
 
-	_mainSockets.remove(_socket);
+	_mainSockets.remove(*_pSocket);
 
 	// terminate handle
 	terminate();
@@ -144,7 +145,7 @@ void RTMFPServer::run() {
 	poolThreads.clear();
 
 	// close UDP socket
-	_socket.close();
+	delete _pSocket;
 
 	sockets.clear();
 	_mainSockets.clear();

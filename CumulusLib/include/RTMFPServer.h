@@ -86,8 +86,8 @@ private:
 
 	Handshake					_handshake;
 
-	Poco::UInt16				_port;
-	Poco::Net::DatagramSocket	_socket;
+	Poco::UInt16					_port;
+	Poco::Net::DatagramSocket*		_pSocket;
 
 	bool							_middle;
 	Target*							_pCirrus;

@@ -42,7 +42,7 @@ private:
 	void	onReadable(Poco::Net::Socket& socket);
 	void	onError(const Poco::Net::Socket& socket,const std::string& error);
 
-	Poco::Net::ServerSocket		_socket;
+	Poco::Net::ServerSocket*	_pSocket;
 	Poco::UInt16				_port;
 };
 
