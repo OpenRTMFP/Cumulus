@@ -47,7 +47,7 @@ private:
 };
 
 inline bool	TCPServer::running() {
-	return _port>0;
+	return _pSocket?true:false;
 }
 
 inline Poco::UInt16	TCPServer::port() {

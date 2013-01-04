@@ -24,7 +24,7 @@ using namespace Poco;
 using namespace Poco::Net;
 
 
-TCPServer::TCPServer(SocketManager& manager) : _port(0),manager(manager) {
+TCPServer::TCPServer(SocketManager& manager) : _port(0),manager(manager),_pSocket(NULL) {
 }
 
 
@@ -37,27 +37,28 @@ bool TCPServer::start(UInt16 port) {
 		ERROR("TCPServer port have to be superior to 0");
 		return false;
 	}
+	stop();
 	try {
 		_pSocket = new ServerSocket(port);
 		_pSocket->setLinger(false,0);
 		_pSocket->setBlocking(false);
-		manager.add(*_pSocket,*this);
-		_port=port;
 	} catch(Exception& ex) {
 		delete _pSocket;
 		_pSocket = NULL;
 		ERROR("TCPServer starting error: %s",ex.displayText().c_str())
 		return false;
 	}
+	_port=port;
+	manager.add(*_pSocket,*this);
 	return true;
 }
 
 void TCPServer::stop() {
-	if(_port==0)
+	if(!_pSocket)
 		return;
 	manager.remove(*_pSocket);
 	delete _pSocket;
-	_port=0;
+	_pSocket=NULL;
 }
 
 void TCPServer::onReadable(Socket& socket) {
