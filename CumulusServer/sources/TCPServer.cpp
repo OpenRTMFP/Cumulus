@@ -38,14 +38,14 @@ bool TCPServer::start(UInt16 port) {
 		return false;
 	}
 	try {
-		_pSocket = new ServerSocket();
-		_pSocket->bind(port);
+		_pSocket = new ServerSocket(port);
 		_pSocket->setLinger(false,0);
 		_pSocket->setBlocking(false);
-		_pSocket->listen();
 		manager.add(*_pSocket,*this);
 		_port=port;
 	} catch(Exception& ex) {
+		delete _pSocket;
+		_pSocket = NULL;
 		ERROR("TCPServer starting error: %s",ex.displayText().c_str())
 		return false;
 	}

@@ -92,14 +92,19 @@ void UDPSocket::close() {
 }
 
 bool UDPSocket::bind(const Poco::Net::SocketAddress & address) {
-	_bound = false;
 	_error.clear();
+	if(_bound) {
+		if(_pSocket->address()==address)
+			return true;
+		_error = format("UDPSocket already bound on %s, close the socket before",_pSocket->address().toString());
+		return false;
+	}
 	if(_connected) {
 		_error = "Impossible to bind a connected UDPSocket, close the socket before";
 		return false;
 	}
 	try {
-		_pSocket->bind(address);
+		_pSocket->bind(address,true);
 		_manager.add(*_pSocket,*this);
 		_bound = true;
 	} catch(Exception& ex) {

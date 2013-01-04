@@ -57,7 +57,7 @@ private:
 };
 
 inline Poco::Net::SocketAddress	UDPSocket::address() {
-	return _connected ? _pSocket->address() : Poco::Net::SocketAddress();
+	return (_connected || _bound) ? _pSocket->address() : Poco::Net::SocketAddress();
 }
 
 inline Poco::Net::SocketAddress	UDPSocket::peerAddress() {
