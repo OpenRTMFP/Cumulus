@@ -18,6 +18,7 @@
 #include "Cumulus.h"
 #include "Poco/NullStream.h"
 #include "Poco/Net/SocketAddress.h"
+#include "string.h"
 #include <vector>
 #include <map>
 
@@ -48,5 +49,10 @@ public:
 inline Poco::UInt8 Util::Get7BitValueSize(Poco::UInt32 value) {
 	return Get7BitValueSize((Poco::UInt64)value);
 }
+
+inline bool Util::SameAddress(const Poco::Net::SocketAddress& address1,const Poco::Net::SocketAddress& address2) {
+	return std::memcmp(address1.addr(),address2.addr(),address1.length())==0 && address1.port() == address2.port();
+}
+
 
 } // namespace Cumulus

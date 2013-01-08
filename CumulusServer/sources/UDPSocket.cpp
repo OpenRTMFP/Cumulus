@@ -16,6 +16,7 @@
 */
 
 #include "UDPSocket.h"
+#include "Util.h"
 #include "Logs.h"
 #include "Poco/Buffer.h"
 #include "Poco/Format.h"
@@ -94,7 +95,7 @@ void UDPSocket::close() {
 bool UDPSocket::bind(const Poco::Net::SocketAddress & address) {
 	_error.clear();
 	if(_bound) {
-		if(_pSocket->address()==address)
+		if(Util::SameAddress(_pSocket->address(),address))
 			return true;
 		_error = format("UDPSocket already bound on %s, close the socket before",_pSocket->address().toString());
 		return false;

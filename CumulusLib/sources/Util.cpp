@@ -40,11 +40,6 @@ Util::Util() {
 Util::~Util() {
 }
 
-bool Util::SameAddress(const SocketAddress& address1,const SocketAddress& address2) {
-	return memcmp(address1.addr(),address2.addr(),address1.length())==0 && address1.port() == address2.port();
-}
-
-
 string Util::FormatHex(const UInt8* data,UInt32 size) {
 	ostringstream oss;
 	HexBinaryEncoder(oss).write((char*)data,size);

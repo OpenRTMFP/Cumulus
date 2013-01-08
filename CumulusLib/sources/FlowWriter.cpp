@@ -297,7 +297,7 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 }
 
 void FlowWriter::manage(Invoker& invoker) {
-	if(!consumed() & !_band.failed()) {
+	if(!consumed() && !_band.failed()) {
 		try {
 			if(_trigger.raise())
 				raiseMessage();
