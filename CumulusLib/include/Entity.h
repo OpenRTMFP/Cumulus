@@ -18,6 +18,7 @@
 #pragma once
 
 #include "Cumulus.h"
+#include <cstring>
 
 namespace Cumulus {
 
@@ -25,8 +26,8 @@ namespace Cumulus {
 
 class Entity {
 public:
-	Entity();
-	virtual ~Entity();
+	Entity():id(){}
+	virtual ~Entity(){}
 
 	bool operator==(const Entity& other) const;
 	bool operator==(const Poco::UInt8* id) const;
@@ -35,6 +36,19 @@ public:
 
 	const Poco::UInt8							id[ID_SIZE];
 };
+
+inline bool Entity::operator==(const Entity& other) const {
+	return std::memcmp(id,other.id,ID_SIZE)==0;
+}
+inline bool Entity::operator==(const Poco::UInt8* id) const {
+	return std::memcmp(this->id,id,ID_SIZE)==0;
+}
+inline bool Entity::operator!=(const Entity& other) const {
+	return std::memcmp(id,other.id,ID_SIZE)!=0;
+}
+inline bool Entity::operator!=(const Poco::UInt8* id) const {
+	return std::memcmp(this->id,id,ID_SIZE)!=0;
+}
 
 
 } // namespace Cumulus

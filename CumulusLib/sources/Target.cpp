@@ -19,7 +19,7 @@
 #include "RTMFP.h"
 #include "Cookie.h"
 #include <openssl/evp.h>
-#include "string.h"
+#include <cstring>
 
 using namespace Poco;
 using namespace Net;

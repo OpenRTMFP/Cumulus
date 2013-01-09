@@ -18,7 +18,7 @@
 #include "Cumulus.h"
 #include "Poco/NullStream.h"
 #include "Poco/Net/SocketAddress.h"
-#include "string.h"
+#include <cstring>
 #include <vector>
 #include <map>
 

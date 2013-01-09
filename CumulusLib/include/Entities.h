@@ -18,7 +18,7 @@
 #pragma once
 
 #include "Cumulus.h"
-#include "string.h"
+#include <cstring>
 #include <map>
 
 namespace Cumulus {
@@ -28,7 +28,7 @@ class Entities {
 public:
 	struct Compare {
 	   bool operator()(const Poco::UInt8* a,const Poco::UInt8* b) const {
-		   return memcmp(a,b,ID_SIZE)<0;
+		   return std::memcmp(a,b,ID_SIZE)<0;
 	   }
 	};
 

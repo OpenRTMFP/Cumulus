@@ -248,10 +248,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\sources\Entity.cpp"
-					>
-				</File>
-				<File
 					RelativePath=".\include\Entity.h"
 					>
 				</File>
@@ -281,10 +277,6 @@
 				</File>
 				<File
 					RelativePath=".\include\Client.h"
-					>
-				</File>
-				<File
-					RelativePath=".\sources\Group.cpp"
 					>
 				</File>
 				<File

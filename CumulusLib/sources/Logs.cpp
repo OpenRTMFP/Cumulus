@@ -17,7 +17,7 @@
 
 #include "Logs.h"
 #include "Util.h"
-#include "string.h"
+#include <cstring>
 
 using namespace std;
 using namespace Poco;

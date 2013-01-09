@@ -23,7 +23,7 @@
 #include "Logs.h"
 #include "Poco/Format.h"
 #include "Poco/NumberFormatter.h"
-#include "string.h"
+#include <cstring>
 
 
 extern "C" {

@@ -20,6 +20,7 @@
 #include "Cumulus.h"
 #include "Peer.h"
 #include <map>
+#include <cstring>
 
 namespace Cumulus {
 
@@ -45,8 +46,10 @@ private:
 class Group : public Entity {
 	friend class Peer;
 public:
-	Group(const Poco::UInt8* id);
-	virtual ~Group();
+	Group(const Poco::UInt8* id) {
+		std::memcpy((Poco::UInt8*)this->id,id,ID_SIZE);
+	}
+	virtual ~Group(){}
 
 	typedef GroupIterator Iterator;
 
@@ -73,6 +76,15 @@ inline Group::Iterator Group::end() {
 inline Poco::UInt32 Group::size() {
 	return _peers.size();
 }
+
+inline Poco::UInt32 Group::Distance(Iterator& it0,Iterator& it1) {
+	return distance(it0._it,it1._it);
+}
+
+inline void Group::Advance(Iterator& it,Poco::UInt32 count) {
+	advance(it._it,count);
+}
+
 
 
 } // namespace Cumulus

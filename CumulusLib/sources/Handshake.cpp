@@ -20,7 +20,7 @@
 #include "Util.h"
 #include "Poco/RandomStream.h"
 #include "Poco/Format.h"
-#include "string.h"
+#include <cstring>
 
 using namespace std;
 using namespace Poco;

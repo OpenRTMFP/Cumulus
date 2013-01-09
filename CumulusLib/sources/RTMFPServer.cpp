@@ -23,7 +23,7 @@
 #include "Util.h"
 #include "Logs.h"
 #include "Poco/Format.h"
-#include "string.h"
+#include <cstring>
 
 
 using namespace std;
@@ -276,10 +276,11 @@ UInt8 RTMFPServer::p2pHandshake(const string& tag,PacketWriter& response,const S
 
 	
 	if(result==0x00) {
+		
 		/// Udp hole punching normal process
 		UInt32 times = pSessionWanted->helloAttempt(tag);
 		pSessionWanted->p2pHandshake(address,tag,times,(times>0 || address.host()==pSessionWanted->peer.address.host()) ? _sessions.find(address) : NULL);
-
+		
 		bool first=true;
 		list<Address>::const_iterator it2;
 		for(it2=pSessionWanted->peer.addresses.begin();it2!=pSessionWanted->peer.addresses.end();++it2) {

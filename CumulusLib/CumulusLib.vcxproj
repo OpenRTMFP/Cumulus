@@ -129,8 +129,6 @@
     <ClCompile Include="sources\TaskHandler.cpp" />
     <ClCompile Include="sources\Util.cpp" />
     <ClCompile Include="sources\AESEngine.cpp" />
-    <ClCompile Include="sources\Entity.cpp" />
-    <ClCompile Include="sources\Group.cpp" />
     <ClCompile Include="sources\Peer.cpp" />
     <ClCompile Include="sources\RTMFP.cpp" />
     <ClCompile Include="sources\RTMFPServer.cpp" />

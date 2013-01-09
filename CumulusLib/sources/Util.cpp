@@ -20,7 +20,7 @@
 #include "Poco/URI.h"
 #include "Poco/FileStream.h"
 #include "Poco/HexBinaryEncoder.h"
-#include "string.h"
+#include <cstring>
 #include <sstream>
 #include "math.h"
 
