@@ -21,7 +21,7 @@
 #include "MemoryStream.h"
 #include "BinaryWriter.h"
 
-#define PACKETSEND_SIZE			1215
+#define PACKETSEND_SIZE			1300
 
 namespace Cumulus {
 

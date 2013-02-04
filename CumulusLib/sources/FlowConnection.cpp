@@ -104,6 +104,22 @@ void FlowConnection::messageHandler(const std::string& name,AMFReader& message) 
 	}
 }
 
+void FlowConnection::rawHandler(UInt8 type,PacketReader& data) {
+	UInt16 flag = data.read16();
+	if(flag!=0x03) {
+		Flow::rawHandler(type,data);
+		return;
+	}
+	// setBufferTime
+	UInt32 streamId = data.read32();
+	if(streamId>0) {
+		INFO("setBufferTime %u on stream %u",data.read32(),streamId)
+		BinaryWriter& raw = writer.writeRawMessage();
+		raw.write16(0);
+		raw.write32(streamId);
+	}
+}
+
 
 
 } // namespace Cumulus

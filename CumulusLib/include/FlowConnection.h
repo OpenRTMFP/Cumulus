@@ -34,6 +34,7 @@ public:
 private:
 	static std::string	_Name;
 	void	messageHandler(const std::string& name,AMFReader& message);
+	void	rawHandler(Poco::UInt8 type,PacketReader& data);
 
 	std::set<Poco::UInt32> _streamIndex;
 };
