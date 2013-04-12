@@ -23,7 +23,8 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Streams::Streams(map<string,Publication*>&	publications) : _nextId(0),_publications(publications) {
+Streams::Streams(std::map<string,Publication*>&	publications) : 
+_nextId(0),_publications(publications) {
 	
 }
 

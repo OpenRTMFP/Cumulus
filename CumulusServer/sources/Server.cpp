@@ -118,7 +118,7 @@ void Server::stopService(Service& service) {
 	SCRIPT_END
 }
 void Server::clearService(Service& service) {
-	map<string,set<Service*> >::iterator it;
+	std::map<string,set<Service*> >::iterator it;
 	for(it=_scriptEvents.begin();it!=_scriptEvents.end();++it)
 		it->second.erase(&service);
 }
@@ -202,7 +202,9 @@ void Server::onRendezVousUnknown(const UInt8* id,set<string>& addresses) {
 	}
 }
 
-void Server::onHandshake(const SocketAddress& address,const string& path,const map<string,string>& properties,UInt32 attempts,set<string>& addresses) {
+void Server::onHandshake(const SocketAddress& address,const string& 
+path,const std::map<string,string>& properties,UInt32 
+attempts,set<string>& addresses) {
 	Service* pService = _pService->get(path);
 	if(!pService)
 		return;
@@ -211,7 +213,7 @@ void Server::onHandshake(const SocketAddress& address,const string& path,const m
 			SCRIPT_WRITE_STRING(address.toString().c_str())
 			SCRIPT_WRITE_STRING(path.c_str())
 			lua_newtable(_pState);
-			map<string,string>::const_iterator it;
+			std::map<string,string>::const_iterator it;
 			for(it=properties.begin();it!=properties.end();++it) {
 				lua_pushlstring(_pState,it->second.c_str(),it->second.size());
 				lua_setfield(_pState,-2,it->first.c_str());

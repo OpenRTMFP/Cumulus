@@ -42,7 +42,8 @@ Middle::Middle(UInt32 id,
 				Target& target) : ServerSession(id,farId,peer,decryptKey,encryptKey,(Invoker&)handler),_pMiddleAesDecrypt(NULL),_pMiddleAesEncrypt(NULL),_isPeer(target.isPeer),
 					_middleId(0),_sessions(sessions),_firstResponse(false),_queryUrl("rtmfp://"+target.address.toString()+peer.path),_middlePeer(peer),_target(target) {
 
-	Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(map<string,string>&)_middlePeer.properties);
+	
+Util::UnpackUrl(_queryUrl,(string&)_middlePeer.path,(std::map<string,string>&)_middlePeer.properties);
 
 	// connection to target
 	_socket.setReceiveBufferSize(invoker.udpBufferSize);_socket.setSendBufferSize(invoker.udpBufferSize);
@@ -289,7 +290,9 @@ void Middle::packetHandler(PacketReader& packet) {
 					UInt16 netGroupHeader = content.read16();out.write16(netGroupHeader);
 					if(netGroupHeader==0x4752) {
 
-						map<string,string>::const_iterator it = peer.properties.find("groupspec");
+						
+std::map<string,string>::const_iterator it = 
+peer.properties.find("groupspec");
 						if(it!=peer.properties.end()) {
 							out.writeRaw(content.current(),71);content.next(71);
 							UInt8 result1[AES_KEY_SIZE];
@@ -442,7 +445,9 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 
 				} else if(flagType == 0x01) {
 
-					map<string,string>::const_iterator it = peer.properties.find("groupspec");
+					
+std::map<string,string>::const_iterator it = 
+peer.properties.find("groupspec");
 					if(it!=peer.properties.end()) {
 						packetOut.writeRaw(content.current(),68);content.next(68);
 						UInt8 result1[AES_KEY_SIZE];

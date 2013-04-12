@@ -60,7 +60,8 @@ bool Peer::writeId(Group& group,Peer& peer,FlowWriter* pWriter) {
 		response.write8(0x0b); // unknown
 		response.writeRaw(peer.id,ID_SIZE);
 	} else {
-		map<Group*,Member*>::const_iterator it = peer._groups.find(&group);
+		std::map<Group*,Member*>::const_iterator it = 
+peer._groups.find(&group);
 		if(it==peer._groups.end()) {
 			CRITIC("A peer in a group without have its _groups collection associated")
 			return false;
@@ -99,7 +100,8 @@ void Peer::joinGroup(Group& group,FlowWriter* pWriter) {
 		}
 	}
 
-	map<Group*,Member*>::iterator it = _groups.lower_bound(&group);
+	std::map<Group*,Member*>::iterator it = 
+_groups.lower_bound(&group);
 	if(it!=_groups.end() && it->first==&group)
 		return;
 
@@ -112,7 +114,7 @@ void Peer::joinGroup(Group& group,FlowWriter* pWriter) {
 		if(index<group._peers.rbegin()->first) {
 			// max index reached, rewritten index!
 			index=0;
-			map<UInt32,Peer*>::iterator it1;
+			std::map<UInt32,Peer*>::iterator it1;
 			for(it1=group._peers.begin();it1!=group._peers.end();++it1)
 				(UInt32&)it1->first = index++;
 		}
@@ -124,14 +126,15 @@ void Peer::joinGroup(Group& group,FlowWriter* pWriter) {
 
 
 void Peer::unjoinGroup(Group& group) {
-	map<Group*,Member*>::iterator it = _groups.lower_bound(&group);
+	std::map<Group*,Member*>::iterator it = 
+_groups.lower_bound(&group);
 	if(it==_groups.end() || it->first!=&group)
 		return;
 	onUnjoinGroup(it);
 }
 
 void Peer::unsubscribeGroups() {
-	map<Group*,Member*>::iterator it=_groups.begin();
+	std::map<Group*,Member*>::iterator it=_groups.begin();
 	while(it!=_groups.end())
 		onUnjoinGroup(it++);
 }
@@ -190,9 +193,10 @@ void Peer::onJoinGroup(Group& group) {
 	_handler.onJoinGroup(*this,group);
 }
 
-void Peer::onUnjoinGroup(map<Group*,Member*>::iterator it) {
+void Peer::onUnjoinGroup(std::map<Group*,Member*>::iterator it) {
 	Group& group = *it->first;
-	map<UInt32,Peer*>::iterator itPeer = group._peers.find(it->second->index);
+	std::map<UInt32,Peer*>::iterator itPeer = 
+group._peers.find(it->second->index);
 	group._peers.erase(itPeer++);
 	delete it->second;
 	_groups.erase(it);

@@ -29,7 +29,8 @@ using namespace Poco::Net;
 ServerConnection::ServerConnection(const string& target,SocketManager& socketManager,ServerHandler& handler,ServersHandler& serversHandler) : address(target),_size(0),_handler(handler),TCPClient(socketManager),_connected(false),_serversHandler(serversHandler),isTarget(true) {
 	size_t found = target.find("?");
 	if(found!=string::npos) {
-		Util::UnpackQuery(target.substr(found+1),(map<string,string>&)properties);
+		
+Util::UnpackQuery(target.substr(found+1),(std::map<string,string>&)properties);
 		((string&)address).assign(target.substr(0,found));
 	}
 }
@@ -52,7 +53,7 @@ void ServerConnection::sendPublicAddress() {
 		message.write8(1);
 		message << _handler.publicAddress();
 	}
-	map<string,string>::const_iterator it;
+	std::map<string,string>::const_iterator it;
 	for(it=properties.begin();it!=properties.end();++it) {
 		message << it->first;
 		message << it->second;
@@ -79,7 +80,8 @@ void ServerConnection::send(const string& handler,ServerMessage& message) {
 	UInt32 handlerRef=0;
 	bool   writeRef = false;
 	if(!handlerName.empty()) {
-		map<string,UInt32>::iterator it = _sendingRefs.lower_bound(handlerName);
+		std::map<string,UInt32>::iterator it = 
+_sendingRefs.lower_bound(handlerName);
 		if(it!=_sendingRefs.end() && it->first==handlerName) {
 			handlerRef = it->second;
 			handlerName.clear();
@@ -135,7 +137,8 @@ UInt32 ServerConnection::onReception(const UInt8* data,UInt32 size) {
 	} else {
 		UInt32 ref = reader.read7BitEncoded();
 		if(ref>0) {
-			map<UInt32,string>::const_iterator it = _receivingRefs.find(ref);
+			std::map<UInt32,string>::const_iterator it = 
+_receivingRefs.find(ref);
 			if(it==_receivingRefs.end())
 				ERROR("Impossible to find the %u handler reference for the server %s",ref,peerAddress().toString().c_str())
 			else
@@ -153,7 +156,8 @@ UInt32 ServerConnection::onReception(const UInt8* data,UInt32 size) {
 			string key,value;
 			reader >> key;
 			reader >> value;
-			((map<string,string>&)properties).insert(pair<string,string>(key,value));
+			
+((std::map<string,string>&)properties).insert(pair<string,string>(key,value));
 		}
 		if(!_connected) {
 			_connected=true;

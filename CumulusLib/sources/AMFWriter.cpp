@@ -81,7 +81,8 @@ void AMFWriter::writePropertyName(const string& value) {
 
 void AMFWriter::writeString(const string& value) {
 	if(!value.empty()) {
-		map<string,UInt32>::iterator it = _stringReferences.lower_bound(value);
+		std::map<string,UInt32>::iterator it = 
+_stringReferences.lower_bound(value);
 		if(it!=_stringReferences.end() && it->first==value) {
 			writer.write7BitValue(it->second<<1);
 			return;

@@ -65,7 +65,7 @@ Session* Sessions::add(Session* pSession) {
 	return pSession;
 }
 
-void Sessions::remove(map<UInt32,Session*>::iterator it) {
+void Sessions::remove(std::map<UInt32,Session*>::iterator it) {
 	ScopedLock<Mutex>	lock(mutex);
 	DEBUG("Session %u died",it->second->id);
 	_gateway.destroySession(*it->second);
@@ -83,7 +83,8 @@ void Sessions::changeAddress(const SocketAddress& oldAddress,Session& session) {
 
 Session* Sessions::find(const Poco::Net::SocketAddress& address) {
 	ScopedLock<Mutex>	lock(mutex);
-	map<SocketAddress,Session*,Compare>::const_iterator it = _sessionsByAddress.find(address);
+	std::map<SocketAddress,Session*,Compare>::const_iterator it = 
+_sessionsByAddress.find(address);
 	if(it==_sessionsByAddress.end())
 		return NULL;
 	return it->second;
@@ -101,7 +102,7 @@ Session* Sessions::find(const Poco::UInt8* peerId) {
 
 Session* Sessions::find(UInt32 id) {
 	ScopedLock<Mutex>	lock(mutex);
-	map<UInt32,Session*>::iterator it = _sessions.find(id);
+	std::map<UInt32,Session*>::iterator it = _sessions.find(id);
 	if(it==_sessions.end())
 		return NULL;
 	return it->second;
@@ -109,7 +110,7 @@ Session* Sessions::find(UInt32 id) {
 
 void Sessions::manage() {
 	ScopedLock<Mutex>	lock(mutex);
-	map<UInt32,Session*>::iterator it= _sessions.begin();
+	std::map<UInt32,Session*>::iterator it= _sessions.begin();
 	while(it!=_sessions.end()) {
 		it->second->manage();
 		if(it->second->died) {

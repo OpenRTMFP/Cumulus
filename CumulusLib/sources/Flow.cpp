@@ -92,7 +92,7 @@ void Flow::complete() {
 		DEBUG("Flow %s consumed",NumberFormatter::format(id).c_str());
 
 	// delete fragments
-	map<UInt64,Fragment*>::const_iterator it;
+	std::map<UInt64,Fragment*>::const_iterator it;
 	for(it=_fragments.begin();it!=_fragments.end();++it)
 		delete it->second;
 	_fragments.clear();
@@ -150,7 +150,8 @@ void Flow::commit() {
 	list<UInt64> lost;
 	UInt64 current=stage;
 	UInt32 count=0;
-	map<UInt64,Fragment*>::const_iterator it=_fragments.begin();
+	std::map<UInt64,Fragment*>::const_iterator 
+it=_fragments.begin();
 	while(it!=_fragments.end()) {
 		current = it->first-current-2;
 		size += Util::Get7BitValueSize(current);
@@ -201,7 +202,8 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 	}
 	
 	if(this->stage < (stage-deltaNAck)) {
-		map<UInt64,Fragment*>::iterator it=_fragments.begin();
+		std::map<UInt64,Fragment*>::iterator 
+it=_fragments.begin();
 		while(it!=_fragments.end()) {
 			if( it->first > stage) 
 				break;
@@ -221,7 +223,8 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 	
 	if(stage>nextStage) {
 		// not following stage, bufferizes the stage
-		map<UInt64,Fragment*>::iterator it = _fragments.lower_bound(stage);
+		std::map<UInt64,Fragment*>::iterator it = 
+_fragments.lower_bound(stage);
 		if(it==_fragments.end() || it->first!=stage) {
 			if(it!=_fragments.begin())
 				--it;
@@ -234,7 +237,8 @@ void Flow::fragmentHandler(UInt64 stage,UInt64 deltaNAck,PacketReader& fragment,
 		fragmentSortedHandler(nextStage++,fragment,flags);
 		if(flags&MESSAGE_END)
 			complete();
-		map<UInt64,Fragment*>::iterator it=_fragments.begin();
+		std::map<UInt64,Fragment*>::iterator 
+it=_fragments.begin();
 		while(it!=_fragments.end()) {
 			if( it->first > nextStage)
 				break;

@@ -47,7 +47,7 @@ ServerSession::~ServerSession() {
 	kill();
 
 	// delete helloAttempts
-	map<string,Attempt*>::const_iterator it0;
+	std::map<string,Attempt*>::const_iterator it0;
 	for(it0=_helloAttempts.begin();it0!=_helloAttempts.end();++it0)
 		delete it0->second;
 	if(pTarget)
@@ -60,7 +60,7 @@ void ServerSession::fail(const string& error) {
 
 	// Here no new sending must happen except "failSignal"
 	ServerSession::writer().clear(11);
-	map<UInt64,FlowWriter*>::const_iterator it;
+	std::map<UInt64,FlowWriter*>::const_iterator it;
 	for(it=_flowWriters.begin();it!=_flowWriters.end();++it)
 		it->second->clear();
 	peer.setFlowWriter(NULL);
@@ -104,7 +104,7 @@ void ServerSession::kill() {
 	peer.unsubscribeGroups();
 
 	// delete flows
-	map<UInt64,Flow*>::const_iterator it1;
+	std::map<UInt64,Flow*>::const_iterator it1;
 	for(it1=_flows.begin();it1!=_flows.end();++it1)
 		delete it1->second;
 	_flows.clear();
@@ -113,7 +113,7 @@ void ServerSession::kill() {
 	peer.onDisconnection();
 
 	// delete flowWriters
-	map<UInt64,FlowWriter*>::const_iterator it2;
+	std::map<UInt64,FlowWriter*>::const_iterator it2;
 	for(it2=_flowWriters.begin();it2!=_flowWriters.end();++it2)
 		delete it2->second;
 	_flowWriters.clear();
@@ -124,7 +124,7 @@ void ServerSession::manage() {
 		return;
 
 	// clean obsolete helloAttempts
-	map<string,Attempt*>::iterator it=_helloAttempts.begin();
+	std::map<string,Attempt*>::iterator it=_helloAttempts.begin();
 	while(it!=_helloAttempts.end()) {
 		if(it->second->obsolete()) {
 			delete it->second;
@@ -149,7 +149,7 @@ void ServerSession::manage() {
 		return;
 
 	// Raise FlowWriter
-	map<UInt64,FlowWriter*>::iterator it2=_flowWriters.begin();
+	std::map<UInt64,FlowWriter*>::iterator it2=_flowWriters.begin();
 	while(it2!=_flowWriters.end()) {
 		try {
 			it2->second->manage(invoker);
@@ -191,7 +191,7 @@ bool ServerSession::keepAlive() {
 
 void ServerSession::eraseHelloAttempt(const string& tag) {
 // clean obsolete helloAttempts
-	map<string,Attempt*>::iterator it=_helloAttempts.find(tag);
+	std::map<string,Attempt*>::iterator it=_helloAttempts.find(tag);
 	if(it==_helloAttempts.end()) {
 		WARN("Hello attempt %s unfound, deletion useless",tag.c_str());
 		return;
@@ -430,7 +430,8 @@ void ServerSession::packetHandler(PacketReader& packet) {
 				if(_failed)
 					break;
 
-				map<UInt64,Flow*>::const_iterator it = _flows.find(idFlow);
+				std::map<UInt64,Flow*>::const_iterator 
+it = _flows.find(idFlow);
 				pFlow = it==_flows.end() ? NULL : it->second;
 
 				// Header part if present
@@ -511,14 +512,15 @@ void ServerSession::packetHandler(PacketReader& packet) {
 }
 
 FlowWriter* ServerSession::flowWriter(Poco::UInt64 id) {
-	map<UInt64,FlowWriter*>::const_iterator it = _flowWriters.find(id);
+	std::map<UInt64,FlowWriter*>::const_iterator it = 
+_flowWriters.find(id);
 	if(it==_flowWriters.end())
 		return NULL;
 	return it->second;
 }
 
 Flow& ServerSession::flow(Poco::UInt64 id) {
-	map<UInt64,Flow*>::const_iterator it = _flows.find(id);
+	std::map<UInt64,Flow*>::const_iterator it = _flows.find(id);
 	if(it==_flows.end()) {
 		WARN("Flow %s unfound",NumberFormatter::format(id).c_str());
 		((UInt64&)_pFlowNull->id) = id;
@@ -532,7 +534,7 @@ Flow* ServerSession::createFlow(UInt64 id,const string& signature) {
 		ERROR("Session %u is died, no more Flow creation possible",this->id);
 		return NULL;
 	}
-	map<UInt64,Flow*>::const_iterator it = _flows.find(id);
+	std::map<UInt64,Flow*>::const_iterator it = _flows.find(id);
 	if(it!=_flows.end()) {
 		WARN("Flow %s has already been created",NumberFormatter::format(id).c_str());
 		return it->second;

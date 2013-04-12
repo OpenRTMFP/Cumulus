@@ -31,7 +31,7 @@ Publication::Publication(const string& name):_publisherId(0),_name(name),_firstK
 
 Publication::~Publication() {
 	// delete _listeners!
-	map<UInt32,Listener*>::iterator it;
+	std::map<UInt32,Listener*>::iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		delete it->second;
 
@@ -40,7 +40,8 @@ Publication::~Publication() {
 
 
 Listener& Publication::addListener(Peer& peer,UInt32 id,FlowWriter& writer,bool unbuffered) {
-	map<UInt32,Listener*>::iterator it = _listeners.lower_bound(id);
+	std::map<UInt32,Listener*>::iterator it = 
+_listeners.lower_bound(id);
 	if(it!=_listeners.end() && it->first==id) {
 		WARN("Listener %u is already subscribed for publication %u",id,_publisherId);
 		return *it->second;
@@ -64,7 +65,7 @@ Listener& Publication::addListener(Peer& peer,UInt32 id,FlowWriter& writer,bool 
 }
 
 void Publication::removeListener(Peer& peer,UInt32 id) {
-	map<UInt32,Listener*>::iterator it = _listeners.find(id);
+	std::map<UInt32,Listener*>::iterator it = _listeners.find(id);
 	if(it==_listeners.end()) {
 		WARN("Listener %u is already unsubscribed of publication %u",id,_publisherId);
 		return;
@@ -109,7 +110,7 @@ void Publication::start(Peer& peer,UInt32 publisherId,FlowWriter* pController) {
 	_pPublisher=&peer;
 	_pController=pController;
 	_firstKeyFrame=false;
-	map<UInt32,Listener*>::const_iterator it;
+	std::map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->startPublishing(_name);
 	flush();
@@ -124,7 +125,7 @@ void Publication::stop(Peer& peer,UInt32 publisherId) {
 		WARN("Unpublish '%s' operation with a %u id different than its publisher %u id",_name.c_str(),publisherId,_publisherId);
 		return;
 	}
-	map<UInt32,Listener*>::const_iterator it;
+	std::map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->stopPublishing(_name);
 	flush();
@@ -138,7 +139,7 @@ void Publication::stop(Peer& peer,UInt32 publisherId) {
 }
 
 void Publication::flush() {
-	map<UInt32,Listener*>::const_iterator it;
+	std::map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it)
 		it->second->flush();
 }
@@ -149,7 +150,7 @@ void Publication::pushDataPacket(const string& name,PacketReader& packet) {
 		return;
 	}
 	int pos = packet.position();
-	map<UInt32,Listener*>::const_iterator it;
+	std::map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
 		it->second->pushDataPacket(name,packet);
 		packet.reset(pos);
@@ -167,7 +168,7 @@ void Publication::pushAudioPacket(UInt32 time,PacketReader& packet,UInt32 number
 	if(numberLostFragments>0)
 		INFO("%u audio fragments lost on publication %u",numberLostFragments,_publisherId);
 	_audioQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5,_pPublisher ? _pPublisher->ping : 0);
-	map<UInt32,Listener*>::const_iterator it;
+	std::map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
 		it->second->pushAudioPacket(time,packet);
 		packet.reset(pos);
@@ -201,7 +202,7 @@ void Publication::pushVideoPacket(UInt32 time,PacketReader& packet,UInt32 number
 	}
 
 	int pos = packet.position();
-	map<UInt32,Listener*>::const_iterator it;
+	std::map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
 		it->second->pushVideoPacket(time,packet);
 		packet.reset(pos);

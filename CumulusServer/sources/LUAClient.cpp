@@ -53,7 +53,8 @@ int LUAClient::Get(lua_State *pState) {
 		} else if(name=="swfUrl") {
 			SCRIPT_WRITE_STRING(client.swfUrl.toString().c_str())
 		} else {
-			map<string,string>::const_iterator it = client.properties.find(name);
+			std::map<string,string>::const_iterator it = 
+client.properties.find(name);
 			if(it!=client.properties.end())
 				SCRIPT_WRITE_BINARY(it->second.c_str(),it->second.size())
 		}
