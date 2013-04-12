@@ -47,7 +47,8 @@ Handshake::~Handshake() {
 
 void Handshake::manage() {
 	// delete obsolete cookie
-	map<const UInt8*,Cookie*,CompareCookies>::iterator it=_cookies.begin();
+	std::map<const UInt8*,Cookie*,CompareCookies>::iterator 
+it=_cookies.begin();
 	while(it!=_cookies.end()) {
 		if(it->second->obsolete()) {
 			eraseHelloAttempt(it->second->tag);
@@ -60,7 +61,8 @@ void Handshake::manage() {
 }
 
 void Handshake::commitCookie(const UInt8* value) {
-	map<const UInt8*,Cookie*,CompareCookies>::iterator it = _cookies.find(value);
+	std::map<const UInt8*,Cookie*,CompareCookies>::iterator it = 
+_cookies.find(value);
 	if(it==_cookies.end()) {
 		WARN("Cookie %s not found, maybe becoming obsolete before commiting (congestion?)",Util::FormatHex(value,COOKIE_SIZE).c_str());
 		return;
@@ -73,7 +75,8 @@ void Handshake::commitCookie(const UInt8* value) {
 
 void Handshake::clear() {
 	// delete cookies
-	map<const UInt8*,Cookie*,CompareCookies>::const_iterator it;
+	std::map<const UInt8*,Cookie*,CompareCookies>::const_iterator 
+it;
 	for(it=_cookies.begin();it!=_cookies.end();++it) {
 		eraseHelloAttempt(it->second->tag);
 		delete it->second;
@@ -125,7 +128,8 @@ void Handshake::packetHandler(PacketReader& packet) {
 }
 
 Session* Handshake::createSession(const UInt8* cookieValue) {
-	map<const UInt8*,Cookie*,CompareCookies>::iterator itCookie = _cookies.find(cookieValue);
+	std::map<const UInt8*,Cookie*,CompareCookies>::iterator itCookie 
+= _cookies.find(cookieValue);
 	if(itCookie==_cookies.end()) {
 		WARN("Creating session for an unknown cookie '%s' (CPU congestion?)",Util::FormatHex(cookieValue,COOKIE_SIZE).c_str());
 		return NULL;
@@ -135,7 +139,8 @@ Session* Handshake::createSession(const UInt8* cookieValue) {
 
 	// Fill peer infos
 	memcpy((void*)peer.id,cookie.peerId,ID_SIZE);
-	Util::UnpackUrl(cookie.queryUrl,(string&)peer.path,(map<string,string>&)peer.properties);
+	
+Util::UnpackUrl(cookie.queryUrl,(string&)peer.path,(std::map<string,string>&)peer.properties);
 	(UInt32&)farId = cookie.farId;
 	(SocketAddress&)peer.address = cookie.peerAddress;
 
@@ -190,7 +195,8 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				// Fill peer infos
 				UInt16 port;
 				string host;
-				Util::UnpackUrl(epd,host,port,(string&)peer.path,(map<string,string>&)peer.properties);
+				
+Util::UnpackUrl(epd,host,port,(string&)peer.path,(std::map<string,string>&)peer.properties);
 				set<string> addresses;
 				peer.onHandshake(attempt.count+1,addresses);
 				if(!addresses.empty()) {
@@ -226,7 +232,8 @@ UInt8 Handshake::handshakeHandler(UInt8 id,PacketReader& request,PacketWriter& r
 				return 0;
 			}
 	
-			map<const UInt8*,Cookie*,CompareCookies>::iterator itCookie = _cookies.find(request.current());
+			std::map<const 
+UInt8*,Cookie*,CompareCookies>::iterator itCookie = _cookies.find(request.current());
 			if(itCookie==_cookies.end()) {
 				WARN("Cookie %s unknown, maybe already connected (udpBuffer congested?)",Util::FormatHex(request.current(),COOKIE_SIZE).c_str());
 				return 0;

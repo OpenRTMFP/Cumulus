@@ -49,7 +49,8 @@ int LUAServer::Get(lua_State* pState) {
 		} else if(name=="address") {
 			SCRIPT_WRITE_STRING(server.address.c_str())
 		} else {
-			map<string,string>::const_iterator it = server.properties.find(name);
+			std::map<string,string>::const_iterator it = 
+server.properties.find(name);
 			if(it!=server.properties.end())
 				SCRIPT_WRITE_BINARY(it->second.c_str(),it->second.size())
 		}

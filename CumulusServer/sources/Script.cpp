@@ -334,11 +334,12 @@ void Script::WriteAMF(lua_State *pState,AMF::Type type,AMFReader& reader) {
 }
 
 void Script::ReadAMF(lua_State* pState,AMFWriter& writer,UInt32 count) {
-	map<UInt64,UInt32> references;
+	std::map<UInt64,UInt32> references;
 	ReadAMF(pState,writer,count,references);
 }
 
-void Script::ReadAMF(lua_State* pState,AMFWriter& writer,UInt32 count,map<UInt64,UInt32>& references) {
+void Script::ReadAMF(lua_State* pState,AMFWriter& writer,UInt32 
+count,std::map<UInt64,UInt32>& references) {
 	SCRIPT_BEGIN(pState)
 	int top = lua_gettop(pState);
 	Int32 args = top-count;
@@ -353,7 +354,8 @@ void Script::ReadAMF(lua_State* pState,AMFWriter& writer,UInt32 count,map<UInt64
 
 				// Repeat
 				UInt64 reference = (UInt64)lua_topointer(pState,args);
-				map<UInt64,UInt32>::iterator it = references.lower_bound(reference);
+				std::map<UInt64,UInt32>::iterator it = 
+references.lower_bound(reference);
 				if(it!=references.end() && it->first==reference) {
 					if(writer.repeat(it->second))
 						break;

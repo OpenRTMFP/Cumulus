@@ -36,7 +36,7 @@ Service::Service(lua_State* pState,const string& path,ServiceRegistry& registry)
 
 Service::~Service() {
 	// delete services children
-	map<string,Service*>::const_iterator it;
+	std::map<string,Service*>::const_iterator it;
 	for(it=_services.begin();it!=_services.end();++it)
 		delete it->second;
 	// clean
@@ -65,7 +65,8 @@ Service* Service::get(const string& path) {
 	File file(Path(FileWatcher::path).parent().toString()+name);
 	bool exists = (file.exists() && file.isDirectory());
 
-	map<string,Service*>::iterator it = _services.lower_bound(name);
+	std::map<string,Service*>::iterator it = 
+_services.lower_bound(name);
 	
 	if(it!=_services.end() && it->first==name) {
 		// Service exists already

@@ -24,7 +24,8 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Publications::Publications(map<string,Publication*>& publications) : _publications(publications) {
+Publications::Publications(std::map<string,Publication*>& publications) 
+: _publications(publications) {
 	
 }
 

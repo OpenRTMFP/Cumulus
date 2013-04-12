@@ -146,7 +146,8 @@ void FlowWriter::acknowledgment(PacketReader& reader) {
 			continue;
 		}
 
-		map<UInt32,UInt64>::iterator itFrag=message.fragments.begin();
+		std::map<UInt32,UInt64>::iterator 
+itFrag=message.fragments.begin();
 		while(message.fragments.end()!=itFrag) {
 			
 			// ACK
@@ -386,7 +387,8 @@ void FlowWriter::raiseMessage() {
 			stop = false;
 		}
 
-		map<UInt32,UInt64>::const_iterator itFrag=message.fragments.begin();
+		std::map<UInt32,UInt64>::const_iterator 
+itFrag=message.fragments.begin();
 		UInt32 available;
 		BinaryReader& content = message.reader(available);
 		

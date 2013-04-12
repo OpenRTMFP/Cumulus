@@ -56,13 +56,15 @@ UInt8 Util::Get7BitValueSize(UInt64 value) {
 	return result;
 }
 
-void Util::UnpackUrl(const string& url,string& path,map<string,string>& properties) {
+void Util::UnpackUrl(const string& url,string& 
+path,std::map<string,string>& properties) {
 	string host;
 	UInt16 port;
 	UnpackUrl(url,host,port,path,properties);
 }
 
-void Util::UnpackUrl(const string& url,string& host,UInt16& port,string& path,map<string,string>& properties) {
+void Util::UnpackUrl(const string& url,string& host,UInt16& port,string& 
+path,std::map<string,string>& properties) {
 	try {
 		URI uri(url);
 		uri.normalize();
@@ -78,7 +80,8 @@ void Util::UnpackUrl(const string& url,string& host,UInt16& port,string& path,ma
 	}
 }
 
-void Util::UnpackQuery(const string& query,map<string,string>& properties) {
+void Util::UnpackQuery(const string& query,std::map<string,string>& 
+properties) {
 	istringstream istr(query);
 	static const int eof = std::char_traits<char>::eof();
 

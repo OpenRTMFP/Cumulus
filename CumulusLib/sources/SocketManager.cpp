@@ -68,7 +68,7 @@ SocketManager::~SocketManager() {
 void SocketManager::clear() {
 	{
 		ScopedLock<Mutex> lock(_mutex);
-		map<const Socket*,SocketManaged*>::iterator it;
+		std::map<const Socket*,SocketManaged*>::iterator it;
 		for(it=_sockets.begin();it!= _sockets.end();++it) {
 			((SocketManagedImpl*)it->second->socketSelectable.impl())->pSocketManaged = NULL;
 			delete it->second;
@@ -80,7 +80,8 @@ void SocketManager::clear() {
 
 void SocketManager::add(Socket& socket,SocketHandler& handler) {
 	ScopedLock<Mutex> lock(_mutex);
-	map<const Socket*,SocketManaged*>::iterator it = _sockets.lower_bound(&socket);
+	std::map<const Socket*,SocketManaged*>::iterator it = 
+_sockets.lower_bound(&socket);
 	if(it!=_sockets.end() && it->first==&socket)
 		return;
 	if(it!=_sockets.begin())
@@ -92,7 +93,8 @@ void SocketManager::add(Socket& socket,SocketHandler& handler) {
 
 void SocketManager::remove(const Socket& socket) {
 	ScopedLock<Mutex> lock(_mutex);
-	map<const Socket*,SocketManaged*>::iterator it = _sockets.find(&socket);
+	std::map<const Socket*,SocketManaged*>::iterator it = 
+_sockets.find(&socket);
 	if(it == _sockets.end())
 		return;
 	((SocketManagedImpl*)it->second->socketSelectable.impl())->pSocketManaged = NULL;
@@ -153,7 +155,8 @@ void SocketManager::run() {
 			_writables.clear();
 
 			int i=0;
-			map<const Socket*,SocketManaged*>::iterator it;
+			std::map<const Socket*,SocketManaged*>::iterator 
+it;
 			for(it = _sockets.begin(); it != _sockets.end(); ++it) {
 				empty=false;
 				SocketManaged& socket = *it->second;
