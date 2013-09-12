@@ -34,6 +34,7 @@ public:
 	RTMFPServerParams() : port(RTMFP_DEFAULT_PORT),udpBufferSize(0),threadPriority(Poco::Thread::PRIO_HIGH),pCirrus(NULL),middle(false),keepAlivePeer(10),keepAliveServer(15) {
 	}
 	Poco::UInt16				port;
+	std::string					host;
 	Poco::UInt32				udpBufferSize;
 	bool						middle;
 	Poco::Net::SocketAddress*	pCirrus;
@@ -87,6 +88,7 @@ private:
 	Handshake					_handshake;
 
 	Poco::UInt16					_port;
+	std::string						_host;
 	Poco::Net::DatagramSocket*		_pSocket;
 
 	bool							_middle;

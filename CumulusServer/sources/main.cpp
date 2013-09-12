@@ -201,6 +201,7 @@ private:
 			try {
 				// starts the server
 				_params.port = config().getInt("port", _params.port);
+				_params.host = config().getString("host", "0.0.0.0");
 				_params.udpBufferSize = config().getInt("udpBufferSize",_params.udpBufferSize);
 				_params.keepAliveServer = config().getInt("keepAliveServer",_params.keepAliveServer);
 				_params.keepAlivePeer = config().getInt("keepAlivePeer",_params.keepAlivePeer);
