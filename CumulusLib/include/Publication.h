@@ -49,10 +49,16 @@ public:
 	void					removeListener(Peer& peer,Poco::UInt32 id);
 
 	void					flush();
+
+	const Poco::Buffer<Poco::UInt8>& audioCodecPacket() const {return _audioCodecPacket;}
+	const Poco::Buffer<Poco::UInt8>& videoCodecPacket() const {return _videoCodecPacket;}
+
 private:
 	Peer*								_pPublisher;
 	FlowWriter*							_pController;
 	bool								_firstKeyFrame;
+	Poco::Buffer<Poco::UInt8>			_audioCodecPacket;
+	Poco::Buffer<Poco::UInt8>			_videoCodecPacket;
 	std::string							_name;
 	Poco::UInt32						_publisherId;
 	std::map<Poco::UInt32,Listener*>	_listeners;

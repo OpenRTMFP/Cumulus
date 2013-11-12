@@ -19,6 +19,7 @@
 #include "Group.h"
 #include "Handler.h"
 #include "Util.h"
+#include "string.h"
 
 using namespace std;
 using namespace Poco;
@@ -43,7 +44,7 @@ Group& Peer::joinGroup(const UInt8* id,FlowWriter* pWriter) {
 	// create group if need
 	Entities<Group>::Map::iterator it = _handler._groups.lower_bound(id);
 	Group* pGroup = NULL;
-	if(it==_handler._groups.end() || it->first!=id) {
+	if(it==_handler._groups.end() || memcmp(it->first,id,ID_SIZE)!=0) {
 		if(it!=_handler._groups.begin())
 			--it;
 		pGroup = new Group(id);

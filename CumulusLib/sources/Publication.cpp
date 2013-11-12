@@ -25,7 +25,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Publication::Publication(const string& name):_publisherId(0),_name(name),_firstKeyFrame(false),listeners(_listeners),_pPublisher(NULL),_pController(NULL) {
+Publication::Publication(const string& name): _videoCodecPacket(0),_audioCodecPacket(0),_publisherId(0),_name(name),_firstKeyFrame(false),listeners(_listeners),_pPublisher(NULL),_pController(NULL) {
 	DEBUG("New publication %s",_name.c_str());
 }
 
@@ -134,6 +134,8 @@ void Publication::stop(Peer& peer,UInt32 publisherId) {
 	_publisherId = 0;
 	_pPublisher=NULL;
 	_pController=NULL;
+	_videoCodecPacket.resize(0,false);
+	_audioCodecPacket.resize(0,false);
 	return;
 }
 
@@ -163,6 +165,12 @@ void Publication::pushAudioPacket(UInt32 time,PacketReader& packet,UInt32 number
 		return;
 	}
 
+	if ((*packet.current()&0xF0)==0x10 && packet.current()[1] == 0) {
+		// ACC codec && settings codec informations
+		_audioCodecPacket.resize(packet.available(),false);
+		memcpy(_audioCodecPacket.begin(),packet.current(),packet.available());
+	}
+
 	int pos = packet.position();
 	if(numberLostFragments>0)
 		INFO("%u audio fragments lost on publication %u",numberLostFragments,_publisherId);
@@ -187,8 +195,14 @@ void Publication::pushVideoPacket(UInt32 time,PacketReader& packet,UInt32 number
 		_firstKeyFrame=false;
 
 	// is keyframe?
-	if(((*packet.current())&0xF0) == 0x10)
+	if(((*packet.current())&0xF0) == 0x10) {
 		_firstKeyFrame = true;
+		if (*packet.current()==0x17 && packet.current()[1] == 0) {
+			// h264 codec && settings codec informations
+			_videoCodecPacket.resize(packet.available(),false);
+			memcpy(_videoCodecPacket.begin(),packet.current(),packet.available());
+		}
+	}
 
 	_videoQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5,_pPublisher ? _pPublisher->ping : 0);
 	if(numberLostFragments>0)

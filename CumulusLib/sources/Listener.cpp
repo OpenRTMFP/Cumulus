@@ -33,10 +33,10 @@ public:
 	void write(UInt32 time,PacketReader& data,bool unbuffered) {
 	//	if(_type==0x08)
 	//		time=0;
-	/*	if(_type==0x09)
-			TRACE("Video timestamp : %u",_time)
+		if(_type==0x09)
+			TRACE("Video timestamp : %u",time)
 		else
-			TRACE("Audio timestamp : %u",_time);*/
+			TRACE("Audio timestamp : %u",time);
 		if(unbuffered) {
 			if(data.position()>=5) {
 				data.reset(data.position()-5);
@@ -89,7 +89,7 @@ Listener::Listener(UInt32 id,Publication& publication,FlowWriter& writer,bool un
 	_unbuffered(unbuffered),_writer(writer),_boundId(0),audioSampleAccess(false),videoSampleAccess(false),
 	id(id),publication(publication),_firstKeyFrame(false),receiveAudio(true),receiveVideo(true),
 	_pAudioWriter(NULL),_pVideoWriter(NULL),
-	_time(0),_deltaTime(0),_addingTime(0) {
+	_time(0),_deltaTime(0),_addingTime(0),_firstAudio(true),_firstVideo(true) {
 }
 
 Listener::~Listener() {
@@ -196,6 +196,7 @@ void Listener::pushDataPacket(const string& name,PacketReader& packet) {
 void Listener::pushVideoPacket(UInt32 time,PacketReader& packet) {
 	if(!receiveVideo) {
 		_firstKeyFrame=false;
+		_firstVideo=true;
 		return;
 	}
 	if(!_pVideoWriter) {
@@ -217,13 +218,21 @@ void Listener::pushVideoPacket(UInt32 time,PacketReader& packet) {
 		writeBounds();
 	}
 
+	if(_firstVideo && publication.videoCodecPacket().size()>0) {
+		PacketReader packet(publication.videoCodecPacket().begin(), publication.videoCodecPacket().size());
+		_pVideoWriter->write(0,packet,_unbuffered);
+	}
+	_firstVideo=false;
+
 	_pVideoWriter->write(computeTime(time),packet,_unbuffered);
 }
 
 
 void Listener::pushAudioPacket(UInt32 time,PacketReader& packet) {
-	if(!receiveAudio)
+	if(!receiveAudio) {
+		_firstAudio=true;
 		return;
+	}
 	if(!_pAudioWriter) {
 		ERROR("Listener %u must be initialized before to be used",id);
 		return;
@@ -232,6 +241,13 @@ void Listener::pushAudioPacket(UInt32 time,PacketReader& packet) {
 		_pAudioWriter->reseted=false;
 		writeBounds();
 	}
+
+	if(_firstAudio && publication.audioCodecPacket().size()>0) {
+		PacketReader packet(publication.audioCodecPacket().begin(), publication.audioCodecPacket().size());
+		_pAudioWriter->write(0,packet,_unbuffered);
+	}
+	_firstAudio=false;
+
 	_pAudioWriter->write(computeTime(time),packet,_unbuffered);
 }
 

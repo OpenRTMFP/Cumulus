@@ -67,6 +67,8 @@ private:
 	Poco::UInt32			_boundId;
 
 	bool					_firstKeyFrame;
+	bool					_firstAudio;
+	bool					_firstVideo;
 
 	Poco::UInt32 			_deltaTime;
 	Poco::UInt32 			_addingTime;
