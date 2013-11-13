@@ -219,7 +219,7 @@ void Listener::pushVideoPacket(UInt32 time,PacketReader& packet) {
 	}
 
 	if(_firstVideo && publication.videoCodecPacket().size()>0) {
-		PacketReader packet(publication.videoCodecPacket().begin(), publication.videoCodecPacket().size());
+		PacketReader packet(&publication.videoCodecPacket()[0], publication.videoCodecPacket().size());
 		_pVideoWriter->write(0,packet,_unbuffered);
 	}
 	_firstVideo=false;
@@ -243,7 +243,7 @@ void Listener::pushAudioPacket(UInt32 time,PacketReader& packet) {
 	}
 
 	if(_firstAudio && publication.audioCodecPacket().size()>0) {
-		PacketReader packet(publication.audioCodecPacket().begin(), publication.audioCodecPacket().size());
+		PacketReader packet(&publication.audioCodecPacket()[0], publication.audioCodecPacket().size());
 		_pAudioWriter->write(0,packet,_unbuffered);
 	}
 	_firstAudio=false;
