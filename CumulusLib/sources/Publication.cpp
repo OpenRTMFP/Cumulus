@@ -165,8 +165,8 @@ void Publication::pushAudioPacket(UInt32 time,PacketReader& packet,UInt32 number
 		return;
 	}
 
-	if ((*packet.current()&0xF0)==0x10 && packet.current()[1] == 0) {
-		// ACC codec && settings codec informations
+	if ((*packet.current()>>4)==0x0A && packet.current()[1] == 0) {
+		// AAC codec && settings codec informations
 		_audioCodecPacket.resize(packet.available(),false);
 		memcpy(_audioCodecPacket.begin(),packet.current(),packet.available());
 	}

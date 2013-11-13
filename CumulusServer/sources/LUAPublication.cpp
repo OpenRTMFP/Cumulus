@@ -29,20 +29,28 @@ void LUAPublicationBase::Clear(lua_State* pState,const Cumulus::Publication& pub
 	Script::ClearPersistentObject<Cumulus::Publication,LUAPublication<>>(pState,publication);
 }
 
-Cumulus::Publication& LUAPublicationBase::Publication(LUAMyPublication& luaPublication) {
-	return luaPublication.publication;
+Cumulus::Publication* LUAPublicationBase::Publication(LUAMyPublication& luaPublication) {
+	if(luaPublication.closed)
+		return NULL;
+	return &luaPublication.publication;
+}
+
+void LUAPublicationBase::Close(Cumulus::Publication& publication,const char* code,const char* description) {
+	publication.closePublisher(code,description);
+}
+
+void LUAPublicationBase::Close(LUAMyPublication& luaPublication,const char* code,const char* description) {
+	if(luaPublication.closed)
+		return;
+	luaPublication.invoker.unpublish(luaPublication.publication);
+	luaPublication.closed=true;
 }
 
 int LUAMyPublication::Destroy(lua_State* pState) {
 	SCRIPT_DESTRUCTOR_CALLBACK(LUAMyPublication,LUAMyPublication,publication)
-		publication.invoker.unpublish(publication.publication);
+		if(!publication.closed)
+			publication.invoker.unpublish(publication.publication);
 		delete &publication;
-	SCRIPT_CALLBACK_RETURN
-}
-
-int LUAMyPublication::Close(lua_State *pState) {
-	SCRIPT_CALLBACK(LUAMyPublication,LUAMyPublication,publication)
-		publication.invoker.unpublish(publication.publication);
 	SCRIPT_CALLBACK_RETURN
 }
 
