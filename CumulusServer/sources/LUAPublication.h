@@ -53,11 +53,11 @@ public:
 				} else if(name=="name") {
 					SCRIPT_WRITE_STRING(pPublication->name().c_str())
 				} else if(name=="listeners") {
-					SCRIPT_WRITE_PERSISTENT_OBJECT(Listeners,LUAListeners,pPublication->listeners)
+					SCRIPT_WRITE_PERSISTENT_OBJECT(Cumulus::Listeners,LUAListeners,pPublication->listeners)
 				} else if(name=="audioQOS") {
-					SCRIPT_WRITE_PERSISTENT_OBJECT(QualityOfService,LUAQualityOfService,pPublication->audioQOS())
+					SCRIPT_WRITE_PERSISTENT_OBJECT(Cumulus::QualityOfService,LUAQualityOfService,pPublication->audioQOS())
 				} else if(name=="videoQOS") {
-					SCRIPT_WRITE_PERSISTENT_OBJECT(QualityOfService,LUAQualityOfService,pPublication->videoQOS())
+					SCRIPT_WRITE_PERSISTENT_OBJECT(Cumulus::QualityOfService,LUAQualityOfService,pPublication->videoQOS())
 				} else if(name=="close") {
 					SCRIPT_WRITE_FUNCTION(&LUAPublication::Close)
 				} else if(name=="pushAudioPacket") {

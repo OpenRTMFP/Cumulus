@@ -26,7 +26,7 @@ void LUAPublicationBase::Clear(lua_State* pState,const Cumulus::Publication& pub
 	Script::ClearPersistentObject<QualityOfService,LUAQualityOfService>(pState,publication.audioQOS());
 	Script::ClearPersistentObject<QualityOfService,LUAQualityOfService>(pState,publication.videoQOS());
 	Script::ClearPersistentObject<Listeners,LUAListeners>(pState,publication.listeners);
-	Script::ClearPersistentObject<Cumulus::Publication,LUAPublication<>>(pState,publication);
+	Script::ClearPersistentObject<Cumulus::Publication,LUAPublication<> >(pState,publication);
 }
 
 Cumulus::Publication* LUAPublicationBase::Publication(LUAMyPublication& luaPublication) {
