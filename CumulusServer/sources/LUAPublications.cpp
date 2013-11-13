@@ -33,7 +33,7 @@ int LUAPublications::Pairs(lua_State* pState) {
 			lua_newtable(pState);
 			Publications::Iterator it;
 			for(it=publications.begin();it!=publications.end();++it) {
-				SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,*it->second)
+				SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication<>,*it->second)
 				lua_setfield(pState,-2,it->first.c_str());
 			}
 		}
@@ -50,7 +50,7 @@ int LUAPublications::Get(lua_State *pState) {
 		else if(name=="(") {
 			Publications::Iterator it = publications(SCRIPT_READ_STRING(""));
 			if(it!=publications.end())
-				SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,*it->second)
+				SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication<>,*it->second)
 		}
 	SCRIPT_CALLBACK_RETURN
 }

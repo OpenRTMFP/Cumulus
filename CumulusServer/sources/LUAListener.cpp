@@ -40,7 +40,7 @@ int LUAListener::Get(lua_State *pState) {
 		} else if(name=="videoQOS") {
 			SCRIPT_WRITE_PERSISTENT_OBJECT(QualityOfService,LUAQualityOfService,listener.videoQOS())
 		} else if(name=="publication") {
-			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,listener.publication);
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication<>,listener.publication);
 		} else if(name=="audioSampleAccess") {
 			SCRIPT_WRITE_BOOL(listener.audioSampleAccess);
 		} else if(name=="videoSampleAccess") {

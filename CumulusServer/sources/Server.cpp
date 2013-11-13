@@ -327,7 +327,7 @@ bool Server::onPublish(Client& client,const Publication& publication,string& err
 	SCRIPT_BEGIN(client.object<Service>()->open())
 		SCRIPT_FUNCTION_BEGIN("onPublish")
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,client)
-			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,publication)
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication<>,publication)
 			SCRIPT_FUNCTION_CALL
 			if(SCRIPT_CAN_READ)
 				result = SCRIPT_READ_BOOL(true);
@@ -337,7 +337,7 @@ bool Server::onPublish(Client& client,const Publication& publication,string& err
 			result = false;
 		}
 		if(!result)
-			LUAPublication::Clear(_pState,publication);
+			LUAPublication<>::Clear(_pState,publication);
 	SCRIPT_END
 	return result;
 }
@@ -347,13 +347,13 @@ void Server::onUnpublish(Client& client,const Publication& publication) {
 		SCRIPT_BEGIN(client.object<Service>()->open())
 			SCRIPT_FUNCTION_BEGIN("onUnpublish")
 				SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,client)
-				SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,publication)
+				SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication<>,publication)
 				SCRIPT_FUNCTION_CALL
 			SCRIPT_FUNCTION_END
 		SCRIPT_END
 	}
 	if(publication.listeners.count()==0)
-		LUAPublication::Clear(_pState,publication);
+		LUAPublication<>::Clear(_pState,publication);
 }
 
 bool Server::onSubscribe(Client& client,const Listener& listener,string& error) { 
@@ -385,7 +385,7 @@ void Server::onUnsubscribe(Client& client,const Listener& listener) {
 		SCRIPT_FUNCTION_END
 	SCRIPT_END
 	if(listener.publication.publisherId()==0 && listener.publication.listeners.count()==0)
-		LUAPublication::Clear(_pState,listener.publication);
+		LUAPublication<>::Clear(_pState,listener.publication);
 	LUAListener::Clear(_pState,listener);
 }
 
@@ -395,7 +395,7 @@ void Server::onAudioPacket(Client& client,const Publication& publication,UInt32 
 	SCRIPT_BEGIN(client.object<Service>()->open())
 		SCRIPT_FUNCTION_BEGIN("onAudioPacket")
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,client)
-			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,publication)
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication<>,publication)
 			SCRIPT_WRITE_NUMBER(time)
 			SCRIPT_WRITE_BINARY(packet.current(),packet.available())
 			SCRIPT_FUNCTION_CALL
@@ -409,7 +409,7 @@ void Server::onVideoPacket(Client& client,const Publication& publication,UInt32 
 	SCRIPT_BEGIN(client.object<Service>()->open())
 		SCRIPT_FUNCTION_BEGIN("onVideoPacket")
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,client)
-			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,publication)
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication<>,publication)
 			SCRIPT_WRITE_NUMBER(time)
 			SCRIPT_WRITE_BINARY(packet.current(),packet.available())
 			SCRIPT_FUNCTION_CALL
@@ -423,7 +423,7 @@ void Server::onDataPacket(Client& client,const Publication& publication,const st
 	SCRIPT_BEGIN(client.object<Service>()->open())
 		SCRIPT_FUNCTION_BEGIN("onDataPacket")
 			SCRIPT_WRITE_PERSISTENT_OBJECT(Client,LUAClient,client)
-			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,publication)
+			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication<>,publication)
 			SCRIPT_WRITE_STRING(name.c_str())
 			SCRIPT_WRITE_BINARY(packet.current(),packet.available())
 			SCRIPT_FUNCTION_CALL

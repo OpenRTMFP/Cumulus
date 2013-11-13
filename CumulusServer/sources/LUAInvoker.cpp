@@ -53,11 +53,8 @@ int	LUAInvoker::Publish(lua_State *pState) {
 	SCRIPT_CALLBACK(Invoker,LUAInvoker,invoker)
 		string name = SCRIPT_READ_STRING("");
 		try {
-			SCRIPT_WRITE_PERSISTENT_OBJECT(Publication,LUAPublication,invoker.publish(name))
-			lua_getmetatable(pState,-1);
-			lua_pushlightuserdata(pState,&invoker);
-			lua_setfield(pState,-2,"__invoker");
-			lua_pop(pState,1);
+			SCRIPT_WRITE_OBJECT(LUAMyPublication,LUAMyPublication,*(new LUAMyPublication(invoker.publish(name),invoker)))
+			SCRIPT_ADD_DESTRUCTOR(&LUAMyPublication::Destroy);
 		} catch(Exception& ex) {
 			SCRIPT_ERROR("%s",ex.displayText().c_str())
 			SCRIPT_WRITE_NIL
