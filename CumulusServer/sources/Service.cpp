@@ -371,15 +371,19 @@ void Service::load() {
 			_registry.startService(*this);
 		} else {
 			const char* error = Script::LastError(_pState);
-			SCRIPT_ERROR("%s",error)
-			(string&)lastError = error;
+			if (error) {
+				SCRIPT_ERROR("%s",error);
+				(string&)lastError = error;
+			}
 			// Clear environment
 			lua_pushnil(_pState);  // first key 
 			while (lua_next(_pState, -2) != 0) {
 				// uses 'key' (at index -2) and 'value' (at index -1) 
 				// remove the raw!
-				lua_pushnil(_pState);
-				lua_setfield(_pState,-4,lua_tostring(_pState,-3));
+				if(lua_istable(_pState,-1)) {
+					lua_pushnil(_pState);
+					lua_setfield(_pState,-4,lua_tostring(_pState,-3));
+				}
 				lua_pop(_pState,1);
 			}
 		}
@@ -431,8 +435,10 @@ void Service::clear() {
 			while (lua_next(_pState, -2) != 0) {
 				// uses 'key' (at index -2) and 'value' (at index -1) 
 				// remove the raw!
-				lua_pushnil(_pState);
-				lua_setfield(_pState,-4,lua_tostring(_pState,-3));
+				if(lua_istable(_pState,-1)) {
+					lua_pushnil(_pState);
+					lua_setfield(_pState,-4,lua_tostring(_pState,-3));
+				}
 				lua_pop(_pState,1);
 			}
 		}

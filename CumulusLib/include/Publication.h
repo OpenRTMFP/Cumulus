@@ -50,15 +50,15 @@ public:
 
 	void					flush();
 
-	const std::vector<Poco::UInt8>& audioCodecPacket() const {return _audioCodecPacket;}
-	const std::vector<Poco::UInt8>& videoCodecPacket() const {return _videoCodecPacket;}
+	const std::vector<Poco::UInt8>&		audioCodecBuffer() const {return _audioCodecBuffer;}
+	const std::vector<Poco::UInt8>&		videoCodecBuffer() const {return _videoCodecBuffer;}
 
 private:
 	Peer*								_pPublisher;
 	FlowWriter*							_pController;
 	bool								_firstKeyFrame;
-	std::vector<Poco::UInt8>			_audioCodecPacket;
-	std::vector<Poco::UInt8>			_videoCodecPacket;
+	std::vector<Poco::UInt8>			_audioCodecBuffer;
+	std::vector<Poco::UInt8>			_videoCodecBuffer;
 	std::string							_name;
 	Poco::UInt32						_publisherId;
 	std::map<Poco::UInt32,Listener*>	_listeners;

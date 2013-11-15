@@ -218,13 +218,18 @@ void Listener::pushVideoPacket(UInt32 time,PacketReader& packet) {
 		writeBounds();
 	}
 
-	if(_firstVideo && publication.videoCodecPacket().size()>0) {
-		PacketReader packet(&publication.videoCodecPacket()[0], publication.videoCodecPacket().size());
-		_pVideoWriter->write(0,packet,_unbuffered);
-	}
-	_firstVideo=false;
+	time = computeTime(time);
 
-	_pVideoWriter->write(computeTime(time),packet,_unbuffered);
+	if(_firstVideo) {
+		_firstVideo=false;
+		UInt32 size = publication.videoCodecBuffer().size();
+		if(size>0) {
+			PacketReader videoCodecPacket(&publication.videoCodecBuffer()[0],size);
+			_pVideoWriter->write(time,videoCodecPacket,false);
+		}
+	}
+
+	_pVideoWriter->write(time,packet,_unbuffered);
 }
 
 
@@ -242,13 +247,18 @@ void Listener::pushAudioPacket(UInt32 time,PacketReader& packet) {
 		writeBounds();
 	}
 
-	if(_firstAudio && publication.audioCodecPacket().size()>0) {
-		PacketReader packet(&publication.audioCodecPacket()[0], publication.audioCodecPacket().size());
-		_pAudioWriter->write(0,packet,_unbuffered);
-	}
-	_firstAudio=false;
+	time = computeTime(time);
 
-	_pAudioWriter->write(computeTime(time),packet,_unbuffered);
+	if(_firstAudio) {
+		_firstAudio=false;
+		UInt32 size = publication.audioCodecBuffer().size();
+		if(size>0) {
+			PacketReader audioCodecPacket(&publication.audioCodecBuffer()[0],size);
+			_pAudioWriter->write(time,audioCodecPacket,false);
+		}
+	}
+
+	_pAudioWriter->write(time,packet,_unbuffered);
 }
 
 void Listener::flush() {

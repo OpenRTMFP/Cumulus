@@ -25,7 +25,7 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Publication::Publication(const string& name): _videoCodecPacket(0),_audioCodecPacket(0),_publisherId(0),_name(name),_firstKeyFrame(false),listeners(_listeners),_pPublisher(NULL),_pController(NULL) {
+Publication::Publication(const string& name): _publisherId(0),_name(name),_firstKeyFrame(false),listeners(_listeners),_pPublisher(NULL),_pController(NULL) {
 	DEBUG("New publication %s",_name.c_str());
 }
 
@@ -134,8 +134,8 @@ void Publication::stop(Peer& peer,UInt32 publisherId) {
 	_publisherId = 0;
 	_pPublisher=NULL;
 	_pController=NULL;
-	_videoCodecPacket.resize(0,false);
-	_audioCodecPacket.resize(0,false);
+	_videoCodecBuffer.clear();
+	_audioCodecBuffer.clear();
 	return;
 }
 
@@ -165,16 +165,17 @@ void Publication::pushAudioPacket(UInt32 time,PacketReader& packet,UInt32 number
 		return;
 	}
 
-	if ((*packet.current()>>4)==0x0A && packet.current()[1] == 0) {
-		// AAC codec && settings codec informations
-		_audioCodecPacket.resize(packet.available(),false);
-		memcpy(&_audioCodecPacket[0],packet.current(),packet.available());
-	}
-
 	int pos = packet.position();
 	if(numberLostFragments>0)
 		INFO("%u audio fragments lost on publication %u",numberLostFragments,_publisherId);
 	_audioQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5,_pPublisher ? _pPublisher->ping : 0);
+
+	if ((*packet.current()>>4)==0x0A && packet.available() && packet.current()[1] == 0) {
+		// AAC codec && settings codec informations
+		_audioCodecBuffer.resize(packet.available());
+		memcpy(&_audioCodecBuffer[0],packet.current(),packet.available());
+	}
+
 	map<UInt32,Listener*>::const_iterator it;
 	for(it=_listeners.begin();it!=_listeners.end();++it) {
 		it->second->pushAudioPacket(time,packet);
@@ -194,19 +195,20 @@ void Publication::pushVideoPacket(UInt32 time,PacketReader& packet,UInt32 number
 	if(numberLostFragments>0)
 		_firstKeyFrame=false;
 
-	// is keyframe?
-	if(((*packet.current())&0xF0) == 0x10) {
-		_firstKeyFrame = true;
-		if (*packet.current()==0x17 && packet.current()[1] == 0) {
-			// h264 codec && settings codec informations
-			_videoCodecPacket.resize(packet.available(),false);
-			memcpy(&_videoCodecPacket[0],packet.current(),packet.available());
-		}
-	}
 
 	_videoQOS.add(time,packet.fragments,numberLostFragments,packet.available()+5,_pPublisher ? _pPublisher->ping : 0);
 	if(numberLostFragments>0)
 		INFO("%u video fragments lost on publication %u",numberLostFragments,_publisherId);
+
+	// is keyframe?
+	if(((*packet.current())&0xF0) == 0x10) {
+		_firstKeyFrame = true;
+		if (*packet.current()==0x17 && packet.available() && packet.current()[1] == 0) {
+			// h264 codec && settings codec informations
+			_videoCodecBuffer.resize(packet.available());
+			memcpy(&_videoCodecBuffer[0],packet.current(),packet.available());
+		}
+	}
 
 	if(!_firstKeyFrame) {
 		DEBUG("No key frame available on publication %u, frame dropped to wait first key frame",_publisherId);
