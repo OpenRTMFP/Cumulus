@@ -380,10 +380,9 @@ void Service::load() {
 			while (lua_next(_pState, -2) != 0) {
 				// uses 'key' (at index -2) and 'value' (at index -1) 
 				// remove the raw!
-				if(lua_istable(_pState,-1)) {
-					lua_pushnil(_pState);
-					lua_setfield(_pState,-4,lua_tostring(_pState,-3));
-				}
+				lua_pushvalue(_pState,-2); // duplicate key
+				lua_pushnil(_pState);
+				lua_rawset(_pState,-5);
 				lua_pop(_pState,1);
 			}
 		}
@@ -435,10 +434,9 @@ void Service::clear() {
 			while (lua_next(_pState, -2) != 0) {
 				// uses 'key' (at index -2) and 'value' (at index -1) 
 				// remove the raw!
-				if(lua_istable(_pState,-1)) {
-					lua_pushnil(_pState);
-					lua_setfield(_pState,-4,lua_tostring(_pState,-3));
-				}
+				lua_pushvalue(_pState,-2); // duplicate key
+				lua_pushnil(_pState);
+				lua_rawset(_pState,-5);
 				lua_pop(_pState,1);
 			}
 		}

@@ -35,9 +35,13 @@ using namespace Cumulus;
 lua_Debug	Script::LuaDebug;
 
 const char* Script::LastError(lua_State *pState) {
+	 int top = lua_gettop(pState);
+	 if(top==0)
+		 return "Unknown error";
 	const char* error = lua_tostring(pState,-1);
-	if(error)
-		lua_pop(pState,1);
+	lua_pop(pState,1);
+	if(!error)
+		return "Unknown error";
 	return error;
 }
 
