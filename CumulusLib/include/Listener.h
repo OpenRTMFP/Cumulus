@@ -70,7 +70,7 @@ private:
 	bool					_firstAudio;
 	bool					_firstVideo;
 
-	Poco::UInt32 			_deltaTime;
+	Poco::Int64 			_deltaTime;
 	Poco::UInt32 			_addingTime;
 	Poco::UInt32 			_time;
 

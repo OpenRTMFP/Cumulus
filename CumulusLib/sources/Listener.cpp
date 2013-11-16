@@ -89,7 +89,7 @@ Listener::Listener(UInt32 id,Publication& publication,FlowWriter& writer,bool un
 	_unbuffered(unbuffered),_writer(writer),_boundId(0),audioSampleAccess(false),videoSampleAccess(false),
 	id(id),publication(publication),_firstKeyFrame(false),receiveAudio(true),receiveVideo(true),
 	_pAudioWriter(NULL),_pVideoWriter(NULL),
-	_time(0),_deltaTime(0),_addingTime(0),_firstAudio(true),_firstVideo(true) {
+	_time(0),_deltaTime(-1),_addingTime(0),_firstAudio(true),_firstVideo(true) {
 }
 
 Listener::~Listener() {
@@ -134,9 +134,7 @@ const QualityOfService& Listener::videoQOS() const {
 }
 
 UInt32 Listener::computeTime(UInt32 time) {
-	if(time==0)
-		time=1;
-	if(_deltaTime==0 && _addingTime==0) {
+	if(_deltaTime<0) {
 		_deltaTime = time;
 		DEBUG("Deltatime assignment : %u",_deltaTime);
 	}
@@ -144,7 +142,7 @@ UInt32 Listener::computeTime(UInt32 time) {
 		WARN("Time infererior to deltaTime on listener %u, certainly a non increasing time",id);
 		_deltaTime=time;
 	}
-	_time = time-_deltaTime+_addingTime;
+	_time = time-(UInt32)_deltaTime+_addingTime;
 	return _time;
 }
 
@@ -172,7 +170,7 @@ void Listener::startPublishing(const string& name) {
 
 void Listener::stopPublishing(const string& name) {
 	_writer.writeStatusResponse("Play.UnpublishNotify",name +" is now unpublished");
-	_deltaTime=0;
+	_deltaTime=-1;
 	_addingTime = _time;
 	_pAudioWriter->qos.reset();
 	_pVideoWriter->qos.reset();
