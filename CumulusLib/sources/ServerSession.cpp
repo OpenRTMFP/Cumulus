@@ -86,7 +86,7 @@ void ServerSession::failSignal() {
 	writer.write16(0);
 	flush(false); // We send immediatly the fail message
 	// After 6 mn we can considerated than the session is died!
-	if(_timesFailed==10 || _recvTimestamp.isElapsed(360000000))
+	if(_timesFailed==10 || peer.lastReceptionTime.isElapsed(360000000))
 		kill();
 }
 
@@ -139,13 +139,13 @@ void ServerSession::manage() {
 	}
 
 	// After 6 mn we considerate than the session has failed
-	if(_recvTimestamp.isElapsed(360000000)) {
+	if(peer.lastReceptionTime.isElapsed(360000000)) {
 		fail("Timeout no client message");
 		return;
 	}
 
 	// To accelerate the deletion of peer ghost (mainly for netgroup efficient), starts a keepalive server after 2 mn
-	if(_recvTimestamp.isElapsed(120000000) && !keepAlive())
+	if(peer.lastReceptionTime.isElapsed(120000000) && !keepAlive())
 		return;
 
 	// Raise FlowWriter
@@ -255,7 +255,7 @@ void ServerSession::flush(UInt8 marker,bool echoTime,AESEngine::Type type) {
 	if(packet.length()>=RTMFP_MIN_PACKET_SIZE) {
 
 		// After 30 sec, send packet without echo time
-		if(_recvTimestamp.isElapsed(30000000))
+		if(peer.lastReceptionTime.isElapsed(30000000))
 			echoTime = false;
 
 		UInt32 offset=0;
@@ -269,7 +269,7 @@ void ServerSession::flush(UInt8 marker,bool echoTime,AESEngine::Type type) {
 		packet.write8(marker);
 		packet.write16(RTMFP::TimeNow());
 		if(echoTime)
-			packet.write16(_timeSent+RTMFP::Time(_recvTimestamp.elapsed()));
+			packet.write16(_timeSent+RTMFP::Time(peer.lastReceptionTime.elapsed()));
 		
 		Session::send(type);
 
@@ -319,8 +319,6 @@ PacketWriter& ServerSession::writeMessage(UInt8 type,UInt16 length,FlowWriter* p
 void ServerSession::packetHandler(PacketReader& packet) {
 	if(died)
 		return;
-
-	_recvTimestamp.update();
 
 	// Read packet
 	UInt8 marker = packet.read8()|0xF0;

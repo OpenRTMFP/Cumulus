@@ -50,6 +50,8 @@ int LUAClient::Get(lua_State *pState) {
 			SCRIPT_WRITE_STRING(client.flashVersion.c_str())
 		} else if(name=="ping") {
 			SCRIPT_WRITE_NUMBER(client.ping)
+		} else if(name=="elapsedFromReception") {
+			SCRIPT_WRITE_NUMBER(client.lastReceptionTime.elapsed()/1000)
 		} else if(name=="swfUrl") {
 			SCRIPT_WRITE_STRING(client.swfUrl.toString().c_str())
 		} else {

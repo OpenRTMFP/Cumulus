@@ -56,6 +56,7 @@ public:
 	const Poco::URI								pageUrl;
 	const std::string							flashVersion;
 	const Poco::UInt16							ping;
+	const Poco::Timestamp						lastReceptionTime;
 
 	template<class ObjectType>
 	void pinObject(ObjectType& object) {

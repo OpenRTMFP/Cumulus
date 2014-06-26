@@ -349,7 +349,7 @@ void Middle::sendToTarget() {
 void Middle::targetPacketHandler(PacketReader& packet) {
 
 	if(_firstResponse)
-		_recvTimestamp.update(); // To emulate a long ping corresponding, otherwise client send multiple times each packet
+		((Timestamp&)peer.lastReceptionTime).update(); // To emulate a long ping corresponding, otherwise client send multiple times each packet
 	_firstResponse = false;
 
 	UInt8 marker = packet.read8();

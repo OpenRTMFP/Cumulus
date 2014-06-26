@@ -73,6 +73,7 @@ void Session::receive(PacketReader& packet) {
 		DUMP_MIDDLE(packet,format("Request from %s",peer.address.toString()).c_str())
 	else
 		DUMP(packet,format("Request from %s",peer.address.toString()).c_str())
+	((Timestamp&)peer.lastReceptionTime).update();
 	packetHandler(packet);
 }
 

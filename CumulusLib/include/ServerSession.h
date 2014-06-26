@@ -87,7 +87,6 @@ protected:
 	void			flush(Poco::UInt8 marker,bool echoTime);
 	void			flush(Poco::UInt8 marker,bool echoTime,AESEngine::Type type);
 
-	Poco::Timestamp				_recvTimestamp; // Protected for Middle session
 	Poco::UInt16				_timeSent; // Protected for Middle session
 
 private:
