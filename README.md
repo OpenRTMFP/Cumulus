@@ -1,3 +1,6 @@
+**The CumulusServer project is deprecated. Please upgrade to  [MonaServer](https://github.com/MonaSolutions/MonaServer) as no more update will be done to Cumulus.**
+
+
 CumulusServer is a complete open source and cross-platform RTMFP server extensible by way of scripting.
 
 CumulusServer has been developed under [GPL license] in keeping in mind the 4 following notions: *speed*, *light weight*, *cross-platform* and *scalable*.
