@@ -1,4 +1,4 @@
-:exclamation:	CumulusServer is made obsolete by [MonaServer] project	:exclamation:
+:exclamation:	CumulusServer is made obsolete by [MonaServer]	:exclamation:
 
 CumulusServer is a complete open source and cross-platform RTMFP server extensible by way of scripting.
 
