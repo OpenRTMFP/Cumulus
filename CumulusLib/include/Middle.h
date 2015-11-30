@@ -67,7 +67,7 @@ private:
 	std::string					_queryUrl;
 	Poco::UInt32				_middleId;
 	Peer						_middlePeer;
-	Poco::UInt8					_middleCertificat[76];
+	Poco::UInt8					_initiatorNonce[76];
 	DH*							_pMiddleDH;
 	Target&						_target;
 	std::vector<Poco::UInt8>	_targetNonce;

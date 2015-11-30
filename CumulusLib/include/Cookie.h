@@ -28,7 +28,7 @@ class Cookie {
 	friend class Target;
 public:
 	Cookie(Handshake& handshake,Invoker& invoker,const std::string& tag,const std::string& queryUrl); // For normal cookie
-	Cookie(Invoker& invoker,const std::string& tag,Target& target); // For a Man-In-The-Middle peer/peer cookie
+	Cookie(Handshake& handshake,Invoker& invoker,const std::string& tag,Target& target); // For a Man-In-The-Middle peer/peer cookie
 	virtual ~Cookie();
 
 	const Poco::UInt32				id;

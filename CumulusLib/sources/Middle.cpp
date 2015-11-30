@@ -51,9 +51,9 @@ Middle::Middle(UInt32 id,
 
 	INFO("Handshake Target");
 
-	memcpy(_middleCertificat,"\x02\x1D\x02\x41\x0E",5);
-	RandomInputStream().read((char*)&_middleCertificat[5],64);
-	memcpy(&_middleCertificat[69],"\x03\x1A\x02\x0A\x02\x1E\x02",7);
+	memcpy(_initiatorNonce,"\x02\x1D\x02\x41\x0E",5);
+	RandomInputStream().read((char*)&_initiatorNonce[5],64);
+	memcpy(&_initiatorNonce[69],"\x03\x1A\x02\x0A\x02\x1E\x02",7);
 
 	////  HANDSHAKE TARGET  /////
 
@@ -108,16 +108,23 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 			string cookie;
 			packet.readString8(cookie);
 
-			string targetCertificat;
-			vector<UInt8> nonce;
+			vector<UInt8> publicKey;
 			if(_isPeer) {
-				nonce = _target.publicKey;
-				RTMFP::ComputeDiffieHellmanSecret(_pMiddleDH,&_target.publicKey[0],_target.publicKey.size(),_sharedSecret);
-				// DEBUG("Middle Shared Secret : %s",Util::FormatHex(_sharedSecret,sizeof(_sharedSecret)).c_str());
-			} else {
-				packet.readRaw(packet.available(),targetCertificat);
-				_pMiddleDH = RTMFP::BeginDiffieHellman(nonce,true);
-				EVP_Digest(&nonce[0],nonce.size(),(UInt8*)_middlePeer.id,NULL,EVP_sha256(),NULL);
+				string targetKey;
+				UInt32 keySize = packet.read7BitValue();
+				if (packet.read16() != 0x1D02) {
+					ERROR("Expected signature (1D02) in handshake 70 but found ", Util::FormatHex((packet.current() - 2), 2));
+					return;
+				}
+				packet.readRaw(keySize-2, targetKey);
+				RTMFP::ComputeDiffieHellmanSecret(_pMiddleDH, (const UInt8*)targetKey.data(), targetKey.size(), _sharedSecret);
+
+				publicKey = _target.publicKey;
+			} else { // Cirrus
+				// next bytes (ignored) is the Cirrus Certificate
+
+				_pMiddleDH = RTMFP::BeginDiffieHellman(publicKey,true);
+				EVP_Digest(&publicKey[0], publicKey.size(),(UInt8*)_middlePeer.id,NULL,EVP_sha256(),NULL);
 			}
 
 			
@@ -125,10 +132,10 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 			PacketWriter& request = handshaker();
 			request << id; // id session, we use the same that Cumulus id session for Flash client
 			request.writeString8(cookie); // cookie
-			request.write7BitValue(nonce.size());
-			request.writeRaw(&nonce[0],nonce.size());
-			request.write7BitValue(sizeof(_middleCertificat));
-			request.writeRaw(_middleCertificat,sizeof(_middleCertificat));
+			request.write7BitValue(publicKey.size());
+			request.writeRaw(&publicKey[0], publicKey.size());
+			request.write7BitValue(sizeof(_initiatorNonce));
+			request.writeRaw(_initiatorNonce,sizeof(_initiatorNonce));
 			request.write8(0x58);
 			sendHandshakeToTarget(0x38);
 			
@@ -177,14 +184,13 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 			if(!_isPeer)
 				RTMFP::EndDiffieHellman(_pMiddleDH,&_targetNonce[_targetNonce.size()-KEY_SIZE],KEY_SIZE,_sharedSecret);
 
-			UInt8 requestKey[AES_KEY_SIZE];
-			UInt8 responseKey[AES_KEY_SIZE];
-			RTMFP::ComputeAsymetricKeys(_sharedSecret,_middleCertificat,sizeof(_middleCertificat),&_targetNonce[0],_targetNonce.size(),requestKey,responseKey);
-			_pMiddleAesEncrypt = new AESEngine(requestKey,AESEngine::ENCRYPT);
-			_pMiddleAesDecrypt = new AESEngine(responseKey,AESEngine::DECRYPT);
+			UInt8 decryptKey[AES_KEY_SIZE];
+			UInt8 encryptKey[AES_KEY_SIZE];
+			RTMFP::ComputeAsymetricKeys(_sharedSecret, &_targetNonce[0], _targetNonce.size(), _initiatorNonce,sizeof(_initiatorNonce), decryptKey, encryptKey);
+			_pMiddleAesEncrypt = new AESEngine(encryptKey,AESEngine::ENCRYPT);
+			_pMiddleAesDecrypt = new AESEngine(decryptKey,AESEngine::DECRYPT);
 
 			DEBUG("Middle Shared Secret : %s",Util::FormatHex(&_sharedSecret[0],_sharedSecret.size()).c_str());
-
 			// DEBUG("Peer/Middle/Target id : %s/%s/%s",Util::FormatHex(this->peer().id,ID_SIZE).c_str(),Util::FormatHex(_middlePeer.id,ID_SIZE).c_str(),Util::FormatHex(_target.peerId,ID_SIZE).c_str());
 			break;
 		}

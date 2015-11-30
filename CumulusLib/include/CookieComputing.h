@@ -29,7 +29,7 @@ namespace Cumulus {
 class Handshake;
 class CookieComputing : public WorkThread, private Task {
 public:
-	CookieComputing(Invoker& invoker,Handshake*	pHandshake);
+	CookieComputing(Invoker& invoker,Handshake*	pHandshake, bool isMiddle);
 	~CookieComputing();
 
 	const Poco::UInt8			value[COOKIE_SIZE];

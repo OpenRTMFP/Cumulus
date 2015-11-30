@@ -26,9 +26,9 @@ using namespace Poco;
 
 namespace Cumulus {
 
-CookieComputing::CookieComputing(Invoker& invoker,Handshake* pHandshake): _pHandshake(pHandshake),value(),Task(invoker),pDH(NULL),nonce(pHandshake ? 7 : 73) {
+CookieComputing::CookieComputing(Invoker& invoker,Handshake* pHandshake, bool isMiddle): _pHandshake(pHandshake),value(),Task(invoker),pDH(NULL),nonce(isMiddle? 73 : 7) {
 	RandomInputStream().read((char*)value,COOKIE_SIZE);
-	if(!pHandshake) { // Target type
+	if(isMiddle) { // Target type
 		memcpy(&nonce[0],"\x03\x1A\x00\x00\x02\x1E\x00\x41\x0E",9);
 		RandomInputStream().read((char*)&nonce[9],64);
 	} else
@@ -38,6 +38,9 @@ CookieComputing::CookieComputing(Invoker& invoker,Handshake* pHandshake): _pHand
 CookieComputing::~CookieComputing() {
 	if(_pHandshake && pDH)
 		RTMFP::EndDiffieHellman(pDH);
+
+	_pHandshake = NULL;
+	pDH = NULL;
 }
 
 void CookieComputing::run() {
@@ -57,6 +60,10 @@ void CookieComputing::run() {
 }
 
 void CookieComputing::handle() {
+	if (!_pHandshake) {
+		ERROR("Handshake is null, cannot handle client answer")
+			return;
+	}
 	Session* pSession = _pHandshake->createSession(value);
 	if(pSession) {
 		duplicate();

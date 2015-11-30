@@ -50,8 +50,10 @@ ServerSession::~ServerSession() {
 	map<string,Attempt*>::const_iterator it0;
 	for(it0=_helloAttempts.begin();it0!=_helloAttempts.end();++it0)
 		delete it0->second;
-	if(pTarget)
+	if (pTarget) {
 		delete pTarget;
+		pTarget = NULL;
+	}
 }
 
 void ServerSession::fail(const string& error) {

@@ -33,7 +33,7 @@ Target::Target(const SocketAddress& address,Cookie* pCookie) : address(address),
 	if(isPeer) {
 		((vector<UInt8>&)publicKey).resize(pCookie->_pCookieComputing->nonce.size()-7);
 		memcpy((void*)&publicKey[0],&pCookie->_pCookieComputing->nonce[7],publicKey.size());
-		((vector<UInt8>&)publicKey)[3] = 0x1D;
+		((vector<UInt8>&)publicKey)[2] = 0x1D;
 		EVP_Digest(&publicKey[0],publicKey.size(),(UInt8*)id,NULL,EVP_sha256(),NULL);
 		pCookie->_pCookieComputing->pDH = NULL;
 	}
@@ -41,8 +41,10 @@ Target::Target(const SocketAddress& address,Cookie* pCookie) : address(address),
 
 
 Target::~Target() {
-	if(pDH)
+	if (!isPeer && pDH) {
 		RTMFP::EndDiffieHellman(pDH);
+		pDH = NULL;
+	}
 }
 
 

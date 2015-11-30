@@ -22,11 +22,11 @@ using namespace Poco;
 
 namespace Cumulus {
 
-Cookie::Cookie(Handshake& handshake,Invoker& invoker,const string& tag,const string& queryUrl) : peerId(),_invoker(invoker), _pComputingThread(NULL),_pCookieComputing(new CookieComputing(invoker,&handshake)),tag(tag),pTarget(NULL),id(0),farId(0),queryUrl(queryUrl),_writer(_buffer,sizeof(_buffer)) {
+Cookie::Cookie(Handshake& handshake,Invoker& invoker,const string& tag,const string& queryUrl) : peerId(),_invoker(invoker), _pComputingThread(NULL),_pCookieComputing(new CookieComputing(invoker,&handshake,false)),tag(tag),pTarget(NULL),id(0),farId(0),queryUrl(queryUrl),_writer(_buffer,sizeof(_buffer)) {
 	_pComputingThread = invoker.poolThreads.enqueue(_pCookieComputing.cast<WorkThread>(),_pComputingThread);
 }
 
-Cookie::Cookie(Invoker& invoker,const string& tag,Target& target) : peerId(),_invoker(invoker),_pComputingThread(NULL),_pCookieComputing(new CookieComputing(invoker,NULL)),tag(tag),pTarget(&target),id(0),farId(0),_writer(_buffer,sizeof(_buffer)) {
+Cookie::Cookie(Handshake& handshake, Invoker& invoker,const string& tag,Target& target) : peerId(),_invoker(invoker),_pComputingThread(NULL),_pCookieComputing(new CookieComputing(invoker,&handshake,true)),tag(tag),pTarget(&target),id(0),farId(0),_writer(_buffer,sizeof(_buffer)) {
 	_pCookieComputing->pDH = target.pDH;
 }
 

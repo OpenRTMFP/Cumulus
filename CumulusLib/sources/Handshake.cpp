@@ -86,7 +86,7 @@ void Handshake::createCookie(PacketWriter& writer,HelloAttempt& attempt,const st
 	Cookie* pCookie = attempt.pCookie;
 	if(!pCookie) {
 		if(attempt.pTarget)
-			pCookie = new Cookie(invoker,tag,*attempt.pTarget);
+			pCookie = new Cookie(*this,invoker,tag,*attempt.pTarget);
 		else
 			pCookie = new Cookie(*this,invoker,tag,queryUrl);
 		_cookies[pCookie->value()] =  pCookie;
