@@ -362,7 +362,7 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 	
 	UInt16 timestamp = packet.read16(); // time
 
-	if((marker|0xF0) == 0xFE)
+	if((marker|0xF0) == 0xFD)
 		_timeSent = packet.read16(); // time echo
 
 	PacketWriter& packetOut = writer();
