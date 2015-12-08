@@ -360,10 +360,11 @@ void Middle::targetPacketHandler(PacketReader& packet) {
 
 	UInt8 marker = packet.read8();
 	
-	UInt16 timestamp = packet.read16(); // time
+	_timeSent = packet.read16(); // time
 
-	if((marker|0xF0) == 0xFD)
-		_timeSent = packet.read16(); // time echo
+	UInt16 timeEcho(0);
+	if((marker|0xF0) == 0xFE)
+		timeEcho = packet.read16(); // time echo
 
 	PacketWriter& packetOut = writer();
 
