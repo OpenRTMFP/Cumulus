@@ -113,7 +113,7 @@ void Middle::targetHandshakeHandler(UInt8 type,PacketReader& packet) {
 				string targetKey;
 				UInt32 keySize = packet.read7BitValue();
 				if (packet.read16() != 0x1D02) {
-					ERROR("Expected signature (1D02) in handshake 70 but found ", Util::FormatHex((packet.current() - 2), 2));
+					ERROR("Expected signature (1D02) in handshake 70 but found ", Util::FormatHex((packet.current() - 2), 2).c_str());
 					return;
 				}
 				packet.readRaw(keySize-2, targetKey);
