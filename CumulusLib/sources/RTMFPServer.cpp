@@ -85,6 +85,7 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 		ERROR("RTMFPServer server is yet running, call stop method before");
 		return;
 	}
+	_host = params.host;
 	_port = params.port;
 	if(_port==0) {
 		ERROR("RTMFPServer port must have a positive value");
@@ -113,7 +114,7 @@ void RTMFPServer::start(RTMFPServerParams& params) {
 void RTMFPServer::run() {
 
 	try {
-		_pSocket->bind(SocketAddress("0.0.0.0",_port));
+		_pSocket->bind(SocketAddress(_host,_port));
 		_mainSockets.add(*_pSocket,*this);
 
 		NOTE("RTMFP server starts on %u port",_port);
